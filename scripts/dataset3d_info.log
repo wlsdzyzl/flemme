@@ -1,0 +1,87 @@
+2024-06-03 03:22:38,872 [MainThread] INFO scripts - Getting info from 20 samples from path/to/datasets/imageCAS/original/fold1/label/.
+2024-06-03 03:23:47,036 [MainThread] INFO scripts - Max image size: [275 512 512]
+2024-06-03 03:23:47,036 [MainThread] INFO scripts - Min image size: [206 512 512]
+2024-06-03 03:23:47,036 [MainThread] INFO scripts - Average image size: [263.15 512.   512.  ]
+2024-06-03 03:23:47,036 [MainThread] INFO scripts - Average label count:{0.0: 68873561.55, 1.0: 109632.05}
+
+128, 256, 256
+
+2024-06-03 03:23:48,073 [MainThread] INFO scripts - Getting info from 20 samples from path/to/datasets/ACDC/ES/fold1/label/.
+2024-06-03 03:23:48,166 [MainThread] INFO scripts - Max image size: [ 12 256 256]
+2024-06-03 03:23:48,166 [MainThread] INFO scripts - Min image size: [  6 174 174]
+2024-06-03 03:23:48,166 [MainThread] INFO scripts - Average image size: [  8.8 244.3 221.1]
+2024-06-03 03:23:48,166 [MainThread] INFO scripts - Average label count:{0: 457339.25, 1: 3384.95, 2: 6370.15, 3: 3955.25}
+
+16, 256, 256
+
+2024-06-03 03:23:49,201 [MainThread] INFO scripts - Getting info from 20 samples from path/to/datasets/ACDC/ET/fold1/label/.
+2024-06-03 03:23:49,305 [MainThread] INFO scripts - Max image size: [ 15 288 256]
+2024-06-03 03:23:49,305 [MainThread] INFO scripts - Min image size: [  7 208 184]
+2024-06-03 03:23:49,305 [MainThread] INFO scripts - Average image size: [  9.75 247.2  221.2 ]
+2024-06-03 03:23:49,305 [MainThread] INFO scripts - Average label count:{0: 505068.05, 1: 8051.25, 2: 6318.5, 3: 8651.8}
+
+16, 256, 256
+
+2024-06-03 03:23:50,340 [MainThread] INFO scripts - Getting info from 30 samples from path/to/datasets/ATM2022/TrainBatch2_New/fold1/labelsTr/.
+2024-06-03 03:27:01,548 [MainThread] INFO scripts - Max image size: [799 512 512]
+2024-06-03 03:27:01,548 [MainThread] INFO scripts - Min image size: [157 512 512]
+2024-06-03 03:27:01,549 [MainThread] INFO scripts - Average image size: [597.73333333 512.         512.        ]
+2024-06-03 03:27:01,549 [MainThread] INFO scripts - Average label count:{0: 156531255.46666667, 1: 160951.46666666667}
+
+256, 256, 256
+
+2024-06-03 03:27:02,618 [MainThread] INFO scripts - Getting info from 52 samples from path/to/datasets/Task04_Hippocampus/fold1/labelsTr/.
+2024-06-03 03:27:03,317 [MainThread] INFO scripts - Max image size: [43 57 43]
+2024-06-03 03:27:03,317 [MainThread] INFO scripts - Min image size: [27 40 31]
+2024-06-03 03:27:03,317 [MainThread] INFO scripts - Average image size: [36.59615385 49.01923077 35.26923077]
+2024-06-03 03:27:03,317 [MainThread] INFO scripts - Average label count:{0: 59633.346153846156, 1: 1730.9615384615386, 2: 1556.8461538461538}
+
+32, 48, 32
+
+2024-06-03 03:27:04,346 [MainThread] INFO scripts - Getting info from 13 samples from path/to/datasets/Task06_Lung/fold1/labelsTr/.
+2024-06-03 03:27:13,263 [MainThread] INFO scripts - Max image size: [567 512 512]
+2024-06-03 03:27:13,263 [MainThread] INFO scripts - Min image size: [218 512 512]
+2024-06-03 03:27:13,264 [MainThread] INFO scripts - Average image size: [280.07692308 512.         512.        ]
+2024-06-03 03:27:13,264 [MainThread] INFO scripts - Average label count:{0: 73388440.38461539, 1: 32044.53846153846}
+
+160, 256, 256
+
+2024-06-03 03:27:14,301 [MainThread] INFO scripts - Getting info from 61 samples from path/to/datasets/Task08_HepaticVessel/fold1/labelsTr/.
+2024-06-03 03:27:24,039 [MainThread] INFO scripts - Max image size: [181 512 512]
+2024-06-03 03:27:24,039 [MainThread] INFO scripts - Min image size: [ 24 512 512]
+2024-06-03 03:27:24,039 [MainThread] INFO scripts - Average image size: [ 67.96721311 512.         512.        ]
+2024-06-03 03:27:24,039 [MainThread] INFO scripts - Average label count:{0: 17725622.081967212, 1: 19205.803278688523, 2: 72369.22950819672}
+
+32, 256, 256
+
+2024-06-03 03:27:25,070 [MainThread] INFO scripts - Getting info from 251 samples from path/to/datasets/BraTS2021/fold1/seg/.
+2024-06-03 03:28:21,279 [MainThread] INFO scripts - Max image size: [155 240 240]
+2024-06-03 03:28:21,279 [MainThread] INFO scripts - Min image size: [155 240 240]
+2024-06-03 03:28:21,279 [MainThread] INFO scripts - Average image size: [155. 240. 240.]
+2024-06-03 03:28:21,279 [MainThread] INFO scripts - Average label count:{0: 8828867.3187251, 1: 13111.844621513945, 2: 64576.50597609562, 4: 21444.330677290836}
+
+128, 192, 128
+
+2024-06-03 03:28:22,310 [MainThread] INFO scripts - Getting info from 73 samples from path/to/datasets/abdomenct1k/FullySupervised/Subtask1/fold1/TrainMask/.
+2024-06-03 03:29:50,841 [MainThread] INFO scripts - Max image size: [310 512 512]
+2024-06-03 03:29:50,841 [MainThread] INFO scripts - Min image size: [ 37 512 512]
+2024-06-03 03:29:50,841 [MainThread] INFO scripts - Average image size: [127.15068493 512.         512.        ]
+2024-06-03 03:29:50,841 [MainThread] INFO scripts - Average label count:{0: 31614175.23287671, 1: 1210694.6849315069, 2: 261423.56164383562, 3: 185484.08219178082, 4: 60011.58904109589}
+
+64, 256, 256
+
+2024-06-03 03:29:51,884 [MainThread] INFO scripts - Getting info from 73 samples from path/to/datasets/abdomenct1k/FullySupervised/Subtask2/fold1/TrainMask/.
+2024-06-03 03:31:17,062 [MainThread] INFO scripts - Max image size: [673 512 512]
+2024-06-03 03:31:17,063 [MainThread] INFO scripts - Min image size: [ 43 512 512]
+2024-06-03 03:31:17,063 [MainThread] INFO scripts - Average image size: [124.80821918 512.         512.        ]
+2024-06-03 03:31:17,063 [MainThread] INFO scripts - Average label count:{0: 31123898.657534245, 1: 1106606.191780822, 2: 258044.45205479453, 3: 171143.7397260274, 4: 58032.767123287675}
+
+64, 256, 256
+
+2024-06-09 19:58:32,112 [MainThread] INFO scripts - Getting info from 20 samples from path/to/datasets/PARSE2022/fold1/label/.
+2024-06-09 19:59:17,170 [MainThread] INFO scripts - Max image size: [390 512 512]
+2024-06-09 19:59:17,170 [MainThread] INFO scripts - Min image size: [251 512 512]
+2024-06-09 19:59:17,170 [MainThread] INFO scripts - Average image size: [299.45 512.   512.  ]
+2024-06-09 19:59:17,170 [MainThread] INFO scripts - Average label count:{0: 78208236.05, 1: 290784.75}
+
+112, 192, 192

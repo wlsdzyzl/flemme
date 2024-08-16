@@ -1,0 +1,60 @@
+# train ae or vae
+rand_seed: 2024
+model:
+  # can be AE, VAE and DDPM
+  name: DDPM
+  num_steps: 1000
+  beta_schedule: consine
+  eps_model:
+    # encoder config
+    time_channel: 128
+    encoder:
+      name: VMambaU
+      image_size: [28, 28]
+      in_channel: 1
+      patch_size: 1
+      down_channels: [32, 64]
+      middle_channels: [128, 128]
+      building_block: vmamba2
+      scan_mode: single
+      flip_scan: false
+      abs_pos_embedding: false
+  ## 2D ddpm
+  eps_loss:
+    name: MSE
+loader:
+  dataset: 
+    name: MNIST
+  data_path_list: 
+    - path/to/datasets/MNIST
+  batch_size: 128
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [28, 28]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.5]
+      std: [0.5]
+check_point_dir: path/to/checkpoint/MNIST/DDPM_swin
+sampler:
+  name: NormalSampler
+  sample_steps: 200
+  rand_seed: 2024
+  clipped: true
+  clip_range: [-1.0, 1.0]
+### parameter for optimizer
+optimizer:
+  name: AdamW
+  lr: 0.0003
+  weight_decay: 0.00000001
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 100
+write_after_iters: 50
+save_after_epochs: 5

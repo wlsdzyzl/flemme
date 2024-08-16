@@ -1,0 +1,60 @@
+# train ae or vae
+mode: test
+model:
+  # can be AE, VAE and DDPM
+  name: HAE
+  is_supervising: true
+  # encoder config
+  encoder:
+    name: UNet
+    image_size: [320, 320]
+    in_channel: 1
+    out_channel: 1
+    proj_channel: 32
+    proj_scaling: 2
+    # kernel_size: 5
+    down_channels: [64, 128, 256]
+    up_attens: [null, null, atten]
+    middle_channels: [512, 512]
+    building_block: single
+    normalization: batch
+    activation: relu
+    abs_pos_embedding: false
+  ### loss function
+  reconstruction_losses: 
+    - name: L1
+loader:
+  dataset: 
+    name: ImgSegDataset
+    data_dir: mzf1
+    label_dir: esc
+    data_suffix: png
+  data_path_list: 
+    - path/to/datasets/fastMRI/knee_single_png/fold5/
+  batch_size: 2
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    # - name: Resize
+    #   ## the value must be list
+    #   size: [320, 320]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.5]
+      std: [0.5]
+  label_transforms:
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.5]
+      std: [0.5]
+model_path: path/to/checkpoint/fastMRI-mzf1/UNet_Atten_HAE/ckp_best_score.pth
+recon_dir: path/to/results/recon/fastMRI-mzf1/UNet_Atten_HAE/
+
+### parameter for optimizer
+evaluation_metrics:
+  recon:
+    - name: SSIM
+      data_range: 2.0
+    - name: PSNR
+      data_range: 2.0
+    - name: MSE

@@ -1,0 +1,46 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: train
+model:
+  # can be AE, VAE and DDPM
+  name: DDIM
+  num_steps: 1000
+  beta_schedule: cosine
+  # pretrained: pretrained_model_path
+  clipped: True
+  clip_range: [-15, 15]
+  eps_model:
+    time_channel: 128
+    encoder:
+      ## name is fixed: PointWise
+      name: PointWise
+      in_channel: 2
+      fc_channels: [128, 256]
+      building_block: res_fc
+      activation: silu
+      normalization: layer
+      dropout: 0.1
+      data_form: VEC
+loader:
+  dataset: 
+    name: ToyDataset
+    n_sample: 1024
+    dim: 2
+  batch_size: 1024
+  num_workers: 8
+  shuffle: true
+check_point_dir: path/to/checkpoint/Toy/DDIM_Layer_res
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0003
+  weight_decay: 0.00000001
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 10000
+write_after_iters: 1
+save_after_epochs: 1
+write_sample_num: 1024

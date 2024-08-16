@@ -1,0 +1,78 @@
+# train ae or vae
+model:
+  # can be AE, VAE and DDPM
+  name: DDPM
+  num_steps: 1000
+  beta_schedule: consine
+  eps_model:
+    name: Base
+    # encoder config
+    time_channel: 128
+    encoder:
+      name: UNet
+      image_size: [28, 28]
+      in_channel: 1
+      proj_scaling: 1
+      down_channels: [32, 64]
+      middle_channels: [128, 128]
+      ## allow an asummetrical architecture
+      # decode_down_channels: [32, 64]
+      ### with time embedding
+      building_block: single
+      activation: silu
+      num_block: 2
+      normalization: group
+      num_group: 16
+      dropout: 0.1
+      ## the value can be list or int
+    condition_embedding:
+      combine_condition: add
+      merge_timestep_and_context: true
+      encoder:
+        name: OneHot
+        type: categories
+        out_channel: 128
+        num_classes: 10
+  classifier_free_guidance:
+    condition_dropout: 0.2
+    guidance_weight: 2.0
+      ## allow an asummetrical architecture
+      # decode_fc_channels: [128 256]
+  ## 2D ddpm
+  eps_loss:
+    name: MSE
+loader:
+  dataset: 
+    name: MNIST
+    data_path: path/to/datasets/MNIST
+  batch_size: 64
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [28, 28]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.1307]
+      std: [0.3081]
+check_point_dir: path/to/checkpoint/MNIST/CDDPM
+sampler:
+  name: NormalSampler
+  sample_steps: 200
+  rand_seed: 2024
+  clipped: true
+  clip_range: [-1.0, 1.0]
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0003
+  weight_decay: 0.00000001
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 100
+write_after_iters: 100
+save_after_epochs: 5

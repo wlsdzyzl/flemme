@@ -1,0 +1,56 @@
+# train ae or vae
+mode: test
+model:
+  # can be AE, VAE and DDPM
+  name: HAE
+  is_supervising: true
+  # encoder config
+  encoder:
+    name: VMambaU
+    image_size: [320, 320]
+    in_channel: 1
+    out_channel: 1
+    patch_channel: 32
+    patch_size: 2
+    down_channels: [64, 128, 256]
+    middle_channels: [512, 512]
+    building_block: vmamba
+    scan_mode: single
+    flip_scan: false
+  ### loss function
+  reconstruction_losses: 
+    - name: L1
+loader:
+  dataset: 
+    name: ImgSegDataset
+    data_dir: mzf1
+    label_dir: esc
+    data_suffix: png
+  data_path_list: 
+    - path/to/datasets/fastMRI/knee_single_png/fold5/
+  batch_size: 8
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    # - name: Resize
+    #   ## the value must be list
+    #   size: [320, 320]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.5]
+      std: [0.5]
+  label_transforms:
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.5]
+      std: [0.5]
+model_path: path/to/checkpoint/fastMRI-mzf1/MambaU_HAE/ckp_best_score.pth
+recon_dir: path/to/results/recon/fastMRI-mzf1/MambaU_HAE/
+
+evaluation_metrics:
+  recon:
+    - name: SSIM
+      data_range: 2.0
+    - name: PSNR
+      data_range: 2.0
+    - name: MSE

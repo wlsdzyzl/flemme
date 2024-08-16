@@ -1,0 +1,47 @@
+# train ae or vae
+mode: test
+model:
+  # can be AE, VAE and DDPM
+  name: HSeM
+  # encoder config
+  encoder:
+    name: SwinU
+    image_size: [128, 128]
+    in_channel: 1
+    out_channel: 1
+    patch_channel: 32
+    patch_size: 2
+    down_channels: [64, 128, 256]
+    middle_channels: [512, 512]
+    building_block: swin
+    activation: relu
+  ### loss function
+  segmentation_losses: 
+    - name: Dice
+    - name: BCEL
+  # some other information related to the model
+  # in ddpm, it can be the time steps and so on.
+loader:
+  dataset: 
+    name: ImgSegDataset
+    data_dir: frames
+    label_dir: mask
+    data_suffix: png
+  data_path_list: 
+    - path/to/datasets/Echonet/fold5/
+  batch_size: 16
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [128, 128]
+    - name: GrayScale
+    - name: ToTensor
+model_path: path/to/checkpoint/Echonet/SwinU_HSeg/ckp_best.pth
+seg_dir: path/to/results/seg/Echonet/SwinU_HSeg
+evaluation_metrics:
+  seg:
+    - name: Dice
+    - name: ACC
+    - name: mIoU

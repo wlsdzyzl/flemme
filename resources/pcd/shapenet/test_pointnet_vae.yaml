@@ -1,0 +1,59 @@
+mode: test
+model:
+  # can be AE, VAE and DDPM
+  name: VAE
+  encoder:
+    name: PointNet
+    in_channel: 3
+    point_num: 2048
+    building_block: single
+    conv_channels: [64, 64, 128, 256, 512]
+    fc_channels: [1024]
+    decode_fc_channels: [512, 256]
+    activation: lrelu
+    pointwise: False
+
+loader:
+  dataset: 
+    name: PCDDataset
+    data_dir: 02691156/points
+    data_suffix: .pts
+  data_path_list: 
+    - path/to/datasets/shapenetcore_v0  
+  batch_size: 4
+  num_workers: 8
+  shuffle: false
+  drop_last: true
+  data_transforms:
+    - name: MinMaxNormalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet_VAE_Chamfer
+### parameter for optimizer
+model_path: path/to/checkpoint/SHAPENET/02691156/PointNet_VAE/ckp_last.pth
+#### directory that saves the reconstructed images
+# recon_dir: path/to/results/recon/shapenet/02691156/vae_pointnet
+
+#### metrics used for evaluation (reconstruction accuracy)
+# evaluation_metrics:
+#   recon:
+#     - name: EMD
+#     - name: CD
+#### qualitative results for new generation
+### interpolation among reconstructed samples
+### group num: number of groups
+### corner num: number of original samples waited to be interpolated, should be 2 or 4
+### inter num: number of interpolation between each pair of original samples
+### finally we would have inter_num^(log corner_num) * group num new samples
+eval_gen:
+  sampler:
+    name: NormalSampler
+  gen_dir: path/to/results/gen/shapenet/02691156/vae_pointnet
+  interpolation:
+    group_num: 2
+    corner_num: 4
+    inter_num: 8
+  ### new generation from random noise
+  random_sample_num: 64

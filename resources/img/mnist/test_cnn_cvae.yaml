@@ -1,0 +1,59 @@
+# train ae or vae
+mode: test
+rand_seed: 2024
+model:
+  # can be AE, VAE and DDPM
+  name: VAE
+  # encoder config
+  encoder:
+    name: CNN
+    in_channel: 1
+    ## the value can be list or int
+    image_size: 32
+    proj_scaling: 1
+    # usample_function: conv
+    # dsample_function: conv
+    down_channels: [16, 32]
+    middle_channels: [32, 32]
+    # up_channels: [16, 8]
+    building_block: single
+    fc_channels: [128]
+    # decode_fc_channels: [64, 32]
+  condition_embedding:
+    encoder:
+      name: OneHot
+      type: categories
+      out_channel: 1
+      num_classes: 10
+    decoder:
+      name: OneHot
+      type: categories
+      out_channel: 128
+      num_classes: 10
+model_path: path/to/checkpoint/MNIST/CNN_CVAE/ckp_last.pth
+loader:
+  dataset: 
+    name: MNIST
+  data_path_list: 
+    - path/to/datasets/MNIST  
+  batch_size: 128
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [32, 32]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.1307]
+      std: [0.3081]
+eval_gen:
+  gen_dir: path/to/results/gen/mnist/cvae
+  sampler:
+    name: NormalSampler
+    rand_seed: 2024
+  interpolation:
+    group_num: 4
+    corner_num: 4
+    inter_num: 8
+  random_sample_num: 100

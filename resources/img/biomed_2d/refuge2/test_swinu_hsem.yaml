@@ -1,0 +1,57 @@
+# train ae or vae
+mode: test
+model:
+  # can be AE, VAE and DDPM
+  name: HSeM
+  # encoder config
+  encoder:
+    name: SwinU
+    image_size: [256, 256]
+    in_channel: 3
+    out_channel: 3
+    patch_channel: 32
+    patch_size: 2
+    down_channels: [64, 128, 256]
+    middle_channels: [512, 512]
+    building_block: swin
+    scan_mode: single
+  ### loss function
+  segmentation_losses: 
+    - name: Dice
+      normalization: softmax
+    - name: CE
+  # some other information related to the model
+  # in ddpm, it can be the time steps and so on.
+loader:
+  dataset: 
+    name: ImgSegDataset
+    data_dir: image
+    label_dir: mask
+    data_suffix: jpg
+    label_suffix: png
+  data_path_list: 
+    - path/to/datasets/REFUGE2/fold5/
+  batch_size: 16
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [256, 256]
+    - name: ToTensor
+  label_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [256, 256]
+    - name: ToTensor
+    - name: InverseColor
+    - name: Relabel
+    - name: ToOneHot
+      num_classes: 3
+model_path: path/to/checkpoint/REFUGE2/SwinU_HSeg/ckp_best.pth
+
+evaluation_metrics:
+  seg:
+    - name: Dice
+    - name: ACC
+    - name: mIoU

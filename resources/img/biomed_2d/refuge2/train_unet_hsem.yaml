@@ -1,0 +1,98 @@
+# train ae or vae
+mode: train
+model:
+  # can be AE, VAE and DDPM
+  name: HSeM
+  # encoder config
+  encoder:
+    name: UNet
+    image_size: [256, 256]
+    in_channel: 3
+    out_channel: 3
+    proj_channel: 32
+    proj_scaling: 2
+    down_channels: [64, 128, 256]
+    middle_channels: [512, 512]
+    building_block: single
+    normalization: batch
+  ### loss function
+  segmentation_losses: 
+    - name: Dice
+      normalization: softmax
+    - name: CE
+  # some other information related to the model
+  # in ddpm, it can be the time steps and so on.
+loader:
+  dataset: 
+    name: ImgSegDataset
+    data_dir: image
+    label_dir: mask
+    data_suffix: jpg
+    label_suffix: png
+  data_path_list: 
+    - path/to/datasets/REFUGE2/fold1/
+    - path/to/datasets/REFUGE2/fold2/
+    - path/to/datasets/REFUGE2/fold3/
+  batch_size: 4
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [256, 256]
+    - name: ToTensor
+  label_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [256, 256]
+    - name: ToTensor
+    - name: InverseColor
+    - name: Relabel
+    - name: ToOneHot
+      num_classes: 3
+val_loader:
+  dataset: 
+    name: ImgSegDataset
+    data_dir: image
+    label_dir: mask
+    data_suffix: jpg
+    label_suffix: png
+  data_path_list: 
+    - path/to/datasets/REFUGE2/fold4/
+  batch_size: 8
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [256, 256]
+    - name: ToTensor
+  label_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [256, 256]
+    - name: ToTensor
+    - name: InverseColor
+    - name: Relabel
+    - name: ToOneHot
+      num_classes: 3
+check_point_dir: path/to/checkpoint/REFUGE2/UNet_HSeg
+
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0003
+  weight_decay: 0.00000001
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+evaluation_metrics:
+  seg:
+    - name: Dice
+    - name: ACC
+    - name: mIoU
+max_epoch: 500
+warmup_epoch: 2
+write_after_iters: 5
+save_after_epochs: 2

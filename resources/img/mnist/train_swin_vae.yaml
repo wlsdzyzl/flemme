@@ -1,0 +1,58 @@
+mode: train
+model:
+  # can be AE, VAE and DDPM
+  name: VAE
+  # encoder config
+  encoder:
+    name: Swin
+    in_channel: 1
+    ## the value can be list or int
+    image_size: 32
+    patch_size: 1
+    down_channels: [16, 32]
+    middle_channels: [32, 32]
+    # up_channels: [16, 8]
+    building_block: swin
+    fc_channels: [128]
+    abs_pos_embedding: false
+    # decode_fc_channels: [64, 32]
+  ### loss function
+  reconstruction_losses: 
+    name: MSE
+  distribution_loss:
+    name: KL
+    weight: 0.01
+  # some other information related to the model
+  # in ddpm, it can be the time steps and so on.
+loader:
+  dataset: 
+    name: MNIST
+  data_path_list: 
+    - path/to/datasets/MNIST  
+  batch_size: 128
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [32, 32]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.1307]
+      std: [0.3081]
+
+check_point_dir: path/to/checkpoint/MNIST/Swin_VAE
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0003
+  weight_decay: 0.00000001
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+sampler:
+  name: NormalSampler
+max_epoch: 50
+write_after_iters: 50
+save_after_epochs: 5

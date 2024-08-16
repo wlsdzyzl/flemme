@@ -1,0 +1,49 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: train
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: AE
+  # encoder config
+  encoder:
+    name: PointNet
+    in_channel: 3
+    point_num: 2048
+    building_block: single
+    conv_channels: [64, 64, 128, 256, 512]
+    fc_channels: [1024]
+    decode_fc_channels: [512, 256]
+    activation: lrelu
+    pointwise: False
+  reconstruction_losses: 
+    - name: Chamfer
+loader:
+  dataset: 
+    name: PCDDataset
+    data_dir: 02691156/points
+    data_suffix: .pts
+  data_path_list: 
+    - path/to/datasets/shapenetcore_v0  
+  batch_size: 4
+  num_workers: 8
+  shuffle: true
+  drop_last: true
+  data_transforms:
+    - name: MinMaxNormalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet_AE
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0001
+  weight_decay: 0.00000001
+### scheduler for learning rate
+lr_scheduler: 
+  name: ReduceLROnPlateau
+  patience: 5
+max_epoch: 500
+write_after_iters: 20
+save_after_epochs: 10

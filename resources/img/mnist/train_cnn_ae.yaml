@@ -1,0 +1,48 @@
+mode: train
+model:
+  # can be AE, VAE and DDPM
+  name: AE
+  # encoder config
+  encoder:
+    name: CNN
+    in_channel: 1
+    down_channels: [32, 64]
+    building_block: single
+    ## the value can be list or int
+    image_size: 32
+    fc_channels: 128
+  ### loss function
+  reconstruction_losses: 
+    name: MSE
+  # some other information related to the model
+  # in ddpm, it can be the time steps and so on.
+loader:
+  dataset: 
+    name: MNIST
+    data_path: path/to/datasets/MNIST
+  batch_size: 64
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [32, 32]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.1307]
+      std: [0.3081]
+check_point_dir: path/to/checkpoint/MNIST/AE
+
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0003
+  weight_decay: 0.00000001
+evaluation_metrics:
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 50
+write_after_iters: 50
+save_after_epochs: 5

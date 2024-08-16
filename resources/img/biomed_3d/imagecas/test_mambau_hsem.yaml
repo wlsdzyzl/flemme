@@ -1,0 +1,47 @@
+# train ae or vae
+mode: test
+model:
+  # can be AE, VAE and DDPM
+  name: HSeM
+  # encoder config
+  encoder:
+    name: VMambaU
+    image_size: [96, 192, 192]
+    in_channel: 1
+    out_channel: 1
+    patch_size: 2
+    down_channels: [64, 128]
+    middle_channels: [256, 256]
+    building_block: vmamba
+    scan_mode: single
+    flip_scan: false
+  ### loss function
+  segmentation_losses: 
+    - name: Dice
+    - name: BCEL
+  # some other information related to the model
+  # in ddpm, it can be the time steps and so on.
+loader:
+  data_path_list: 
+    - /work/guoqingzhang/datasets/biomed_3d_dataset/ImageCAS/fold5
+  dataset: 
+    name: ImgSegDataset
+    dim: 3
+    data_suffix: .nii.gz
+  batch_size: 4
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Resize
+      size: [96, 192, 192]
+    - name: ToTensor
+
+model_path: /work/guoqingzhang/gengen-main/checkpoint/ImageCAS/MambaU_HSeg/ckp_last.pth
+seg_dir: /work/guoqingzhang/results/ImageCAS/MambaU_HSeg
+# evaluation_metrics:
+#   seg:
+#     - name: Dice
+#     - name: ACC
+#     - name: mIoU
+#     - name: HD
+#       method: modified

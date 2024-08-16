@@ -1,0 +1,68 @@
+# train ae or vae
+mode: test
+model:
+  # can be AE, VAE and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: UNet
+    image_size: [120, 192, 120]
+    in_channel: 4
+    out_channel: 4
+    proj_scaling: 2
+    down_channels: [64, 128]
+    middle_channels: [256, 256]
+    building_block: single
+    normalization: batch
+  ### loss function
+  segmentation_losses: 
+    - name: Dice
+      normalization: softmax
+    - name: CE
+  # some other information related to the model
+  # in ddpm, it can be the time steps and so on.
+loader:
+  dataset: 
+    name: MultiModalityImgSegDataset
+    dim: 3
+    data_dir: [flair, t1, t1ce, t2]
+    data_suffix: [flair.nii.gz, t1.nii.gz, t1ce.nii.gz, t2.nii.gz]
+    label_dir: seg
+    label_suffix: seg.nii.gz
+    combine: cat
+    crop_nonzero:
+      margin: [2,2,2]
+      crop_by: raw
+  data_path_list: 
+    - /work/guoqingzhang/datasets/biomed_3d_dataset/BraTS2021/fold5
+  batch_size: 8
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Resize
+      size: [120, 192, 120]
+    - name: ToTensor
+  label_transforms:
+    - name: Resize
+      size: [120, 192, 120]
+    - name: Relabel
+      map: 
+        - [4, 3]
+    - name: ToOneHot
+      num_classes: 4
+      ignore_background: False
+    - name: ToTensor
+
+model_path: /work/guoqingzhang/gengen-main/checkpoint/BRATS21/UNet/ckp_last.pth
+seg_dir: /work/guoqingzhang/results/BRATS21/UNet
+save_target: true
+save_input: true
+save_colorized: true
+# eval_batch_num: 2
+# evaluation_metrics:
+#   seg:
+#     - name: Dice
+#     - name: ACC
+#     - name: mIoU
+#     # - name: HD
+#     #   method: modified
