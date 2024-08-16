@@ -14,7 +14,7 @@ We are also working on Flemme to support point cloud modeling.
 </p>
 
 ## Get started with Flemme
-### requirement list
+### Requirement list
 #### Basic:
 ```
 torch torchvision simpleitk nibabel matplotlib scikit-image scikit-learn tensorboard
@@ -43,7 +43,7 @@ cd flemme
 python setup.py install
 ```
 ### Usage
-Creating a deep learning model with Flemme is quite straightforward; you don't need to write any code. All things can be down through a `yaml` config file. An example of create a segmentation model with UNet encoder uisng ResConvBlock looks like:
+Creating a deep learning model with Flemme is quite straightforward; you don't need to write any code. All things can be down through a `yaml` config file. An example of constructing a segmentation model with UNet encoder uisng ResConvBlock looks like:
 ```yaml
 model:
   ### architecture
@@ -66,7 +66,7 @@ model:
     - name: BCEL
 
 ```
-You may also need to specify the data-loader, optimizer, checkpoint path and other hyper-parameters. A full configuration refers to `resources/image/biomed_2d/cvccdb/train_unet_sem.yaml`. To train the model, run command:
+You may also need to specify the data-loader, optimizer, checkpoint path and other hyper-parameters. A full configuration refers to `resources/img/biomed_2d/cvccdb/train_unet_sem.yaml`. To train the model, run command:
 ```
 train_flemme --config path/to/train_config.yaml
 ```
@@ -97,14 +97,14 @@ test_flemme --config path/to/test_config.yaml
 
 *LDM refers to latent diffusion model, constructed with a auto-encoder/ vae and ddpm.*
 
-A detailed instructions of supported encoders, context embeddings, model architectures and training process can refer to [documentation of flemme](#) (in waiting list).
+A detailed instruction of supported encoders, context embeddings, model architectures and training process can refer to [documentation of flemme](#) (in waiting list).
 ## Results
 
 For segmentation, we evaluate our methods on six public datasets: **CVC-ClinicDB, Echonet, ISIC, TN3K, BraTS21 (3D), ImageCAS (3D)**.
 
 For reconstruction, we evaluate our methods on **FastMRI**.
 
-Configuration files are in : `resources/img/biomed_2d` and `resources/img/biomed_3d`.
+Configuration files are in `resources/img/biomed_2d` and `resources/img/biomed_3d`.
 ### Segmentation results
 ![](./images/seg_res.png)
 ### Reconstruction & Generation results
