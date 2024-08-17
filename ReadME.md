@@ -1,6 +1,6 @@
-# Flemme: A **FLE**xible and **M**odular Learning Framework for **ME**dical Imaging
+# Flemme: A **FLE**xible and **M**odular Learning Platform for **ME**dical Imaging
 ## Overview
-Flemme is a flexible and modular learning framework for medical imaging. In Flemme, we separate encoders from the model architectures, enabling fast model construction via different combinations for medical image segmentation, generation and reconstruction. In addition, a general hierarchical architecture with a pyramid loss is proposed for vertical feature refinement and integration.
+Flemme is a flexible and modular learning platform for medical imaging. In Flemme, we separate encoders from the model architectures, enabling fast model construction via different combinations for medical image segmentation, generation and reconstruction. In addition, a general hierarchical architecture with a pyramid loss is proposed for vertical feature refinement and integration.
 
 We are also working on Flemme to support point cloud modeling.
 
