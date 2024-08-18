@@ -13,7 +13,7 @@ logger = get_logger('model.encoder.unet')
 ### UNet encoder
 ### Possible improvement: A more elegant implementation is that Unet encoder can be inherited from CNN encoder
 class UNetEncoder(CNNEncoder):
-    def __init__(self, image_size, image_channel = 3,  proj_channel = 32, proj_scaling = 4, down_channels = [64, 128], 
+    def __init__(self, image_size, image_channel = 3,  patch_channel = 32, patch_size = 4, down_channels = [64, 128], 
                  down_attens = [None, None], shape_scaling = [2, 2], middle_channels = [256, 256], middle_attens = [None, None],
                  kernel_size = 3, depthwise = False, time_channel = 0, dsample_function = 'conv', num_block = 2,
                  building_block='res_t', normalization = 'group', num_group = 8, cn_order = 'cn',
@@ -26,7 +26,7 @@ class UNetEncoder(CNNEncoder):
         ## each value in middle channels corresponds to a convolution layer, without changing the input size.
         '''
         super().__init__(image_size = image_size, image_channel = image_channel, time_channel = time_channel,
-            proj_channel = proj_channel, proj_scaling=proj_scaling, kernel_size = kernel_size, 
+            patch_channel = patch_channel, patch_size=patch_size, kernel_size = kernel_size, 
             down_channels = down_channels, down_attens = down_attens, 
             shape_scaling=shape_scaling, middle_channels = middle_channels,
             middle_attens = middle_attens, depthwise = depthwise, dsample_function = dsample_function,
@@ -55,7 +55,7 @@ class UNetEncoder(CNNEncoder):
         return _str 
     
 class UNetDecoder(CNNDecoder):
-    def __init__(self, image_size, image_channel = 3, in_channel = 256, time_channel = 0, proj_scaling = 4,
+    def __init__(self, image_size, image_channel = 3, in_channel = 256, time_channel = 0, patch_size = 4,
                  up_channels = [128, 64], up_attens = [None, None], shape_scaling = [2, 2],
                  final_channels = [], final_attens = [], depthwise = False, usample_function = 'conv', 
                  kernel_size = 3, building_block='res_t', normalization = 'group',
@@ -66,7 +66,7 @@ class UNetDecoder(CNNDecoder):
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  return_features = False, **kwargs):
         super().__init__(image_size = image_size, image_channel = image_channel, 
-            in_channel = in_channel, time_channel = time_channel, proj_scaling=proj_scaling,
+            in_channel = in_channel, time_channel = time_channel, patch_size=patch_size,
             up_channels = up_channels, up_attens = up_attens, 
             shape_scaling=shape_scaling, final_channels = final_channels, kernel_size = kernel_size, 
             final_attens = final_attens, depthwise = depthwise, usample_function = usample_function,

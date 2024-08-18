@@ -12,7 +12,7 @@ model:
       name: UNet
       image_size: [28, 28]
       in_channel: 3
-      proj_scaling: 1
+      patch_size: 1
       down_channels: [128, 256]
       middle_channels: [512, 512]
       ## allow an asummetrical architecture

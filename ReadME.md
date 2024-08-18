@@ -54,8 +54,8 @@ model:
     image_size: [320, 256]
     in_channel: 3
     out_channel: 1
-    proj_channel: 32
-    proj_scaling: 2
+    patch_channel: 32
+    patch_size: 2
     down_channels: [64, 128, 256]
     middle_channels: [512, 512]
     building_block: res_conv
@@ -97,7 +97,7 @@ test_flemme --config path/to/test_config.yaml
 
 *LDM refers to latent diffusion model, constructed with a auto-encoder/ vae and ddpm.*
 
-A detailed instruction of supported encoders, context embeddings, model architectures and training process can refer to [documentation of flemme](#) (in waiting list).
+A detailed instruction of supported encoders, context embeddings, model architectures and training process can refer to [documentation of flemme](https://flemme-docs.readthedocs.io/en/latest/).
 ## Results
 
 For segmentation, we evaluate our methods on six public datasets: **CVC-ClinicDB, Echonet, ISIC, TN3K, BraTS21 (3D), ImageCAS (3D)**.

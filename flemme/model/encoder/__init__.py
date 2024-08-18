@@ -104,7 +104,8 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             ## feature channels in the middle convolution stages
             middle_channels = encoder_config.pop('middle_channels', [])
             final_channels = encoder_config.pop('final_channels', [])
-            patch_channel = encoder_config.pop('patch_channel', 64)
+            patch_channel = encoder_config.pop('patch_channel', 32)
+            patch_size = encoder_config.pop('patch_size', 2)
             assert isinstance(down_channels, list) and \
                     isinstance(up_channels, list) and \
                     isinstance(middle_channels, list) and \
@@ -133,7 +134,6 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 up_attens = encoder_config.pop('up_attens', None)
                 if not isinstance(up_attens, list): 
                     up_attens = [up_attens for _ in up_channels] 
-                proj_scaling = encoder_config.pop('proj_scaling', 4)
                 ### define shape scale factor
                 shape_scaling = encoder_config.pop('shape_scaling', 2)
                 if not isinstance(shape_scaling, list):
@@ -150,7 +150,8 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 if return_encoder:
                     encoder = Encoder(image_size=image_size, image_channel = in_channel + eai_channel, 
                                                 time_channel = time_channel,
-                                                proj_scaling = proj_scaling,
+                                                patch_size = patch_size,
+                                                patch_channel = patch_channel,
                                                 down_channels=down_channels, 
                                                 down_attens=down_attens,
                                                 shape_scaling = shape_scaling,
@@ -164,7 +165,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     decoder = Decoder(image_size=image_size, image_channel = out_channel, 
                                                 in_channel=decoder_in_channel + dai_channel, 
                                                 time_channel = time_channel,
-                                                proj_scaling = proj_scaling,
+                                                patch_size = patch_size,
                                                 fc_channels = de_fc_channels, 
                                                 up_channels=up_channels, 
                                                 up_attens=up_attens,
@@ -194,12 +195,13 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     encoder = Encoder(image_size = image_size, 
                                         image_channel = in_channel + eai_channel, 
                                         time_channel = time_channel, 
+                                        patch_size = patch_size,
+                                        patch_channel = patch_channel,
                                         down_channels = down_channels, 
                                         middle_channels = middle_channels,
                                         down_num_heads = down_num_heads, 
                                         middle_num_heads = middle_num_heads,
                                         building_block=building_block,
-                                        patch_channel = patch_channel,
                                         **encoder_config)
                     decoder_in_channel = encoder.out_channel
                 if return_decoder:
@@ -207,6 +209,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                     image_channel = out_channel, 
                                     in_channel = decoder_in_channel + dai_channel,
                                     time_channel = time_channel, 
+                                    patch_size = patch_size,
                                     up_channels = up_channels, 
                                     final_channels = final_channels,
                                     up_num_heads = up_num_heads, 
@@ -218,9 +221,10 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     encoder = Encoder(image_size = image_size, 
                                 image_channel = in_channel + eai_channel, 
                                 time_channel = time_channel, 
+                                patch_size = patch_size,
+                                patch_channel = patch_channel,
                                 down_channels = down_channels, 
                                 middle_channels = middle_channels,
-                                patch_channel = patch_channel,
                                 building_block=building_block,
                                 **encoder_config)
                     decoder_in_channel = encoder.out_channel
@@ -229,6 +233,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                 image_channel = out_channel, 
                                 in_channel = decoder_in_channel + dai_channel,
                                 time_channel = time_channel, 
+                                patch_size = patch_size,
                                 up_channels = up_channels, 
                                 final_channels = final_channels,
                                 building_block=building_block,

@@ -10,8 +10,8 @@ model:
     image_size: [320, 320]
     in_channel: 1
     out_channel: 1
-    proj_channel: 32
-    proj_scaling: 2
+    patch_channel: 32
+    patch_size: 2
     # kernel_size: 5
     down_channels: [64, 128, 256]
     up_attens: [null, null, atten]

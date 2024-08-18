@@ -9,7 +9,7 @@ model:
     image_size: [96, 192, 192]
     in_channel: 1
     out_channel: 1
-    proj_scaling: 2
+    patch_size: 2
     down_channels: [64, 128]
     middle_channels: [256, 256]
     building_block: single
