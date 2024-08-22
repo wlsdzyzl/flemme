@@ -133,7 +133,16 @@ Configuration files are in `resources/img/cifar10`
 **Denoising Diffusion Probabilistic Model (conditional)**
 ![](./images/cddpm_cifar10.png)
 ## BibTeX
-Coming soon ...
-
+```
+@misc{zhang2024flemmeflexiblemodularlearning,
+      title={Flemme: A Flexible and Modular Learning Platform for Medical Images}, 
+      author={Guoqing Zhang and Jingyun Yang and Yang Li},
+      year={2024},
+      eprint={2408.09369},
+      archivePrefix={arXiv},
+      primaryClass={eess.IV},
+      url={https://arxiv.org/abs/2408.09369}, 
+}
+```
 ## Acknowledgement
 Thanks to [mamba](https://github.com/state-spaces/mamba), [swin-transformer](https://github.com/microsoft/Swin-Transformer), [diffusion model](https://github.com/lucidrains/denoising-diffusion-pytorch) for their wonderful works.
