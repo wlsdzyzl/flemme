@@ -37,7 +37,7 @@ model:
     condition_dropout: 0.2
     guidance_weight: 2.0
       ## allow an asummetrical architecture
-      # decode_fc_channels: [128 256]
+      # decoder_fc_channels: [128 256]
   ## 2D ddpm
   eps_loss:
     name: MSE

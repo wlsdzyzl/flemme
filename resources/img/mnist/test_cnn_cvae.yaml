@@ -18,7 +18,7 @@ model:
     # up_channels: [16, 8]
     building_block: single
     fc_channels: [128]
-    # decode_fc_channels: [64, 32]
+    # decoder_fc_channels: [64, 32]
   condition_embedding:
     encoder:
       name: OneHot

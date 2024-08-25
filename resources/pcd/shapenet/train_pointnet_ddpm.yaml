@@ -17,7 +17,7 @@ model:
       building_block: single
       conv_channels: [64, 64, 128, 256, 512]
       fc_channels: [1024]
-      decode_fc_channels: [512, 256]
+      decoder_fc_channels: [512, 256]
       activation: lrelu
       pointwise: True
   eps_loss:

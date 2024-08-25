@@ -11,12 +11,12 @@ logger = get_logger("model.encoder.vit")
 
 class ViTEncoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
-                 patch_size = 4, patch_channel = 32,
+                 patch_size = 2, patch_channel = 32,
                  building_block = 'vit', fc_channels = [256], 
                  time_channel = 0,
                  mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
                  down_channels = [128, 256], middle_channels = [256, 256], 
-                 down_num_heads = [3, 6], middle_num_heads = [12, 24],
+                 down_num_heads = [3, 3], middle_num_heads = [3, 3],
                  dropout=0., atten_dropout=0., drop_path=0.1, 
                  normalization = 'layer', num_group = 8, 
                  num_block = 2, activation = 'silu', 
@@ -160,12 +160,12 @@ class ViTEncoder(nn.Module):
 
 class ViTDecoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, in_channel = 64,
-                 patch_size = 4, fc_channels = [32], 
+                 patch_size = 2, fc_channels = [32], 
                  building_block = 'vit',
                  time_channel = 0,
                  mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
                  up_channels = [128, 64], final_channels = [64, 64], 
-                 up_num_heads = [24, 12], final_num_heads = [6, 3],
+                 up_num_heads = [3, 3], final_num_heads = [3, 3],
                  dropout=0., atten_dropout=0., drop_path=0.1, 
                  normalization = 'layer', num_group = 8, 
                  num_block = 2, activation = 'silu', 

@@ -8,7 +8,7 @@ model:
     point_num: 2048
     conv_channels: [64, 64, 128, 256, 512]
     fc_channels: [256, 256]
-    decode_fc_channels: [128, 512, 1024]
+    decoder_fc_channels: [128, 512, 1024]
     activation: lrelu
   ### loss function
   reconstruction_losses: 

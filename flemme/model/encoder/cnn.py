@@ -21,7 +21,7 @@ class CNNEncoder(nn.Module):
     value would be the dimension of output embedding vectors.
     zcount: int, zcount is the number of output embedding vectors
     '''
-    def __init__(self, image_size, image_channel = 3, time_channel = 0, patch_channel = 32, patch_size = 4,
+    def __init__(self, image_size, image_channel = 3, time_channel = 0, patch_channel = 32, patch_size = 2,
                  down_channels = [64, 128], down_attens = [None, None], 
                  shape_scaling = [2, 2],  middle_channels = [256, 256], 
                  middle_attens = [None, None], depthwise = False, kernel_size = 3, 
@@ -46,6 +46,9 @@ class CNNEncoder(nn.Module):
         self.activation = activation
         self.shape_scaling = shape_scaling
         self.patch_size = patch_size
+        if not sum([im_size % (patch_size * math.prod(shape_scaling)) for im_size in self.image_size ]) == 0:
+            logger.error('Please check your image size, patch size and downsample depth to make sure the image size can be divisible.')
+            exit(1)
         ### use a 'AaaBbb' style for class name
         self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
                                         activation = activation, depthwise = depthwise,
@@ -161,7 +164,7 @@ class CNNDecoder(nn.Module):
     fc_channels: list. dimensions of embedding vectors during the 'fully connected layer' stage. The length of fc_channels determines the number of fc layers. The last
     value would be the dimension of output embedding vectors.
     '''
-    def __init__(self, image_size, image_channel = 3, patch_size = 4, in_channel = 256,  time_channel = 0, 
+    def __init__(self, image_size, image_channel = 3, patch_size = 2, in_channel = 256,  time_channel = 0, 
                  fc_channels = [32], up_channels = [128, 64], up_attens = [None, None], 
                  shape_scaling = [2, 2], final_channels = [], 
                  final_attens = [], depthwise = False, kernel_size = 3, 
@@ -196,7 +199,7 @@ class CNNDecoder(nn.Module):
         ## fully connected layer
         fc_channels = [in_channel, ] + fc_channels 
         if not sum([im_size % (patch_size * math.prod(shape_scaling)) for im_size in self.image_size ]) == 0:
-            logger.error('Please check your image size, projection scaling and downsample depth to make sure the image size can be divisible.')
+            logger.error('Please check your image size, patch size and downsample depth to make sure the image size can be divisible.')
             exit(1)
         if self.vector_embedding:
             # used for view (reshape)

@@ -13,7 +13,7 @@ logger = get_logger('model.encoder.unet')
 ### UNet encoder
 ### Possible improvement: A more elegant implementation is that Unet encoder can be inherited from CNN encoder
 class UNetEncoder(CNNEncoder):
-    def __init__(self, image_size, image_channel = 3,  patch_channel = 32, patch_size = 4, down_channels = [64, 128], 
+    def __init__(self, image_size, image_channel = 3,  patch_channel = 32, patch_size = 2, down_channels = [64, 128], 
                  down_attens = [None, None], shape_scaling = [2, 2], middle_channels = [256, 256], middle_attens = [None, None],
                  kernel_size = 3, depthwise = False, time_channel = 0, dsample_function = 'conv', num_block = 2,
                  building_block='res_t', normalization = 'group', num_group = 8, cn_order = 'cn',
@@ -55,7 +55,7 @@ class UNetEncoder(CNNEncoder):
         return _str 
     
 class UNetDecoder(CNNDecoder):
-    def __init__(self, image_size, image_channel = 3, in_channel = 256, time_channel = 0, patch_size = 4,
+    def __init__(self, image_size, image_channel = 3, in_channel = 256, time_channel = 0, patch_size = 2,
                  up_channels = [128, 64], up_attens = [None, None], shape_scaling = [2, 2],
                  final_channels = [], final_attens = [], depthwise = False, usample_function = 'conv', 
                  kernel_size = 3, building_block='res_t', normalization = 'group',
@@ -118,12 +118,12 @@ if module_config['transformer']:
 
     class ViTUNetEncoder(ViTEncoder):
         def __init__(self, image_size, image_channel = 3, 
-                    patch_size = 4, patch_channel = 32,
+                    patch_size = 2, patch_channel = 32,
                     building_block = 'vit',
                     time_channel = 0,
                     mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
                     down_channels = [128, 256], middle_channels = [256, 256], 
-                    down_num_heads = [3, 6], middle_num_heads = [12, 24],
+                    down_num_heads = [3, 3], middle_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
                     normalization = 'layer', num_group = 8, 
                     num_block = 2, activation = 'silu', 
@@ -143,12 +143,12 @@ if module_config['transformer']:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class ViTUNetDecoder(ViTDecoder):
         def __init__(self, image_size, image_channel = 3, 
-                    patch_size = 4, in_channel = 64,
+                    patch_size = 2, in_channel = 64,
                     time_channel = 0,
                     building_block = 'vit',
                     mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
                     up_channels = [128, 64], final_channels = [64, 64], 
-                    up_num_heads = [24, 12], final_num_heads = [6, 3],
+                    up_num_heads = [3, 3], final_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
                     normalization = 'layer', num_group = 8, 
                     num_block = 2, activation = 'silu', 
@@ -195,11 +195,11 @@ if module_config['transformer']:
     class SwinUNetEncoder(SwinEncoder):
         def __init__(self, image_size, image_channel = 3, 
                     window_size = 8, time_channel = 0,
-                    patch_size = 4, patch_channel = 32,
+                    patch_size = 2, patch_channel = 32,
                     building_block = 'swin',
                     mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
                     down_channels = [128, 256], middle_channels = [256, 256], 
-                    down_num_heads = [3, 6], middle_num_heads = [12, 24],
+                    down_num_heads = [3, 3], middle_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
                     normalization = 'layer', num_group = 8, 
                     num_block = 2, activation = 'silu', 
@@ -221,11 +221,11 @@ if module_config['transformer']:
     class SwinUNetDecoder(SwinDecoder):
         def __init__(self, image_size, image_channel = 3, 
                     window_size = 8, time_channel = 0,
-                    patch_size = 4, in_channel = 64,
+                    patch_size = 2, in_channel = 64,
                     building_block = 'swin',
                     mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
                     up_channels = [128, 64], final_channels = [64, 64], 
-                    up_num_heads = [24, 12], final_num_heads = [6, 3],
+                    up_num_heads = [3, 3], final_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
                     normalization = 'layer', num_group = 8, 
                     num_block = 2, activation = 'silu', 
@@ -275,7 +275,7 @@ if module_config['mamba']:
     from .vmamba import VMambaEncoder, VMambaDecoder
     class VMambaUNetEncoder(VMambaEncoder):
         def __init__(self, image_size, image_channel = 3, 
-                    patch_size = 4, patch_channel = 32,
+                    patch_size = 2, patch_channel = 32,
                     time_channel = 0,
                     down_channels = [128, 256], middle_channels = [256, 256], 
                     mlp_hidden_ratio=[4., ], state_channel=None, 
@@ -321,7 +321,7 @@ if module_config['mamba']:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class VMambaUNetDecoder(VMambaDecoder):
         def __init__(self, image_size, image_channel = 3, 
-                    patch_size = 4, in_channel = 64,
+                    patch_size = 2, in_channel = 64,
                     time_channel = 0,
                     mlp_hidden_ratio=[4., ],
                     up_channels = [128, 64], final_channels = [64, 64], 

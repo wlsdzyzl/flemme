@@ -11,7 +11,7 @@ logger = get_logger("model.encoder.vmamba")
 
 class VMambaEncoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
-                patch_size = 4, patch_channel = 32,
+                patch_size = 2, patch_channel = 32,
                 time_channel = 0,
                 down_channels = [128, 256], middle_channels = [256, 256], 
                 mlp_hidden_ratio=[4., ], state_channel=None, 
@@ -174,7 +174,7 @@ class VMambaEncoder(nn.Module):
     
 class VMambaDecoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
-                patch_size = 4, in_channel = 64,
+                patch_size = 2, in_channel = 64,
                 mlp_hidden_ratio=[4., ], fc_channels = [32], 
                 up_channels = [128, 64], final_channels = [64, 64], 
                 time_channel = 0,

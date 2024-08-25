@@ -40,7 +40,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         eai_channel = encoder_config.pop('encoder_additional_in_channel', 0)
         encoder, decoder = None, None
         ### construct encoder and decoder
-        if encoder_name in ('CNN', 'UNet', 'Swin', 'VMamba', 'SwinU', 'VMambaU'):
+        if encoder_name in ('CNN', 'UNet', 'ViT', 'ViTU', 'Swin', 'VMamba', 'SwinU', 'VMambaU'):
             data_form = DataForm.IMG
         elif encoder_name in ('PointNet', 'DGCNN'):
             data_form = DataForm.PCD
@@ -62,7 +62,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         if not isinstance(fc_channels, list):
             fc_channels = [fc_channels]    
 
-        de_fc_channels = encoder_config.pop('decode_fc_channels', None) or fc_channels[::-1]    
+        de_fc_channels = encoder_config.pop('decoder_fc_channels', None) or fc_channels[::-1]    
         
         ## read in / out channel of data form
         #### in channel of encoder
@@ -174,7 +174,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                 final_attens=final_attens,
                                                 building_block=building_block, 
                                                 **encoder_config)
-            elif encoder_name in ['Swin', 'SwinU']:
+            elif encoder_name in ['ViT', 'ViTU', 'Swin', 'SwinU']:
 
                 down_num_heads = encoder_config.pop('down_num_heads', 3)
                 if not isinstance(down_num_heads, list): 

@@ -16,7 +16,7 @@ model:
     # up_channels: [16, 8]
     building_block: single
     fc_channels: [128]
-    # decode_fc_channels: [64, 32]
+    # decoder_fc_channels: [64, 32]
   ### loss function
   reconstruction_losses: 
     name: MSE
@@ -29,7 +29,7 @@ loader:
   dataset: 
     name: MNIST
   data_path_list: 
-    - path/to/datasets/MNIST  
+    - /media/wlsdzyzl/DATA/datasets/MNIST  
   batch_size: 128
   num_workers: 8
   shuffle: true
