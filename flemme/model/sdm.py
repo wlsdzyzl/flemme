@@ -10,7 +10,7 @@ class SupervisedDiffusionProbabilistic(DDPM):
         if not self.is_conditional:
             logger.error('Supervised DDPM need to be conditional')
         self.is_conditional = False
-        self.is_supervising = True
+        self.is_supervised = True
         self.num_ensemble = model_config.get('num_ensemble', 10)
         
     def forward(self, x, end_step = -1, clipped = None, clip_range = None, num_ensemble = None):
@@ -42,7 +42,7 @@ class SupervisedDiffusionImplicit(DDIM):
         if not self.is_conditional:
             logger.error('Supervised DDIM need to be conditional')
         self.is_conditional = False
-        self.is_supervising = True
+        self.is_supervised = True
         self.num_ensemble = model_config.get('num_ensemble', 10)
 
     def forward(self, x, clipped = None, clip_range = None, num_ensemble = None):

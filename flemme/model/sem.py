@@ -17,7 +17,7 @@ class SegmentationModel(BaseModel):
         self.seg_losses = []
         self.seg_loss_names = []
         self.seg_loss_weights = []
-        self.is_supervising = True
+        self.is_supervised = True
         for loss_config in seg_loss_configs:
             loss_config['reduction'] = self.loss_reduction
             self.seg_loss_weights.append(loss_config.pop('weight', 1.0))
@@ -53,7 +53,7 @@ class HSegmentationModel(HBaseModel):
         self.seg_losses = []
         self.seg_loss_names = []
         self.seg_loss_weights = []
-        self.is_supervising = True
+        self.is_supervised = True
         for loss_config in seg_loss_configs:
             loss_config['reduction'] = self.loss_reduction
             self.seg_loss_weights.append(loss_config.pop('weight', 1.0))

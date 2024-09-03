@@ -60,7 +60,7 @@ def main():
     logger.info("model info:\n{}".format(model))
     
     is_conditional = model.is_conditional
-    is_supervising = model.is_supervising
+    is_supervised = model.is_supervised
 
     eval_metrics = train_config.get('evaluation_metrics', {})
     evaluators = create_batch_evaluators(eval_metrics, model.data_form)
@@ -73,7 +73,7 @@ def main():
         higher_is_better = score_metric_config.get('higher_is_better', True)
         assert sum([score_metric in e for e in evaluators.values()]) > 0, "Score metric is not in the evaluation metrics."
     
-    if is_supervising:
+    if is_supervised:
         logger.info('Supervising model, we will using label as target.')
     elif is_conditional:
         logger.info('Conditional model, we will using label as condition.')
@@ -193,7 +193,7 @@ def main():
                 if res is None: res = forward_pass(model, x, y)
                 append_results(results=results, x = x, y = y, 
                                         res = res, data_form = model.data_form, 
-                                        is_supervising=is_supervising, 
+                                        is_supervised=is_supervised, 
                                         is_conditional=is_conditional)
             loss = sum(losses)
             optimizer.zero_grad()
@@ -224,7 +224,7 @@ def main():
                                 x_rand = sampler.generate_rand(n=x.shape[0])   
                             res['gen'] = x_rand
                         res['input'] = x
-                        if is_supervising:
+                        if is_supervised:
                             res['target'] = y
                         if is_conditional:
                             res['condition'] = y
@@ -270,7 +270,7 @@ def main():
                             if vres is None: vres = forward_pass(model, x, y)
                             append_results(results=vresults, x = vx, y = vy, 
                                                 res = vres, data_form = model.data_form,
-                                                is_supervising=is_supervising, 
+                                                is_supervised=is_supervised, 
                                                 is_conditional=is_conditional)
                         val_losses += torch.Tensor([l.item() * vx.shape[0] if model.loss_reduction == 'mean' else l.sum().item() for l in vlosses])
                         val_n += vx.shape[0]
@@ -290,7 +290,7 @@ def main():
                             for rn in vres:
                                 vres[rn] = vres[rn][:write_sample_num]
                         vres['input'] = vx
-                        if is_supervising:
+                        if is_supervised:
                             vres['target'] = vy
                         if is_conditional:
                             vres['condition'] = vy

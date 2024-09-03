@@ -3,7 +3,7 @@ mode: train
 model:
   # can be AE, VAE and DDPM
   name: AE
-  is_supervising: true
+  is_supervised: true
   # encoder config
   encoder:
     name: VMambaU

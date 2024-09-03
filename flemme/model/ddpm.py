@@ -58,7 +58,7 @@ class DiffusionProbabilistic(nn.Module):
         # Create $\beta_1, \dots, \beta_T$ linearly increasing variance schedule
         self.is_conditional = self.eps_model.is_conditional
         self.is_generative = True
-        self.is_supervising = False
+        self.is_supervised = False
 
         self.data_form = self.eps_model.data_form
         self.beta_schedule = model_config.get('beta_schedule', 'linear')

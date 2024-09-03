@@ -45,8 +45,8 @@ def main():
         #### create model
         model = create_model(model_config)
         is_conditional = model.is_conditional
-        is_supervising = model.is_supervising
-        if is_supervising:
+        is_supervised = model.is_supervised
+        if is_supervised:
             logger.info('Supervising model, we will using label as target.')
         elif is_conditional:
             logger.info('Conditional model, we will using label as condition.')
@@ -98,7 +98,7 @@ def main():
                 if len(results['input']) < eval_batch_num:
                     append_results(results=results, x = x, y = y, 
                                             path = path, res = res, data_form = model.data_form,
-                                            is_supervising=is_supervising,
+                                            is_supervised=is_supervised,
                                             is_conditional=is_conditional)
                 else: break
             results = compact_results(results)    

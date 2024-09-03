@@ -21,8 +21,8 @@ class AutoEncoder(BaseModel):
             self.recon_loss_names.append(loss_config.get('name'))
             self.recon_loss_weights.append(loss_config.pop('weight', 1.0))
             self.recon_losses.append(get_loss(loss_config, self.data_form))
-        self.is_supervising = model_config.get('is_supervising', False)
-        if self.is_supervising:
+        self.is_supervised = model_config.get('is_supervised', False)
+        if self.is_supervised:
             logger.info('Reconstruction under supervision.')
         
     def __str__(self):
@@ -67,7 +67,7 @@ class HAutoEncoder(HBaseModel):
             self.recon_loss_names.append(loss_config.get('name'))
             self.recon_loss_weights.append(loss_config.pop('weight', 1.0))
             self.recon_losses.append(get_loss(loss_config, self.data_form))
-        self.is_supervising = model_config.get('is_supervising', False)
+        self.is_supervised = model_config.get('is_supervised', False)
         
     def __str__(self):
         _str = '********************* H-Auto-Encoder ({}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.encoder.__str__(), self.decoder.__str__())

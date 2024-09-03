@@ -3,7 +3,7 @@ mode: test
 model:
   # can be AE, VAE and DDPM
   name: HAE
-  is_supervising: true
+  is_supervised: true
   # encoder config
   encoder:
     name: SwinU

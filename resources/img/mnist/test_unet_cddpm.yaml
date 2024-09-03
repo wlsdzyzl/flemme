@@ -29,7 +29,7 @@ model:
       ## the value can be list or int
     condition_embedding:
       combine_condition: add
-      merge_timestep_and_context: true
+      merge_timestep_and_condition: true
       encoder:
         name: OneHot
         type: categories

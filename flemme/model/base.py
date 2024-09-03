@@ -42,7 +42,7 @@ class BaseModel(nn.Module):
             en_emb_config = cemb_config.get('encoder', None)
             de_emb_config = cemb_config.get('decoder', None)
             self.combine_condition = cemb_config.get('combine_condition', 'add')
-            self.merge_ct = cemb_config.get('merge_timestep_and_context', False)
+            self.merge_ct = cemb_config.get('merge_timestep_and_condition', False)
 
         if en_emb_config is not None:
             logger.info("Create conditional embedding for encoder.")
@@ -94,7 +94,7 @@ class BaseModel(nn.Module):
 
         self.is_generative = False
         self.is_conditional = hasattr(self, 'en_cemb') or hasattr(self, 'de_cemb')
-        self.is_supervising = False
+        self.is_supervised = False
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         self.data_form = self.encoder.data_form
         self.channel_dim = -1 if self.data_form == DataForm.PCD else 1

@@ -311,11 +311,11 @@ def save_data(output, data_form, output_path, segmentation = False):
             save_ply(output_path+'.ply', output)
     else:
         raise NotImplementedError
-def append_results(results, x, y, res, data_form, path = None,  is_supervising = False, is_conditional = False):
+def append_results(results, x, y, res, data_form, path = None,  is_supervised = False, is_conditional = False):
 
         results['input'].append(x.cpu().detach().numpy())
         if y is not None:
-            if is_supervising:
+            if is_supervised:
                 results['target'].append(y.cpu().detach().numpy())
             if is_conditional:
                 results['condition'].append(y.cpu().detach().numpy())
@@ -420,7 +420,7 @@ def evaluate_results(results, evaluators):
     return eval_res
 
 def compute_loss(model, x, y):
-    if model.is_supervising:
+    if model.is_supervised:
         losses, res = model.compute_loss(x, y = y)
     elif model.is_conditional:
         # losses, res = model.compute_loss(x, y, epoch<=2)

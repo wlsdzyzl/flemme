@@ -39,7 +39,7 @@ class OnlyEncoder(nn.Module):
 
         self.is_generative = False
         self.is_conditional = hasattr(self, 'en_cemb')
-        self.is_supervising = False
+        self.is_supervised = False
 
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         self.data_form = self.encoder.data_form
@@ -112,7 +112,7 @@ class OnlyDecoder(nn.Module):
         self.decoder = create_encoder(encoder_config=decoder_config, return_encoder=False)[1]
         self.is_generative = False
         self.is_conditional = hasattr(self, 'de_cemb')
-        self.is_supervising = False
+        self.is_supervised = False
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         self.data_form = self.decoder.data_form
         self.channel_dim = -1 if self.data_form == DataForm.PCD else 1
