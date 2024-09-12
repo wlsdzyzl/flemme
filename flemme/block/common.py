@@ -331,7 +331,8 @@ class MultiLayerPerceptionBlock(nn.Module):
                 time_channel = 0, norm = None, 
                 batch_dim = 0, num_group = 0, 
                 activation = 'relu', dropout=None, 
-                order="ln", **kwargs):
+                order="ln", final_activation = True,
+                **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -341,8 +342,20 @@ class MultiLayerPerceptionBlock(nn.Module):
                     batch_dim = batch_dim, num_group = num_group, 
                     activation = activation, dropout = dropout, 
                     order=order,
-                    ) for idx in range(len(channels) - 1)]
-
+                    ) for idx in range(len(channels) - 2)]
+        if not final_activation:
+            module_sequence = module_sequence + [DenseBlock( in_channel = channels[-2], 
+                        out_channel = channels[-1], time_channel = time_channel, norm = None,
+                        activation = None, 
+                        order=order,
+                        ), ]
+        else:
+            module_sequence = module_sequence + [DenseBlock( in_channel = channels[-2], 
+                    out_channel = channels[-1], time_channel = time_channel, norm = norm,
+                    batch_dim = batch_dim, num_group = num_group, 
+                    activation = activation, dropout = dropout, 
+                    order=order,
+                    ), ]
         self.mlp = SequentialT(*module_sequence)
     def forward(self, x, t = None):
         x, _ = self.mlp(x, t)

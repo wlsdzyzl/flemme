@@ -120,7 +120,7 @@ if module_config['point-cloud']:
                 return d1, d2
     ## Wasserstein distance based on optimal transport
     class EMDLoss(nn.Module):
-        def __init__(self, reduction = 'mean', eps = 0.001, iters = 500):
+        def __init__(self, reduction = 'mean', eps = 1e-8, iters = 500):
             super().__init__()
             self.loss = EMD(eps = eps, iters = iters)
             self.reduction = reduction

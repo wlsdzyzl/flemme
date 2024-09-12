@@ -5,22 +5,22 @@ from torchvision.transforms.functional import rgb_to_grayscale
 from functools import partial
 import torch
 import torch.nn.functional as F
+from flemme.utils import label_to_onehot
 
 class ToOneHot:
     """
     To one hot label, background value should be 0
     """
     def __init__(self, num_classes = None, ignore_background = False, **kwargs):
-        self.to_onehot = partial(F.one_hot, num_classes = num_classes)
-        self.ignore_background = ignore_background
+        self.to_onehot = partial(label_to_onehot, num_classes = num_classes, 
+            ignore_background = ignore_background, channel_dim = 0)
     def __call__(self, m):
         assert m.ndim == 2 or m.ndim == 3, "Not a 2D image"
         if m.ndim == 3:
             assert m.shape[0] == 1, \
                 "Label is a multi channel image. Check if it's already a one hot embedding."
             m = m[0]
-        m = self.to_onehot(m).float()
-        return m.permute(2, 0, 1 )
+        return self.to_onehot(m)
 
 class Resize:
     def __init__(self, size, mode = 'nearest'):
@@ -48,6 +48,7 @@ class GrayScale:
         self.out_channel = out_channel
     def __call__(self, m):
         return rgb_to_grayscale(m, self.out_channel)
+
 ### change white to black
 class InverseColor:
     def __init__(self):
@@ -56,7 +57,7 @@ class InverseColor:
         return 1.0 - m
 class Relabel:
     """
-    Relabel a numpy array of labels into a consecutive numbers, e.g.
+    Relabel labels into a consecutive numbers, e.g.
     [10, 10, 0, 6, 6] -> [2, 2, 0, 1, 1]. Useful when one has an instance segmentation volume
     at hand and would like to create a one-hot-encoding for it. Without a consecutive labeling the task would be harder.
     """

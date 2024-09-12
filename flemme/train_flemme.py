@@ -1,7 +1,6 @@
 from torch.utils.tensorboard import SummaryWriter
 import os
 import torch
-# import torch.nn as nn
 import math
 from torch.optim.lr_scheduler import ReduceLROnPlateau 
 from .trainer_utils import *
@@ -9,7 +8,7 @@ from flemme.model import create_model
 from flemme.dataset import create_loader
 from flemme.logger import get_logger
 from flemme.sampler import create_sampler
-from flemme.config import module_config
+
 logger = get_logger('train_flemme')
 ## if we want to train pcd or image, 
 ## make sure that the image size from data loader and image size from the model parameters are identical
@@ -333,5 +332,3 @@ def main():
                             is_best_score=is_best_score)
     logger.info('Finish training.')
             
-
-

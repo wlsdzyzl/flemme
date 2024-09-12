@@ -39,8 +39,9 @@ def create_loader(loader_config):
     if data_suffix_list is not None:
         assert type(data_suffix_list) == list and len(data_suffix_list) == len(data_path_list), \
             "If suffix is provided in loader config, it should be a list and has the equal length to the data_path_list."
-    
-    if dataset_cls_str == 'ImgSegDataset':
+    if dataset_cls_str == 'ImgDataset':
+        dataset_class = ImgDataset
+    if dataset_cls_str == 'ImgSegDataset' or dataset_cls_str == 'ImgReconDataset':
         dataset_class = ImgSegDataset
         process_label = True
     elif dataset_cls_str == 'MultiModalityImgSegDataset':

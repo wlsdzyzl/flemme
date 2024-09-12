@@ -29,7 +29,7 @@ loader:
     data_suffix: [flair.nii.gz, t1.nii.gz, t1ce.nii.gz, t2.nii.gz]
     label_dir: seg
     label_suffix: seg.nii.gz
-    combine: cat
+    data_combine: cat
     crop_nonzero:
       margin: [2,2,2]
       crop_by: raw
@@ -63,7 +63,7 @@ val_loader:
     data_suffix: [flair.nii.gz, t1.nii.gz, t1ce.nii.gz, t2.nii.gz]
     label_dir: seg
     label_suffix: seg.nii.gz
-    combine: cat
+    data_combine: cat
     crop_nonzero:
       margin: [2,2,2]
       crop_by: raw

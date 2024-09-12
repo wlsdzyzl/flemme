@@ -1,7 +1,6 @@
 #### This file is a script, and the code style sucks. 
 import os
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from .trainer_utils import *
 from flemme.model import create_model

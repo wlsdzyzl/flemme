@@ -10,6 +10,32 @@ from functools import partial
 # image segmentation dataloader
 # there might be other type of image dataset, such as image classification dataset or pure image generation dataset.
 logger = get_logger('image_dataset')
+class ImgDataset(Dataset):
+    def __init__(self, data_path, dim = 2, data_transform = None, 
+                 mode = 'train', data_dir = '', 
+                 data_suffix = '.png', **kwargs):
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters: {}".format(kwargs))
+        label_suffix = label_suffix or data_suffix
+        logger.info("loading data from the directory: {}".format(data_path))
+        self.img_path_list = sorted(glob(os.path.join(data_path+'/' + data_dir, "*" + data_suffix)))
+        self.mode = mode
+        self.data_transform = data_transform
+        self.dim = dim
+    def __len__(self):
+        return len(self.img_path_list)
+    ### the dataset will not be stored in the memory
+    def __getitem__(self, index):
+        """Get the images"""
+        img_path = self.img_path_list[index]
+        if self.dim == 2:
+            img = load_img(img_path)
+        else:
+            img = load_itk(img_path)[0]
+        if self.data_transform is not None:
+            img = self.data_transform(img)
+        return img, 0, img_path
 class ImgSegDataset(Dataset):
     def __init__(self, data_path, dim = 2, data_transform = None, mode = 'train', 
                  data_dir = 'raw', label_dir = 'label', data_suffix='.png', 
@@ -67,7 +93,8 @@ class ImgSegDataset(Dataset):
 class MultiModalityImgSegDataset(Dataset):
     def __init__(self, data_path, dim = 2, data_transform = None, mode = 'train', 
                  data_dir = 'raw', label_dir = 'label', data_suffix='.png', 
-                 label_suffix = None, label_transform = None, crop_nonzero = None, combine = 'mean', **kwargs):
+                 label_suffix = None, label_transform = None, crop_nonzero = None, 
+                 data_combine = 'mean', label_combine = None, **kwargs):
         super().__init__()
         
         if len(kwargs) > 0:
@@ -110,12 +137,22 @@ class MultiModalityImgSegDataset(Dataset):
         if crop_nonzero is not None:
             self.crop_nonzero = partial(crop_boundingbox, margin = crop_nonzero.get('margin', (0,0,0)), background=0)
             self.crop_by = crop_nonzero.get('crop_by', 'raw')
-        if combine == 'sum':
-            self.combine = sum
-        elif combine == 'mean':
-            self.combine = lambda x: sum(x) / len(x)
-        elif combine == 'cat':
-            self.combine = np.stack
+        if data_combine == 'sum':
+            self.data_combine = sum
+        elif data_combine == 'mean':
+            self.data_combine = lambda x: sum(x) / len(x)
+        elif data_combine == 'cat':
+            self.data_combine = np.stack
+        else:
+            logger.error('Unknown way to combine different modality datas.')
+            exit(1)
+
+        if label_combine == 'sum':
+            self.label_combine = sum
+        elif label_combine == 'mean':
+            self.label_combine = lambda x: sum(x) / len(x)
+        elif label_combine == 'cat':
+            self.label_combine = np.stack
         else:
             logger.error('Unknown way to combine different modality datas.')
             exit(1)
@@ -133,12 +170,12 @@ class MultiModalityImgSegDataset(Dataset):
             if len(imgs) == 1:
                 img = imgs[0]
             else:
-                img = self.combine(imgs)
+                img = self.data_combine(imgs)
             
             if len(masks) == 1:
                 mask = masks[0]
             else:
-                mask = self.combine(masks)
+                mask = self.label_combine(masks)
             ### currently, crop_by only support 3D images
             if self.crop_by == 'raw':
                 img, mask, _ = self.crop_nonzero(data = img, follows = mask)

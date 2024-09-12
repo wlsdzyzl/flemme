@@ -11,7 +11,7 @@ from flemme.utils import label_to_onehot, relabel
 from functools import partial
 # WARN: use fixed random state for reproducibility; if you want to randomize on each run seed with `time.time()` e.g.
 GLOBAL_RANDOM_STATE = np.random.RandomState(47)
-
+eps = 1e-8
 
 class RandomFlip:
     """
@@ -41,7 +41,7 @@ class RandomFlip:
 
 class RandomRotate90:
     """
-    Rotate an array by 90 degrees around a randomly chosen plane. Image can be either 3D (DxHxW) or 4D (CxDxHxW).
+    Rotate an array by 90 degrees around xy plane. Image can be either 3D (DxHxW) or 4D (CxDxHxW).
 
     When creating make sure that the provided RandomStates are consistent between raw and labeled datasets,
     otherwise the models won't converge.
@@ -237,12 +237,11 @@ class Normalize:
     Apply Z-score normalization to a given input tensor, i.e. re-scaling the values to be 0-mean and 1-std.
     """
 
-    def __init__(self, eps=1e-10, mean=None, std=None, channelwise=False, **kwargs):
+    def __init__(self, mean=None, std=None, channelwise=False, **kwargs):
         if mean is not None or std is not None:
             assert mean is not None and std is not None
         self.mean = mean
         self.std = std
-        self.eps = eps
         self.channelwise = channelwise
 
     def __call__(self, m):
@@ -260,7 +259,7 @@ class Normalize:
                 mean = np.mean(m)
                 std = np.std(m)
 
-        return (m - mean) / np.clip(std, a_min=self.eps, a_max=None)
+        return (m - mean) / np.clip(std, a_min=eps, a_max=None)
 
 
 
@@ -273,15 +272,13 @@ class MinMaxNormalize:
     list/tuple channelwise if enabled.
     """
 
-    def __init__(self, min_value=None, max_value=None, norm01=True, channelwise=False,
-                 eps=1e-10, **kwargs):
+    def __init__(self, min_value=None, max_value=None, norm01=True, channelwise=False, **kwargs):
         if min_value is not None and max_value is not None:
             assert max_value > min_value
         self.min_value = min_value
         self.max_value = max_value
         self.norm01 = norm01
         self.channelwise = channelwise
-        self.eps = eps
 
     def __call__(self, m):
         if self.channelwise:
@@ -318,7 +315,7 @@ class MinMaxNormalize:
 
         # calculate norm_0_1 with min_value / max_value with the same dimension
         # in case of channelwise application
-        norm_0_1 = (m - min_value) / (max_value - min_value + self.eps)
+        norm_0_1 = (m - min_value) / (max_value - min_value + eps)
 
         if self.norm01 is True:
           return np.clip(norm_0_1, 0, 1)

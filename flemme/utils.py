@@ -51,21 +51,35 @@ def onehot_to_label(label, channel_dim = 0, keepdim = False):
 def label_to_onehot(m, channel_dim = 0, num_classes = None, 
     ignore_background = False):
     assert channel_dim == 0 or channel_dim == -1, "channel dim should be 0 or -1."
-    m = m.astype(int)
-    if not num_classes:
-        num_classes = m.max() + 1
-    if ignore_background:
-        m = m - 1
-        num_classes = num_classes - 1
-    m_shape = m.shape
-    m = m.flatten()
-    res = np.zeros(( num_classes, m.size, ))
-    res[m[m >= 0], np.arange(m.size)[m >= 0]] = 1
-    res_shape = (num_classes, )  + m_shape
-    if channel_dim == -1:
-        res = res.transpose()
-        res_shape = m_shape + (num_classes, ) 
-    return res.reshape(res_shape)
+    if torch.is_tensor(m):
+        if ignore_background:
+            m = m - 1
+            num_classes = num_classes - 1
+        m_shape = m.shape
+        m = m.flatten()
+        res = torch.zeros(( m.numel(), num_classes, ))
+        res[m >= 0] = F.one_hot(m[m >= 0], num_classes = num_classes).float()
+        res_shape = m_shape +  (num_classes, )
+        if channel_dim == 0:
+            res = res.transpose(0, 1)
+            res_shape = (num_classes, )  + m_shape
+        return res.reshape(res_shape)
+    else:
+        m = m.astype(int)
+        if not num_classes:
+            num_classes = m.max() + 1
+        if ignore_background:
+            m = m - 1
+            num_classes = num_classes - 1
+        m_shape = m.shape
+        m = m.flatten()
+        res = np.zeros(( num_classes, m.size, ))
+        res[m[m >= 0], np.arange(m.size)[m >= 0]] = 1
+        res_shape = (num_classes, )  + m_shape
+        if channel_dim == -1:
+            res = res.transpose()
+            res_shape = m_shape + (num_classes, ) 
+        return res.reshape(res_shape)
 
 def logits_to_onehot_label(logits, data_form):
     if torch.is_tensor(logits):

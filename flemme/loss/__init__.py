@@ -31,7 +31,7 @@ def get_loss(loss_config, data_form = DataForm.IMG):
         logger.warning('Using unsupported loss for images.')
     if loss_name == 'EMD':
         return EMDLoss(**loss_config)
-    if loss_name == 'Chamfer':
+    if loss_name == 'Chamfer' or loss_name == 'CD':
         return ChamferLoss(**loss_config)
     else:
         raise NotImplementedError

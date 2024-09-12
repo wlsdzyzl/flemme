@@ -147,7 +147,7 @@ class SegARI(SegMetrics):
         else:
             x_cluster, _ = ndimage.label(x, structure = self.structure)
             y_cluster, _ = ndimage.label(y, structure = self.structure)
-            return ari(x_cluster.flatten(), y_cluster.flatten())   
+            return ari(x_cluster.flatten(), y_cluster.flatten())    
 
 ### clustering
 class RI:
@@ -273,6 +273,6 @@ def get_metrics(metric_config, data_form = DataForm.IMG):
         ### point cloud
         if name == 'EMD':
             return EMD(**metric_config)
-        if name == 'CD':
+        if name == 'CD' or name == 'Chamfer':
             return CD(**metric_config)
     return None
