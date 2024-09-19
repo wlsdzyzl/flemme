@@ -394,8 +394,9 @@ class VisionTransformerBlock(nn.Module):
         self.mlp = MultiLayerPerceptionBlock(in_channel=in_channel, out_channel=self.out_channel, 
                         hidden_channels=mlp_hidden_channels,
                         activation=activation, dropout=dropout)
-        self.fc = DenseBlock(in_channel = in_channel, out_channel = self.out_channel, 
-                    activation = None) if in_channel != self.out_channel else nn.Identity()
+        self.fc = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
+        # self.fc = DenseBlock(in_channel = in_channel, out_channel = self.out_channel, 
+        #             activation = None) if in_channel != self.out_channel else nn.Identity()
         self.time_channel = time_channel
         if self.time_channel > 0:
             self.hyper_bias = nn.Linear(time_channel, out_channel, bias=False)

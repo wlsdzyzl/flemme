@@ -604,7 +604,8 @@ class FFTAttenBlock(nn.Module):
 class ConvBlock(NormBlock):
     def __init__(self, dim, in_channel, out_channel, 
             time_channel = 0, kernel_size = 3, 
-            padding = 1, depthwise = False, activation = 'relu', norm='batch', num_group = -1, 
+            padding = 1, depthwise = False, activation = 'relu', 
+            norm='batch', num_group = -1, 
             order = 'cn', atten = None, num_heads = 1, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
             dropout = None, skip_connection = False, **kwargs):

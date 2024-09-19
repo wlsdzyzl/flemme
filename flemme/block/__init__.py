@@ -58,5 +58,16 @@ def get_building_block(name, **kwargs):
         return partial(DoubleVMamba2Block, **kwargs)
     elif name == 'res_vmamba2':
         return partial(ResVMamba2Block, **kwargs)
+    ## point cloud transformer with self attention 
+    elif name == 'pct_sa':
+        return partial(PointTransformerBlock, attention='SA', **kwargs)
+    ## point cloud transformer with offset attention
+    elif name == 'pct_oa':
+        return partial(PointTransformerBlock, attention='OA', **kwargs)
+    elif name == 'pmamba':
+        return partial(PointMambaBlock, attention='Mamba', **kwargs)
+    elif name == 'pmamba2':
+        return partial(PointMambaBlock, attention='Mamba2', **kwargs)
     else:
-        raise NotImplementedError
+        logger.error(f'Unsupported building block: {name}')
+        exit(1)
