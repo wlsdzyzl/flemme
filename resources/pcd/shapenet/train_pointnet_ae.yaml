@@ -8,7 +8,7 @@ model:
   encoder:
     name: PointNet
     in_channel: 3
-    point_num: 2048
+    point_num: 1024
     building_block: single
     conv_channels: [64, 64, 128, 256, 512]
     fc_channels: [1024]
@@ -31,7 +31,7 @@ loader:
   data_transforms:
     - name: MinMaxNormalize
     - name: FixedPoints
-      num: 2048
+      num: 1024
     - name: ToTensor
       dtype: float
 check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet_AE
