@@ -22,9 +22,27 @@ if module_config['mamba']:
     supported_encoders['VMambaU'] = (VMambaUNetEncoder, VMambaUNetDecoder)
 if module_config['point-cloud']:
     from .pointnet import *
-    from .dgcnn import *
+    from .pointtrans import *
     supported_encoders['PointNet'] = (PointNetEncoder, PointNetDecoder)
-    supported_encoders['DGCNN'] = (DGCNNEncoder, DGCNNDecoder)
+    supported_encoders['PointTrans'] = (PointTransEncoder, PointTransDecoder)
+
+    if module_config['mamba']:
+        from .pointmamba import *
+        supported_encoders['PointMamba'] = (PointMambaEncoder, PointMambaDecoder)
+
+supported_buildingblocks_for_encoder = {'CNN': ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv'],
+                        'UNet': ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv'],
+                        'ViT': ['vit'],
+                        'ViTU': ['vit'],
+                        'Swin': ['swin', 'double_swin', 'res_swin',],
+                        'SwinU': ['swin', 'double_swin', 'res_swin',],
+                        'VMamba': ['vmamba', 'double_vmamba', 'res_vmamba', 'vmamba2', 'double_vmamba2', 'res_vmamba2'],
+                        'VMambaU': ['vmamba', 'double_vmamba', 'res_vmamba', 'vmamba2', 'double_vmamba2', 'res_vmamba2'],
+                        'PointWise': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
+                        'PointNet': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
+                        'PointTrans': ['pct_sa', 'pct_oa'],
+                        'PointMamba': ['pmamba', 'pmamba2'],}
+
 logger = get_logger('model.encoder.create_encoder')
 
 def create_encoder(encoder_config, return_encoder = True, return_decoder = True):
@@ -42,7 +60,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         ### construct encoder and decoder
         if encoder_name in ('CNN', 'UNet', 'ViT', 'ViTU', 'Swin', 'VMamba', 'SwinU', 'VMambaU'):
             data_form = DataForm.IMG
-        elif encoder_name in ('PointNet', 'DGCNN'):
+        elif encoder_name in ('PointNet', 'PointTrans', 'PointMamba'):
             data_form = DataForm.PCD
         ### point-wise encoder can be applied on various data forms.
         elif encoder_name in ('PointWise', ):
@@ -56,13 +74,15 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 
         else:
             raise RuntimeError(f'Unsupported encoder: {encoder_name}')
-
+        if not building_block in supported_buildingblocks_for_encoder[encoder_name]:
+            logger.error(f'Unsupported building block for encoder {encoder_name}, please use one of {supported_buildingblocks_for_encoder[encoder_name]}.')
+            exit(1)
         ### FC channels
-        fc_channels = encoder_config.pop('fc_channels', [])
-        if not isinstance(fc_channels, list):
-            fc_channels = [fc_channels]    
+        dense_channels = encoder_config.pop('dense_channels', [])
+        if not isinstance(dense_channels, list):
+            dense_channels = [dense_channels]    
 
-        de_fc_channels = encoder_config.pop('decoder_fc_channels', None) or fc_channels[::-1]    
+        de_dense_channels = encoder_config.pop('decoder_dense_channels', None) or dense_channels[::-1]    
         
         ## read in / out channel of data form
         #### in channel of encoder
@@ -79,7 +99,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             if return_encoder:
                 encoder = Encoder(point_dim=in_channel + eai_channel, 
                                             time_channel=time_channel, 
-                                            fc_channels=fc_channels,
+                                            dense_channels=dense_channels,
                                             building_block=building_block,
                                             **encoder_config)
                 decoder_in_channel = encoder.out_channel
@@ -87,7 +107,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 decoder = Decoder(point_dim=out_channel, 
                                         in_channel=decoder_in_channel + dai_channel,
                                         time_channel=time_channel, 
-                                        fc_channels=de_fc_channels,
+                                        dense_channels=de_dense_channels,
                                         building_block=building_block,
                                         **encoder_config)
         if data_form == DataForm.IMG:
@@ -122,7 +142,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 assert len(middle_channels) > 0 and middle_channels[-1] == 2 * down_channels[-1],\
                     "UNet follows a special structure, the last value of middle channels should be twice of the last value of down channels."
             
-            if len(fc_channels) == 0:
+            if len(dense_channels) == 0:
                 logger.debug('Current model doesn\'t contain any fully connected (dense) layers')
 
             ### convolution based mmodel
@@ -157,7 +177,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                 shape_scaling = shape_scaling,
                                                 middle_channels=middle_channels,
                                                 middle_attens=middle_attens,
-                                                fc_channels = fc_channels, 
+                                                dense_channels = dense_channels, 
                                                 building_block=building_block, 
                                                 **encoder_config)
                     decoder_in_channel = encoder.out_channel
@@ -166,7 +186,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                 in_channel=decoder_in_channel + dai_channel, 
                                                 time_channel = time_channel,
                                                 patch_size = patch_size,
-                                                fc_channels = de_fc_channels, 
+                                                dense_channels = de_dense_channels, 
                                                 up_channels=up_channels, 
                                                 up_attens=up_attens,
                                                 shape_scaling = shape_scaling[::-1],
@@ -248,25 +268,31 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             #### point cloud encoder
             point_num = encoder_config.pop('point_num', 2048)
             if not encoder_name == 'PointWise':
-                conv_channels = encoder_config.pop('conv_channels', [64, 128, 256])  
-                assert isinstance(conv_channels, list), 'feature channels should be a list.'
-                conv_attens = encoder_config.pop('conv_attens', None)
-                if not isinstance(conv_attens, list): 
-                    conv_attens = [conv_attens for _ in conv_channels] 
+                # encoder
+                local_feature_channels = encoder_config.pop('local_feature_channels', [64, 128, 256])  
+                assert isinstance(local_feature_channels, list), 'feature channels should be a list.'
+                ## 0: without using local graph
+                local_graph_k = encoder_config.pop('local_graph_k', 0)
+                # decoder
+                folding_times = encoder_config.pop('folding_times', 0)
+                base_shape_config = encoder_config.pop('base_shape', {})
                 if return_encoder:
                     encoder = Encoder(point_dim=in_channel + eai_channel, 
                                                 time_channel = time_channel,
-                                                conv_channels=conv_channels, 
-                                                conv_attens=conv_attens,
-                                                fc_channels=fc_channels, 
+                                                local_graph_k = local_graph_k,
+                                                local_feature_channels=local_feature_channels, 
+                                                dense_channels=dense_channels, 
                                                 building_block=building_block,
                                                 **encoder_config)
                     decoder_in_channel = encoder.out_channel
+                ## Different encoders of point clouds could use the same decoder.
                 if return_decoder:
                     decoder = Decoder(point_dim=out_channel, point_num=point_num, 
                                                 time_channel = time_channel, 
                                                 in_channel=decoder_in_channel + dai_channel, 
-                                                fc_channels=de_fc_channels,
+                                                dense_channels=de_dense_channels,
+                                                folding_times = folding_times,
+                                                base_shape_config = base_shape_config,
                                                 **encoder_config)
             if return_encoder:
                 encoder.point_num = point_num

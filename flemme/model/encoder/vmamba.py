@@ -15,10 +15,11 @@ class VMambaEncoder(nn.Module):
                 time_channel = 0,
                 down_channels = [128, 256], middle_channels = [256, 256], 
                 mlp_hidden_ratio=[4., ], state_channel=None, 
-                building_block = 'vmamba', fc_channels = [256], 
+                building_block = 'vmamba', dense_channels = [256], 
                 conv_kernel_size=3,
                 inner_factor = 2.0,
-                dt_min=0.001, dt_max=0.1, 
+                dt_rank=None, dt_min=0.001, 
+                dt_max=0.1, dt_init="random", dt_scale=1.0, 
                 dt_init_floor=1e-4, 
                 conv_bias=True, bias=False,             
                 dropout=0., drop_path=0.1, 
@@ -41,7 +42,7 @@ class VMambaEncoder(nn.Module):
         self.z_count = z_count
         self.d_depth = len(down_channels)
         self.m_depth = len(middle_channels)
-        self.vector_embedding = isinstance(fc_channels, list) and len(fc_channels) > 0
+        self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
 
         self.activation = activation
         self.dropout = dropout
@@ -62,6 +63,9 @@ class VMambaEncoder(nn.Module):
                                 conv_kernel_size = conv_kernel_size,
                                 dt_min = dt_min, dt_max = dt_max,
                                 dt_init_floor = dt_init_floor,
+                                dt_rank = dt_rank,
+                                dt_scale = dt_scale,
+                                dt_init = dt_init,
                                 conv_bias = conv_bias, bias = bias,
                                 dropout = dropout,
                                 norm = normalization, num_group = num_group,
@@ -112,19 +116,19 @@ class VMambaEncoder(nn.Module):
         self.middle_path = middle_channels
 
         ### fully connected layers
-        fc_channels = [ int(middle_channels[-1] / self.z_count) if not self.vector_embedding else middle_channels[-1], ] + fc_channels
+        dense_channels = [ int(middle_channels[-1] / self.z_count) if not self.vector_embedding else middle_channels[-1], ] + dense_channels
         
-        self.fc_path = fc_channels.copy()
+        self.dense_path = dense_channels.copy()
         if self.vector_embedding:
-            fc_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *fc_channels[0])
-            fc_sequence = [ DenseBlock(fc_channels[i], fc_channels[i+1],
-                                                norm = normalization, batch_dim=1, num_group=num_group, 
-                                                    activation = self.activation) for i in range(len(fc_channels) - 2)]
-            fc_sequence = fc_sequence + [DenseBlock(fc_channels[-2], fc_channels[-1], norm=None, activation = None), ]
-            self.fc = nn.ModuleList([nn.Sequential(*(fc_sequence.copy()) ) for _ in range(z_count) ])
+            dense_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *dense_channels[0])
+            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],
+                                                norm = normalization, num_group=num_group, 
+                                                activation = self.activation) for i in range(len(dense_channels) - 2)]
+            dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
+            self.dense = nn.ModuleList([nn.Sequential(*(dense_sequence.copy()) ) for _ in range(z_count) ])
 
         ## set out_channel
-        self.out_channel = fc_channels[-1]
+        self.out_channel = dense_channels[-1]
         self.return_features = return_features
     def forward(self, x, t = None):
         x = self.patch_emb(x)
@@ -139,7 +143,7 @@ class VMambaEncoder(nn.Module):
         ### The last dimension is feature channel
         if self.vector_embedding:
             x = x.reshape(x.shape[0], -1)
-            x = [ self.fc[i](x) for i in range(self.z_count) ]
+            x = [ self.dense[i](x) for i in range(self.z_count) ]
         else:
             x = torch.split(x, self.out_channel, dim=-1)
         if self.z_count == 1:
@@ -165,17 +169,17 @@ class VMambaEncoder(nn.Module):
             _str += '\n'
 
         if self.vector_embedding:
-            _str = _str + 'Fully-connected layers: '
-            for c in self.fc_path[:-1]:
+            _str = _str + 'Dense layers: '
+            for c in self.dense_path[:-1]:
                _str += '{}->'.format(c)  
-            _str += str(self.fc_path[-1])
+            _str += str(self.dense_path[-1])
             _str += '\n'
         return _str 
     
 class VMambaDecoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
                 patch_size = 2, in_channel = 64,
-                mlp_hidden_ratio=[4., ], fc_channels = [32], 
+                mlp_hidden_ratio=[4., ], dense_channels = [32], 
                 up_channels = [128, 64], final_channels = [64, 64], 
                 time_channel = 0,
                 building_block = 'vmamba',
@@ -212,7 +216,7 @@ class VMambaDecoder(nn.Module):
         self.mlp_hidden_ratio = mlp_hidden_ratio
         self.patch_size = patch_size
         self.in_channel = in_channel
-        self.vector_embedding = isinstance(fc_channels, list) and len(fc_channels) > 0
+        self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
 
         ### building block: mamba SSM block
         assert 'vmamba' in building_block, 'VMambaDecoder only support mamba-related building blocks.'
@@ -237,26 +241,26 @@ class VMambaDecoder(nn.Module):
                                 scan_mode = scan_mode, flip_scan = flip_scan)
         ### use patch expansion block for up sampling
         ## fully connected layer
-        fc_channels = [in_channel, ] + fc_channels 
+        dense_channels = [in_channel, ] + dense_channels 
         if not sum([im_size % (self.patch_size * (2** self.u_depth)) for im_size in self.image_size ]) == 0:
             logger.error('Please check your image size, patch size and downsample depth to make sure the image size can be divisible.')
             exit(1)
         if self.vector_embedding:
             # used for view (reshape)
-            self.view_shape = [-1, ] +[int(im_size // (self.patch_size * (2** self.u_depth))) for im_size in self.image_size ]  + [int( fc_channels[-1]),]
-            module_sequence = [ DenseBlock(fc_channels[i], fc_channels[i+1], 
-                                                    norm = normalization, batch_dim=1, num_group=num_group, 
-                                                activation = self.activation) for i in range(len(fc_channels) - 2)]
+            self.view_shape = [-1, ] +[int(im_size // (self.patch_size * (2** self.u_depth))) for im_size in self.image_size ]  + [int( dense_channels[-1]),]
+            module_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+                                                norm = normalization, num_group=num_group,
+                                                activation = self.activation) for i in range(len(dense_channels) - 2)]
             # to construct image shape
             # if there is not fc layer, then we also don't need this step
-            module_sequence.append(DenseBlock(fc_channels[-2],  
-                                                       int( fc_channels[-1] * math.prod(self.image_size) / ((2**self.u_depth * self.patch_size)**self.dim  )), 
-                                                        norm = normalization, batch_dim=1, num_group=num_group, 
+            module_sequence.append(DenseBlock(dense_channels[-2],  
+                                                       int( dense_channels[-1] * math.prod(self.image_size) / ((2**self.u_depth * self.patch_size)**self.dim  )), 
+                                                        norm = normalization, num_group=num_group, 
                                                         activation = self.activation))
-            self.fc = nn.Sequential(*module_sequence)  
-        self.fc_path = fc_channels
+            self.dense = nn.Sequential(*module_sequence)  
+        self.dense_path = dense_channels
         ### use patch expansion block for up sampling
-        up_channels = [fc_channels[-1], ] + up_channels
+        up_channels = [dense_channels[-1], ] + up_channels
 
         self.up = nn.ModuleList([PatchExpansionBlock(dim = self.dim,
                                                      in_channel = up_channels[i],
@@ -289,10 +293,10 @@ class VMambaDecoder(nn.Module):
     def __str__(self):
         _str = ''
         if self.vector_embedding:
-            _str = _str + 'Fully-connected layers: '
-            for c in self.fc_path[:-1]:
+            _str = _str + 'Dense layers: '
+            for c in self.dense_path[:-1]:
                _str += '{}->'.format(c)  
-            _str += str(self.fc_path[-1])
+            _str += str(self.dense_path[-1])
             _str += '\n'
         if len(self.up_path) > 1:
             _str += 'Patch expansion and mamba SSM layers: '
@@ -311,7 +315,7 @@ class VMambaDecoder(nn.Module):
         if type(x) == tuple:
             x = x[0]
         if self.vector_embedding:
-            x = self.fc(x)
+            x = self.dense(x)
             x = x.reshape(*self.view_shape)
         res = []
         for up, u_ssm in zip(self.up, self.u_ssm):

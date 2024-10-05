@@ -37,7 +37,7 @@ class emdFunction(Function):
         batchsize, n, _ = xyz1.size()
         _, m, _ = xyz2.size()
 
-        assert(n == m)
+        assert(n == m), f"point clouds should have the same dimensions, get {n} and {m}"
         assert(xyz1.size()[0] == xyz2.size()[0]), "{} and {} should be the same.".format(xyz1.size()[0], xyz2.size()[0])
         assert(n % 1024 == 0), "number of points should be divided by 1024"
         assert(batchsize <= 512)

@@ -81,20 +81,20 @@ def get_act(act_name):
     else:
         return nn.Identity()    
 # get batch normalization
-def get_bn(bn_dim, out_channel):
+def get_bn(bn_dim, channel):
         if bn_dim == 1:
-            return nn.BatchNorm1d(out_channel)
+            return nn.BatchNorm1d(channel)
         elif bn_dim== 2:
-            return nn.BatchNorm2d(out_channel)
+            return nn.BatchNorm2d(channel)
         elif bn_dim == 3:
-            return nn.BatchNorm3d(out_channel)       
-def get_in(in_dim, out_channel):
+            return nn.BatchNorm3d(channel)       
+def get_in(in_dim, channel):
         if in_dim == 1:
-            return nn.InstanceNorm1d(out_channel)
+            return nn.InstanceNorm1d(channel)
         elif in_dim== 2:
-            return nn.InstanceNorm2d(out_channel)
+            return nn.InstanceNorm2d(channel)
         elif in_dim == 3:
-            return nn.InstanceNorm3d(out_channel)   
+            return nn.InstanceNorm3d(channel)   
 def get_norm(norm_name, norm_channel, dim = -1, num_group = -1):
         ### normalization layer
         if norm_name == 'batch' and dim > 0:
@@ -165,6 +165,8 @@ class NormBlock(nn.Module):
         else:
             x = self.norm(x)
         return x
+    def forward(self, x):
+        return self.normalize(x)
 class DownSamplingBlock(nn.Module):
     def __init__(self, dim, in_channel=None, out_channel=None, func = 'conv', scale_factor = 2):
         super().__init__()
@@ -261,8 +263,8 @@ class TimeEmbeddingBlock(nn.Module):
         """
         super().__init__()
         self.out_channel = out_channel
-        self.fc1 = DenseBlock(self.out_channel // 4, self.out_channel, activation=activation)
-        self.fc2 = DenseBlock(self.out_channel, self.out_channel, activation=None)
+        self.dense1 = DenseBlock(self.out_channel // 4, self.out_channel, activation=activation)
+        self.dense2 = DenseBlock(self.out_channel, self.out_channel, activation=None)
 
     def forward(self, t: torch.Tensor):
         # Create sinusoidal position embeddings
@@ -281,12 +283,12 @@ class TimeEmbeddingBlock(nn.Module):
         emb = torch.cat((emb.sin(), emb.cos()), dim=1)
 
         # Transform with the MLP
-        emb = self.fc1(emb)
-        emb = self.fc2(emb)
+        emb = self.dense1(emb)
+        emb = self.dense2(emb)
         return emb
 class DenseBlock(NormBlock):
     def __init__(self, in_channel, out_channel, time_channel = 0, 
-                norm = None, batch_dim = 0, num_group = 0, 
+                norm = None, num_group = 0, 
                 activation = 'relu', dropout=None, order="ln", **kwargs):
         super().__init__(_channel_dim = -1)
         if len(kwargs) > 0:
@@ -296,7 +298,7 @@ class DenseBlock(NormBlock):
         norm_channel = out_channel
         if order.index('n') < order.index('l'):
             norm_channel = in_channel
-        self.norm, self.norm_type = get_norm(norm, norm_channel, batch_dim, num_group)
+        self.norm, self.norm_type = get_norm(norm, norm_channel, 1, num_group)
         if dropout is None or dropout <= 0:
             self.dropout = nn.Identity()
         else:
@@ -310,6 +312,9 @@ class DenseBlock(NormBlock):
             self.hyper_gate = nn.Linear(self.time_channel, out_channel)
 
     def forward(self, x, t = None):
+        size = x.shape[1:-1]
+        if len(size) > 1:
+            x = x.reshape(x.shape[0], -1, x.shape[-1])
         for m in self.order:
             if m == 'l':
                 x = self.linear(x)
@@ -323,13 +328,13 @@ class DenseBlock(NormBlock):
             gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
             bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
             x = x * gate + bias
-
+        if len(size) > 1:
+            x = x.reshape(*((x.shape[0], ) + size + (x.shape[-1], )))
         return x
 ## Multi Layer Perception block
 class MultiLayerPerceptionBlock(nn.Module):
     def __init__(self, in_channel, out_channel, hidden_channels, 
-                time_channel = 0, norm = None, 
-                batch_dim = 0, num_group = 0, 
+                time_channel = 0, norm = None, num_group = 16, 
                 activation = 'relu', dropout=None, 
                 order="ln", final_activation = True,
                 **kwargs):
@@ -339,7 +344,7 @@ class MultiLayerPerceptionBlock(nn.Module):
         channels = [in_channel, ] + hidden_channels + [out_channel, ]
         module_sequence = [DenseBlock( in_channel = channels[idx], 
                     out_channel = channels[idx+1], time_channel = time_channel, norm = norm,
-                    batch_dim = batch_dim, num_group = num_group, 
+                    num_group = num_group, 
                     activation = activation, dropout = dropout, 
                     order=order,
                     ) for idx in range(len(channels) - 2)]
@@ -352,7 +357,7 @@ class MultiLayerPerceptionBlock(nn.Module):
         else:
             module_sequence = module_sequence + [DenseBlock( in_channel = channels[-2], 
                     out_channel = channels[-1], time_channel = time_channel, norm = norm,
-                    batch_dim = batch_dim, num_group = num_group, 
+                    num_group = num_group, 
                     activation = activation, dropout = dropout, 
                     order=order,
                     ), ]
@@ -363,41 +368,41 @@ class MultiLayerPerceptionBlock(nn.Module):
 
 class DoubleDenseBlock(nn.Module):
     def __init__(self, in_channel, out_channel, 
-        time_channel = 0, norm = None,
-        batch_dim = 0, num_group = 0, 
+        time_channel = 0, norm = None, num_group = 0, 
         activation = 'relu', dropout=None, 
         order="ln", **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
-        self.fc1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
-            norm=norm, batch_dim = batch_dim, num_group = num_group, activation = activation, 
+        self.dense1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
+            norm=norm, num_group = num_group, activation = activation, 
             dropout = dropout, order = order)
-        self.fc2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
-            norm=norm, batch_dim = batch_dim, num_group = num_group, activation = activation, 
+        self.dense2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
+            norm=norm, num_group = num_group, activation = activation, 
             dropout = dropout, order = order)    
         self.time_channel = time_channel
         if self.time_channel > 0:
             self.time_emb = nn.Linear(time_channel, out_channel)
     def forward(self, x, t):
-        x = self.fc1(x)
+        x = self.dense1(x)
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
             x = x + expand_as(self.time_emb(t), x, channel_dim=-1)
-        x = self.fc2(x)
+        x = self.dense2(x)
         return x
 class ResDenseBlock(nn.Module):
     def __init__(self, in_channel, out_channel, time_channel, norm = None,
-        batch_dim = 0, num_group = 0, activation = 'relu', dropout=None, order="ln", **kwargs):
+        num_group = 0, activation = 'relu', dropout=None, 
+        order="ln", **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
-        self.fc1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
-            norm=norm, batch_dim = batch_dim, num_group = num_group, activation = activation, 
+        self.dense1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
+            norm=norm, num_group = num_group, activation = activation, 
             dropout = dropout, order = order)
-        self.fc2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
-            norm=norm, batch_dim = batch_dim, num_group = num_group, activation = None, 
+        self.dense2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
+            norm=norm, num_group = num_group, activation = None, 
             dropout = dropout, order = order)  
         self.act = get_act(activation)  
         self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
@@ -405,12 +410,12 @@ class ResDenseBlock(nn.Module):
         if self.time_channel > 0:
             self.time_emb = nn.Linear(time_channel, out_channel)
     def forward(self, x, t):
-        h = self.fc1(x)
+        h = self.dense1(x)
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
             h = h + expand_as(self.time_emb(t), h, channel_dim=-1)
-        h = self.fc2(h)
+        h = self.dense2(h)
         out = self.act(h + self.shortcut(x))
         return out
 ## transfer class label to one-hot vector which is encoded through FC block.
@@ -422,12 +427,12 @@ class OneHotEmbeddingBlock(nn.Module):
         self.apply_onehot = apply_onehot
         middle_channel = min(int( max(self.num_classes, self.out_channel) / 2), 
                               self.num_classes, self.out_channel)
-        self.fc1 = DenseBlock(self.num_classes, middle_channel, activation=activation)
-        self.fc2 = DenseBlock(middle_channel, self.out_channel, activation=None)
+        self.dense1 = DenseBlock(self.num_classes, middle_channel, activation=activation)
+        self.dense2 = DenseBlock(middle_channel, self.out_channel, activation=None)
     def forward(self, x):
         if self.apply_onehot:
             x = F.one_hot(x, self.num_classes).float()
-        return self.fc2(self.fc1(x))
+        return self.dense2(self.dense1(x))
     
 class AttentionBlock(nn.Module):
     """
@@ -770,7 +775,7 @@ class ResConvBlock(nn.Module):
 class CombineLayer(nn.Module):
     def __init__(self, in_channels, out_channel, target_size, mode='nearest',
                 combine = 'cat', position_embedding = True, apply_fft = False):
-        super(CombineLayer, self).__init__()
+        super().__init__()
         assert type(in_channels) == list and len(in_channels) > 2, \
             'the input of combine layer should be a list whose length is larger than 1'
         

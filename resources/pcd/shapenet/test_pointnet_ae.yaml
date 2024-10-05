@@ -1,18 +1,31 @@
 mode: test
 model:
-  # can be AE, VAE and DDPM
+  # can be AE, VAE, SeM and DDPM
   name: AE
+  # encoder config
   encoder:
     name: PointNet
     in_channel: 3
-    point_num: 2048
-    conv_channels: [64, 64, 128, 256, 512]
-    fc_channels: [256, 256]
-    decoder_fc_channels: [128, 512, 1024]
+    point_num: 1024
+    building_block: dense
+    local_graph_k: 20
+    local_feature_channels: [64, 64, 128, 256, 512]
+    dense_channels: [1024]
+    decoder_dense_channels: [512, 256]
     activation: lrelu
-  ### loss function
+    normalization: group
+    pointwise: False
+    ## for decoder
+    folding_times: 2
+    base_shape: 
+      type: grid
+      width: 1.0
+      height: 1.0
+      # radius: 0.15
   reconstruction_losses: 
-    name: Chamfer
+    - name: EMD
+      eps: 0.005
+      iters: 50
 
 loader:
   dataset: 
@@ -20,35 +33,25 @@ loader:
     data_dir: 02691156/points
     data_suffix: .pts
   data_path_list: 
-    - path/to/datasets/shapenetcore_v0    
-  batch_size: 4
+    - /media/wlsdzyzl/DATA/datasets/shapenetcore_v0  
+  batch_size: 32
   num_workers: 8
   shuffle: true
+  drop_last: true
   data_transforms:
-    - name: MinMaxNormalize
+    - name: Normalize
+      method: mean
     - name: FixedPoints
-      num: 2048
+      num: 1024
     - name: ToTensor
       dtype: float
-model_path: path/to/checkpoint/SHAPENET_AE/ckp_best.pth
+
+model_path: path/to/checkpoint/SHAPENET/02691156/PointNet/PointNet_AE_EMD_LOCALK_FOLDING/ckp_best_loss.pth
 #### directory that saves the reconstructed images
-recon_dir: path/to/results/recon/shapenet/ae_pointnet
+recon_dir: path/to/results/recon/shapenet/ae_pointnet_folding
 
 #### metrics used for evaluation (reconstruction accuracy)
 evaluation_metrics:
   recon:
     - name: EMD
     - name: CD
-#### qualitative results for new generation
-### interpolation among reconstructed samples
-### group num: number of groups
-### corner num: number of original samples waited to be interpolated, should be 2 or 4
-### inter num: number of interpolation between each pair of original samples
-### finally we would have inter_num^(log corner_num) * group num new samples
-gen_dir: path/to/results/gen/shapenet/ae_pointnet
-interpolation:
-  group_num: 2
-  corner_num: 4
-  inter_num: 8
-### new generation from random noise
-random_sample_num: 64

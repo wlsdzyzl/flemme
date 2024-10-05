@@ -15,7 +15,7 @@ model:
       ## name is fixed: PointWise
       name: PointWise
       in_channel: 2
-      fc_channels: [128, 256]
+      dense_channels: [128, 256]
       building_block: res_fc
       activation: silu
       normalization: layer

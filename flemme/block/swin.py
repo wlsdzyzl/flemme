@@ -355,7 +355,7 @@ class VisionTransformerBlock(nn.Module):
         mlp_ratio (float): Ratio of mlp hidden in_channel to embedding in_channel.
         qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True
         qk_scale (float | None, optional): Override default qk scale of head_in_channel ** -0.5 if set.
-        drop (float, optional): Dropout rate. Default: 0.0
+        dropout (float, optional): Dropout rate. Default: 0.0
         atten_drop (float, optional): Attention dropout rate. Default: 0.0
         drop_path (float, optional): Stochastic depth rate. Default: 0.0
         act_layer (nn.Module, optional): Activation layer. Default: nn.GELU
@@ -394,8 +394,8 @@ class VisionTransformerBlock(nn.Module):
         self.mlp = MultiLayerPerceptionBlock(in_channel=in_channel, out_channel=self.out_channel, 
                         hidden_channels=mlp_hidden_channels,
                         activation=activation, dropout=dropout)
-        self.fc = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
-        # self.fc = DenseBlock(in_channel = in_channel, out_channel = self.out_channel, 
+        self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
+        # self.dense = DenseBlock(in_channel = in_channel, out_channel = self.out_channel, 
         #             activation = None) if in_channel != self.out_channel else nn.Identity()
         self.time_channel = time_channel
         if self.time_channel > 0:
@@ -406,7 +406,7 @@ class VisionTransformerBlock(nn.Module):
         x = self.norm1.normalize(x)
         x = self.atten(x)
         x = shortcut + self.drop_path(x)
-        x = self.fc(x) + self.drop_path(self.mlp(self.norm2.normalize(x)))
+        x = self.dense(x) + self.drop_path(self.mlp(self.norm2.normalize(x)))
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
@@ -560,7 +560,7 @@ class SwinTransformerBlock(VisionTransformerBlock):
         else:
             x = shifted_x
         x = shortcut + self.drop_path(x)
-        x = self.fc(x) + self.drop_path(self.mlp(self.norm2.normalize(x)))
+        x = self.dense(x) + self.drop_path(self.mlp(self.norm2.normalize(x)))
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  

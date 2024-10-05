@@ -125,8 +125,8 @@ class MBaseBlock(nn.Module):
 
         ### to make sure the output is equal to input
         #### run reconstruction needed.
-        self.fc = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
-        # self.fc = DenseBlock(in_channel = in_channel, out_channel = self.out_channel, 
+        self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
+        # self.dense = DenseBlock(in_channel = in_channel, out_channel = self.out_channel, 
         #             activation = None) if in_channel != self.out_channel else nn.Identity()
         self.per_rec_table = single_per_rec_table
         if self.scan_mode == 'simplified':
@@ -204,7 +204,7 @@ class MBaseBlock(nn.Module):
         out = self.dropout(out)
         ### keep same with swin transformer block
         out = shortcut + self.drop_path(out)
-        out = self.fc(out) + self.drop_path(self.mlp(out))
+        out = self.dense(out) + self.drop_path(self.mlp(out))
         return out
     
 class VMambaBlock(MBaseBlock):

@@ -8,14 +8,16 @@ model:
   encoder:
     name: PointNet
     in_channel: 3
-    ### segmentation label
     out_channel: 4
     point_num: 2048
-    building_block: single
-    conv_channels: [64, 64, 128, 256, 512]
-    fc_channels: [1024]
-    decoder_fc_channels: [512, 256]
+    building_block: dense
+    local_graph_k: 20
+    # folding_times: 2
+    local_feature_channels: [64, 64, 128, 256, 512]
+    dense_channels: [1024]
+    decoder_dense_channels: [512, 256]
     activation: lrelu
+    normalization: group
     pointwise: True
   ### loss function
   # loss_reduction: sum

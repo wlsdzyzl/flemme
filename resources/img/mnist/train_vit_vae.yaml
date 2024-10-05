@@ -13,9 +13,9 @@ model:
     middle_channels: [32, 32]
     # up_channels: [16, 8]
     building_block: vit
-    fc_channels: [128]
+    dense_channels: [128]
     abs_pos_embedding: false
-    # decoder_fc_channels: [64, 32]
+    # decoder_dense_channels: [64, 32]
   ### loss function
   reconstruction_losses: 
     name: MSE

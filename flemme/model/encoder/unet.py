@@ -17,7 +17,7 @@ class UNetEncoder(CNNEncoder):
                  down_attens = [None, None], shape_scaling = [2, 2], middle_channels = [256, 256], middle_attens = [None, None],
                  kernel_size = 3, depthwise = False, time_channel = 0, dsample_function = 'conv', num_block = 2,
                  building_block='res_t', normalization = 'group', num_group = 8, cn_order = 'cn',
-                 activation = 'relu', dropout = 0.1, num_heads = 1, d_k = None, 
+                 activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  abs_pos_embedding = False, **kwargs):
         '''
@@ -34,7 +34,7 @@ class UNetEncoder(CNNEncoder):
             num_group = num_group, cn_order = cn_order, activation = activation, dropout = dropout,
             num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
             abs_pos_embedding=abs_pos_embedding, atten_dropout = atten_dropout,
-            z_count = 1, fc_channels = [], return_features = True)
+            z_count = 1, dense_channels = [], return_features = True)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
     def __str__(self):
@@ -61,7 +61,7 @@ class UNetDecoder(CNNDecoder):
                  kernel_size = 3, building_block='res_t', normalization = 'group',
                  num_group = 8, cn_order = 'cn',
                  num_block = 2,
-                 activation = 'relu', dropout = 0.1, 
+                 activation = 'relu', dropout = 0., 
                  num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  return_features = False, **kwargs):
@@ -74,7 +74,7 @@ class UNetDecoder(CNNDecoder):
             num_group = num_group, cn_order = cn_order, activation = activation, dropout = dropout,
             num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
             return_features = return_features,
-            atten_dropout = atten_dropout, fc_channels = [])
+            atten_dropout = atten_dropout, dense_channels = [])
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
         up_channels = [in_channel, ] + up_channels
@@ -138,7 +138,7 @@ if module_config['transformer']:
                 normalization = normalization, num_group = num_group, 
                 num_block = num_block, activation = activation, 
                 abs_pos_embedding = abs_pos_embedding, 
-                z_count = 1, fc_channels = [], return_features = True)
+                z_count = 1, dense_channels = [], return_features = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class ViTUNetDecoder(ViTDecoder):
@@ -160,7 +160,7 @@ if module_config['transformer']:
                 up_num_heads = up_num_heads, final_num_heads = final_num_heads,
                 dropout = dropout, atten_dropout = atten_dropout, drop_path = drop_path,
                 normalization = normalization, num_group = num_group, 
-                num_block = num_block, activation = activation, fc_channels = [],
+                num_block = num_block, activation = activation, dense_channels = [],
                 return_features = return_features)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
@@ -215,7 +215,7 @@ if module_config['transformer']:
                 normalization = normalization, num_group = num_group, 
                 num_block = num_block, activation = activation, 
                 abs_pos_embedding = abs_pos_embedding, 
-                z_count = 1, fc_channels = [], return_features = True)
+                z_count = 1, dense_channels = [], return_features = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class SwinUNetDecoder(SwinDecoder):
@@ -238,7 +238,7 @@ if module_config['transformer']:
                 up_num_heads = up_num_heads, final_num_heads = final_num_heads,
                 dropout = dropout, atten_dropout = atten_dropout, drop_path = drop_path,
                 normalization = normalization, num_group = num_group, 
-                num_block = num_block, activation = activation, fc_channels = [],
+                num_block = num_block, activation = activation, dense_channels = [],
                 return_features = return_features)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
@@ -315,7 +315,7 @@ if module_config['mamba']:
                     num_block = num_block, activation = activation, 
                     scan_mode = scan_mode, flip_scan=flip_scan, 
                     abs_pos_embedding = abs_pos_embedding,
-                    z_count = 1, fc_channels = [],
+                    z_count = 1, dense_channels = [],
                     return_features = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
@@ -360,7 +360,7 @@ if module_config['mamba']:
                     normalization = normalization, num_group = num_group, 
                     num_block = num_block, activation = activation, 
                     scan_mode = scan_mode, flip_scan=flip_scan, 
-                    fc_channels = [], return_features = return_features)
+                    dense_channels = [], return_features = return_features)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
             ### use patch expansion block for up sampling

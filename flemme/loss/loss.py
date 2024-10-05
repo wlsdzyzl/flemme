@@ -119,8 +119,9 @@ if module_config['point-cloud']:
             else:
                 return d1, d2
     ## Wasserstein distance based on optimal transport
+    ## a small value of eps leads to bad reconstruction
     class EMDLoss(nn.Module):
-        def __init__(self, reduction = 'mean', eps = 1e-8, iters = 500):
+        def __init__(self, reduction = 'mean', eps = 0.005, iters = 50):
             super().__init__()
             self.loss = EMD(eps = eps, iters = iters)
             self.reduction = reduction

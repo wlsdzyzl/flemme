@@ -4,8 +4,12 @@ if module_config['transformer']:
     from flemme.block.swin import *
 if module_config['mamba']:
     from flemme.block.vmamba import *
+if module_config['point-cloud']:
+    from flemme.block.pcd import *
+
 from flemme.logger import get_logger
 logger = get_logger('flemme.block')
+
 class MultipleBuildingBlocks(nn.Module):
     def __init__(self, n, BlockClass, in_channel, out_channel = None, kwargs_list = {}, **kwargs):
         super().__init__()
@@ -23,9 +27,10 @@ class MultipleBuildingBlocks(nn.Module):
     def forward(self, x: torch.Tensor, t: torch.Tensor):
         x, _ = self.building_blocks(x, t)
         return x
-    
+
 def get_building_block(name, **kwargs):
     logger.debug('building block parameters: {}'.format(kwargs))
+    # image
     if name in ['single','conv']:
         return partial(ConvBlock, **kwargs)
     elif name in ['double', 'double_conv']:
@@ -58,16 +63,19 @@ def get_building_block(name, **kwargs):
         return partial(DoubleVMamba2Block, **kwargs)
     elif name == 'res_vmamba2':
         return partial(ResVMamba2Block, **kwargs)
+    # point cloud
     ## point cloud transformer with self attention 
     elif name == 'pct_sa':
         return partial(PointTransformerBlock, attention='SA', **kwargs)
     ## point cloud transformer with offset attention
     elif name == 'pct_oa':
         return partial(PointTransformerBlock, attention='OA', **kwargs)
+    ## point cloud mamba
     elif name == 'pmamba':
-        return partial(PointMambaBlock, attention='Mamba', **kwargs)
+        return partial(PointMambaBlock, mamba='Mamba', **kwargs)
+    ## point cloud mamba2
     elif name == 'pmamba2':
-        return partial(PointMambaBlock, attention='Mamba2', **kwargs)
+        return partial(PointMambaBlock, mamba='Mamba2', **kwargs)
     else:
         logger.error(f'Unsupported building block: {name}')
         exit(1)

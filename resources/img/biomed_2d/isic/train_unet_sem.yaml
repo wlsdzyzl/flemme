@@ -29,9 +29,9 @@ loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - path/to/datasets/ISIC/fold1/
-    - path/to/datasets/ISIC/fold2/
-    - path/to/datasets/ISIC/fold3/
+    - /media/wlsdzyzl/DATA/datasets/ISIC/fold1/
+    - /media/wlsdzyzl/DATA/datasets/ISIC/fold2/
+    - /media/wlsdzyzl/DATA/datasets/ISIC/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
@@ -48,7 +48,7 @@ val_loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - path/to/datasets/ISIC/fold4/
+    - /media/wlsdzyzl/DATA/datasets/ISIC/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false

@@ -6,6 +6,7 @@ import numbers
 from itertools import repeat
 from flemme.utils import label_to_onehot, normalize
 from functools import partial
+from .hilbert_sort import HilbertSort3D
 #### transfoms for point cloud
 ## modified from diffusion-point-cloud
 class ToTensor(object):
@@ -30,7 +31,7 @@ class Normalize(object):
         self.method = method
 
     def __call__(self, data):
-        return normalize(data, channel_dim = 0, method = self.method)
+        return normalize(data, channel_dim = -1, method = self.method)
 
 class FixedPoints(object):
     r"""Samples a fixed number of :obj:`num` points and features from a point
@@ -229,6 +230,19 @@ class ShufflePoints(object):
         rand_idx = np.arange(len(data))
         np.random.shuffle(rand_idx)
         return data[rand_idx]
+
+class ReorderByAxis(object):
+    def __init__(self, axis=0):
+        self.axis = axis
+    def __call__(self, data):
+        index = np.argsort(data[:, self.axis])
+        return data[index]
+
+class ReorderByHilbert(object):
+    def __init__(self, bins = 16, radius = 1.0, origin = (0,0,0)):
+        self.hilbert = HilbertSort3D(bins = bins, radius = radius, origin = origin)
+    def __call__(self, data):
+        return self.hilbert.sort(data)
 
 class ToOneHot:
     """

@@ -13,8 +13,8 @@ model:
     middle_channels: [32, 32]
     # up_channels: [16, 8]
     building_block: vmamba
-    fc_channels: [128]
-    # decoder_fc_channels: [64, 32]
+    dense_channels: [128]
+    # decoder_dense_channels: [64, 32]
   ### loss function
   reconstruction_losses: 
     name: MSE

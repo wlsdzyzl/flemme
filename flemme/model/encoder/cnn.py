@@ -17,7 +17,7 @@ class CNNEncoder(nn.Module):
     middle_channels: a list of feature_channels during the middle convolution stage.
     dsample_function: function for downsampling, can be one of ['conv', 'max_pooling', 'avg_pooling']
     building_block: convolution block, can be one of ['single', 'double']
-    fc_channels: int or list. dimensions of embedding vectors during the 'fully connected layer' stage. The length of fc_channels determines the number of fc layers. The last
+    dense_channels: int or list. dimensions of embedding vectors during the 'fully connected layer' stage. The length of dense_channels determines the number of fc layers. The last
     value would be the dimension of output embedding vectors.
     zcount: int, zcount is the number of output embedding vectors
     '''
@@ -25,9 +25,9 @@ class CNNEncoder(nn.Module):
                  down_channels = [64, 128], down_attens = [None, None], 
                  shape_scaling = [2, 2],  middle_channels = [256, 256], 
                  middle_attens = [None, None], depthwise = False, kernel_size = 3, 
-                 fc_channels = [256], dsample_function = 'conv', building_block='single', 
+                 dense_channels = [256], dsample_function = 'conv', building_block='single', 
                  normalization = 'group', num_group = 8, cn_order = 'cn', num_block = 2,
-                 activation = 'relu', z_count = 1, dropout = 0.1, num_heads = 1, d_k = None, 
+                 activation = 'relu', z_count = 1, dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  abs_pos_embedding = False, return_features = False,
                 **kwargs):
@@ -40,7 +40,7 @@ class CNNEncoder(nn.Module):
         self.z_count = z_count
         self.image_size = image_size
         self.image_patch_channel = patch_channel
-        self.vector_embedding = isinstance(fc_channels, list) and len(fc_channels) > 0
+        self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
         ## down sample times
         self.d_depth = 0 if not isinstance(down_channels, list) else len(down_channels)
         self.activation = activation
@@ -90,19 +90,19 @@ class CNNEncoder(nn.Module):
         self.middle_path = middle_channels
         
         ### fully connected layers
-        fc_channels = [ int(middle_channels[-1] / self.z_count) if not self.vector_embedding else middle_channels[-1], ] + fc_channels
+        dense_channels = [ int(middle_channels[-1] / self.z_count) if not self.vector_embedding else middle_channels[-1], ] + dense_channels
         
-        self.fc_path = fc_channels.copy()
+        self.dense_path = dense_channels.copy()
         if self.vector_embedding:
-            fc_channels[0] = int( math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)  *fc_channels[0])
-            fc_sequence = [ DenseBlock(fc_channels[i], fc_channels[i+1], 
-                                                    norm = normalization, batch_dim=1, num_group=num_group, 
-                                                    activation = self.activation) for i in range(len(fc_channels) - 2)]
-            fc_sequence = fc_sequence + [DenseBlock(fc_channels[-2], fc_channels[-1], norm=None, activation = None), ]
-            self.fc = nn.ModuleList([nn.Sequential(*(fc_sequence.copy()) ) for _ in range(z_count) ])
+            dense_channels[0] = int( math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)  *dense_channels[0])
+            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+                                            norm = normalization, num_group=num_group, 
+                                            activation = self.activation) for i in range(len(dense_channels) - 2)]
+            dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
+            self.dense = nn.ModuleList([nn.Sequential(*(dense_sequence.copy()) ) for _ in range(z_count) ])
 
         ## set out_channel
-        self.out_channel = fc_channels[-1]
+        self.out_channel = dense_channels[-1]
         self.return_features = return_features
     def __str__(self):
         _str = ''
@@ -121,10 +121,10 @@ class CNNEncoder(nn.Module):
             _str += '\n'
     
         if self.vector_embedding:
-            _str = _str + 'Fully-connected layers: '
-            for c in self.fc_path[:-1]:
+            _str = _str + 'Dense layers: '
+            for c in self.dense_path[:-1]:
                _str += '{}->'.format(c)  
-            _str += str(self.fc_path[-1])
+            _str += str(self.dense_path[-1])
             _str += '\n'
         return _str 
     
@@ -143,7 +143,7 @@ class CNNEncoder(nn.Module):
 
         if self.vector_embedding:
             x = x.reshape(x.shape[0], -1)
-            x = [ self.fc[i](x) for i in range(self.z_count) ]
+            x = [ self.dense[i](x) for i in range(self.z_count) ]
         else:
             x = torch.split(x, self.out_channel, dim=1)
         if self.z_count == 1:
@@ -161,16 +161,16 @@ class CNNDecoder(nn.Module):
     conv_channels: a list of feature_channels during the upsampling stage. The length of conv_channels determines the upsampling times.
     dsample_function: function for downsampling, can be one of ['conv', 'inter']
     building_block: convolution block, can be one of ['single', 'double']
-    fc_channels: list. dimensions of embedding vectors during the 'fully connected layer' stage. The length of fc_channels determines the number of fc layers. The last
+    dense_channels: list. dimensions of embedding vectors during the 'fully connected layer' stage. The length of dense_channels determines the number of fc layers. The last
     value would be the dimension of output embedding vectors.
     '''
     def __init__(self, image_size, image_channel = 3, patch_size = 2, in_channel = 256,  time_channel = 0, 
-                 fc_channels = [32], up_channels = [128, 64], up_attens = [None, None], 
+                 dense_channels = [32], up_channels = [128, 64], up_attens = [None, None], 
                  shape_scaling = [2, 2], final_channels = [], 
                  final_attens = [], depthwise = False, kernel_size = 3, 
                  usample_function = 'conv', building_block='single', 
                  normalization = 'group', num_group = 8, cn_order = 'cn', 
-                 num_block = 2, activation = 'relu', dropout=0.1, num_heads = 1, d_k = None, 
+                 num_block = 2, activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  return_features = False, **kwargs):
         super().__init__()
@@ -181,7 +181,7 @@ class CNNDecoder(nn.Module):
         self.final_channels = final_channels
         self.usample_function = usample_function
         self.image_size = image_size
-        self.vector_embedding = isinstance(fc_channels, list) and len(fc_channels) > 0
+        self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
         ## up-sampling times
         self.u_depth = 0 if not isinstance(up_channels, list) else len(up_channels)
         self.activation = activation
@@ -197,27 +197,27 @@ class CNNDecoder(nn.Module):
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                         atten_dropout = atten_dropout)
         ## fully connected layer
-        fc_channels = [in_channel, ] + fc_channels 
+        dense_channels = [in_channel, ] + dense_channels 
         if not sum([im_size % (patch_size * math.prod(shape_scaling)) for im_size in self.image_size ]) == 0:
             logger.error('Please check your image size, patch size and downsample depth to make sure the image size can be divisible.')
             exit(1)
         if self.vector_embedding:
             # used for view (reshape)
-            self.view_shape = [-1, int( fc_channels[-1]),] +[int(im_size // (self.patch_size * math.prod(shape_scaling) )) for im_size in self.image_size ]
-            module_sequence = [ DenseBlock(fc_channels[i], fc_channels[i+1], 
-                                                    norm = normalization, batch_dim=1, num_group=num_group, 
-                                                activation = self.activation) for i in range(len(fc_channels) - 2)]
+            self.view_shape = [-1, int( dense_channels[-1]),] +[int(im_size // (self.patch_size * math.prod(shape_scaling) )) for im_size in self.image_size ]
+            module_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+                                                    norm = normalization, num_group=num_group, 
+                                                    activation = self.activation) for i in range(len(dense_channels) - 2)]
             # to construct image shape
             # if there is not fc layer, then we also don't need this step
-            module_sequence.append(DenseBlock(fc_channels[-2],  
-                                                       int( fc_channels[-1] * math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)), 
-                                                       norm = normalization, batch_dim=1, num_group=num_group,  
+            module_sequence.append(DenseBlock(dense_channels[-2],  
+                                                       int( dense_channels[-1] * math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)), 
+                                                       norm = normalization, num_group=num_group,  
                                                        activation = self.activation))
-            self.fc = nn.Sequential(*module_sequence)  
-        self.fc_path = fc_channels
+            self.dense = nn.Sequential(*module_sequence)  
+        self.dense_path = dense_channels
 
         ## up-sampling layers and convolution layer
-        up_channels = [fc_channels[-1], ] + up_channels
+        up_channels = [dense_channels[-1], ] + up_channels
         self.up = nn.ModuleList([UpSamplingBlock(dim=self.dim, in_channel=up_channels[i], 
                                                  func=usample_function, scale_factor=shape_scaling[i]) for i in range(len(up_channels) - 1)])
         self.u_conv = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
@@ -241,10 +241,10 @@ class CNNDecoder(nn.Module):
     def __str__(self):
         _str = ''
         if self.vector_embedding:
-            _str = _str + 'Fully-connected layers: '
-            for c in self.fc_path[:-1]:
+            _str = _str + 'Dense layers: '
+            for c in self.dense_path[:-1]:
                _str += '{}->'.format(c)  
-            _str += str(self.fc_path[-1])
+            _str += str(self.dense_path[-1])
             _str += '\n'
 
         if len(self.up_path) > 1:
@@ -266,7 +266,7 @@ class CNNDecoder(nn.Module):
         if type(x) == tuple:
             x = x[0]
         if self.vector_embedding:
-            x = self.fc(x)
+            x = self.dense(x)
             x = x.reshape(*self.view_shape)
         
         res = []

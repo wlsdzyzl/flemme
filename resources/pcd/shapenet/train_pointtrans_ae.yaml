@@ -6,10 +6,10 @@ model:
   name: AE
   # encoder config
   encoder:
-    name: PointNet
+    name: PointTrans
     in_channel: 3
     point_num: 1024
-    building_block: dense
+    building_block: pct_oa
     local_graph_k: 20
     folding_times: 2
     local_feature_channels: [64, 64, 128, 256, 512]
@@ -22,7 +22,6 @@ model:
     - name: EMD
       eps: 0.005
       iters: 50
-    # - name: CD
 loader:
   dataset: 
     name: PCDDataset
@@ -30,16 +29,17 @@ loader:
     data_suffix: .pts
   data_path_list: 
     - /media/wlsdzyzl/DATA/datasets/shapenetcore_v0  
-  batch_size: 32
+  batch_size: 2
   num_workers: 8
   shuffle: true
+  drop_last: true
   data_transforms:
     - name: Normalize
     - name: FixedPoints
       num: 1024
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet/PointNet_AE_EMD_LOCALK_FOLDING_RANDORDER
+check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointTrans_AE_EMD
 ### parameter for optimizer
 optimizer:
   name: Adam
@@ -47,9 +47,9 @@ optimizer:
   weight_decay: 0.00000001
 ### scheduler for learning rate
 lr_scheduler: 
-  name: LinearLR
-  start_factor: 1.0
-  end_factor: 0.01
+  name: ReduceLROnPlateau
+  patience: 5
 max_epoch: 500
-write_after_iters: 20
+write_after_iters: 50
+write_sample_num: 4
 save_after_epochs: 10

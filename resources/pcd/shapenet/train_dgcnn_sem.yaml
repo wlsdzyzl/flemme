@@ -14,8 +14,8 @@ model:
     point_num: 2048
     building_block: single
     conv_channels: [64, 64, 128, 256, 512]
-    fc_channels: [1024]
-    decoder_fc_channels: [512, 256]
+    dense_channels: [1024]
+    decoder_dense_channels: [512, 256]
     activation: lrelu
     pointwise: True
     k: 15

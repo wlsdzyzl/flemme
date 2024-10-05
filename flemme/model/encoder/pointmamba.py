@@ -1,107 +1,129 @@
-# point cloud encoder for 3D point cloud
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import DenseBlock, SequentialT, get_building_block
+from flemme.block import SequentialT, get_building_block, FoldingLayer, LocalGraphLayer
+from .pointnet import PointEncoder, PointDecoder
 from flemme.logger import get_logger
-logger = get_logger("model.encoder.pointnet")
-class PointTransformerEncoder(nn.Module):
+logger = get_logger("model.encoder.pointmamba")
+        
+class PointMambaEncoder(PointEncoder):
     def __init__(self, point_dim=3, time_channel = 0, 
-                conv_channels = [64, 128, 256], 
-                conv_attens = [None, None, None],
-                fc_channels = [256], 
-                building_block = 'single', 
-                normalization = 'group', num_group = 8, cn_order = 'cn',
-                activation = 'lrelu', dropout=0.1, 
-                num_heads = 1, d_k = None, 
-                qkv_bias = True, qk_scale = None, atten_dropout = None,
-                z_count = 1, pointwise = False, **kwargs):
-        super().__init__()
-        if len(kwargs) > 0:
-           logger.debug("redundant parameters:{}".format(kwargs))
-        self.point_dim = point_dim
-        self.conv_channels = conv_channels
-        self.z_count = z_count
-        self.activation = activation
-        self.pointwise = pointwise
-        ### use a 'AaaBbb' style for class name
-        self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = time_channel, 
-                                        activation=activation, 
-                                        norm = normalization, num_group = num_group, 
-                                        order = cn_order, dropout = dropout, 
-                                        num_heads = num_heads, d_k = d_k, 
-                                        qkv_bias = qkv_bias, qk_scale = qk_scale, 
-                                        atten_dropout = atten_dropout)
-        assert len(fc_channels) > 0, "PointNet encoder need to have fully connected layers!"
-        ### convolution with kernel size = 1
-        # compute point features
-        conv_channels = [point_dim,] + conv_channels
-        conv_sequence = [self.BuildingBlock(dim=1, in_channel=conv_channels[i], out_channel=conv_channels[i+1], 
-                                        kernel_size=1, padding=0, atten = conv_attens[i]) for i in range(len(conv_channels) - 1) ]
-        self.conv = SequentialT(*conv_sequence)
-        self.conv_path = conv_channels
-        # z_count = 2 usually means we compute mean and variance.
-        # compute embedding from global feature
-        
-        ## fully connected layers
-        fc_channels = [conv_channels[-1], ] + fc_channels
-        ### concat
-        if self.pointwise:
-            fc_channels[0] += conv_channels[-1]
-        fc_sequence = [ DenseBlock(fc_channels[i], fc_channels[i+1],  
-                                            norm = normalization, batch_dim=1, num_group=num_group, 
-                                            activation = self.activation) for i in range(len(fc_channels) - 2)]
-        # the last layer is a linear layer, without batch normalization
-        fc_sequence = fc_sequence + [DenseBlock(fc_channels[-2], fc_channels[-1], 0, activation = None), ]
-        self.fc = nn.ModuleList([nn.Sequential(* (fc_sequence.copy()) ) for _ in range(z_count) ])
-        self.out_channel = fc_channels[-1]
-        self.fc_path = fc_channels
-
-    def __str__(self):
-        _str = ''
-        # print convolution layers
-        _str += 'convolution layers:'
-        for c in self.conv_path[:-1]:
-            _str += '{}->'.format(c)  
-        _str += str(self.conv_path[-1])
-        _str += '\n'
-        ## print fc layer
-        _str = _str + 'Fully-connected layers: '
-        for c in self.fc_path[:-1]:
-            _str += '{}->'.format(c)  
-        _str += str(self.fc_path[-1])
-        _str += '\n'
-        return _str 
-    # input: Nb * Np * d
-    def forward(self, x, t = None):
-        # transfer to Nb * d * Np
-        x = x.transpose(1, 2)
-        B, _, N = x.shape
-        ## point feature
-        pf, _ = self.conv(x, t)
-
-        ## global feature
-        x = F.adaptive_max_pool1d(pf, 1)
-        
-
-        if self.pointwise:
-            x = x.repeat(1, 1, N)
-            x = torch.concat([x, pf], dim=1)
-            x = x.transpose(1, 2)
-        else:
-            x = x.reshape(B, -1)
-
-        ## fully connected layer
-        x = [self.fc[i](x) for i in range(self.z_count)]
-        if self.z_count == 1:
-            x = x[0]
-        return x
-# a very simple decoder
-class PointMambaDecoder(PointNetDecoder):
-    def __init__(self, point_dim=3, point_num = 2048, in_channel = 128, fc_channels = [256], 
-                 activation = 'lrelu', dropout = 0.1, pointwise = False, **kwargs):
-        super().__init__(point_dim, point_num, in_channel, fc_channels, 
-                         activation = activation, dropout = dropout, pointwise=pointwise)
+                local_graph_k=0, 
+                local_feature_channels = [64, 64, 128, 256], 
+                dense_channels = [256, 256],
+                building_block = 'pmamba', 
+                normalization = 'group', num_group = 8, 
+                activation = 'lrelu', dropout = 0.,
+                state_channel = 64, 
+                conv_kernel_size = 4, inner_factor = 2.0,  
+                head_channel = 64,
+                conv_bias=True, bias=False,
+                learnable_init_states = True, chunk_size=256,
+                dt_min=0.001, A_init_range=(1, 16),
+                dt_max=0.1, dt_init_floor=1e-4, 
+                dt_rank = None, dt_scale = 1.0,
+                z_count = 1, pointwise = False, 
+                skip_connection = True,
+                **kwargs):
+        super().__init__(point_dim=point_dim, 
+                local_graph_k=local_graph_k, 
+                local_feature_channels = local_feature_channels, 
+                dense_channels = dense_channels,
+                normalization = normalization,
+                num_group = num_group,
+                activation = activation, dropout = dropout, 
+                z_count = z_count, pointwise = pointwise)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
+
+        self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
+                                        activation=activation, 
+                                        norm = normalization, num_group = num_group, 
+                                        dropout = dropout,
+                                        state_channel = state_channel, 
+                                        conv_kernel_size = conv_kernel_size, 
+                                        inner_factor = inner_factor,  
+                                        head_channel = head_channel,
+                                        conv_bias=conv_bias, bias=bias,
+                                        learnable_init_states = learnable_init_states, 
+                                        chunk_size=chunk_size,
+                                        dt_min=dt_min, A_init_range=A_init_range,
+                                        dt_max=dt_max, dt_init_floor=dt_init_floor, 
+                                        dt_rank = dt_rank, dt_scale = dt_scale,
+                                        skip_connection = skip_connection)
+
+        ### convolution with kernel size = 1
+        # compute point features
+        ## local graph feature
+        if self.local_graph_k > 0:
+            trans_sequence = [LocalGraphLayer(k = self.local_graph_k, 
+                                            in_channel = self.lf_path[i],
+                                            out_channel = self.lf_path[i+1], 
+                                            BuildingBlock = self.BuildingBlock,
+                                            is_seq = True) for i in range(len(self.lf_path) - 2) ]
+        else:    
+            trans_sequence = [self.BuildingBlock(in_channel=self.lf_path[i], 
+                                            out_channel=self.lf_path[i+1]) for i in range(len(self.lf_path) - 2) ]
+            
+        trans_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
+                                        out_channel=self.lf_path[-1]))
+
+        self.lf = nn.ModuleList(trans_sequence)
+
+class PointMambaDecoder(PointDecoder):
+    def __init__(self, point_dim=3, point_num = 2048, 
+                in_channel = 256, dense_channels = [256], 
+                time_channel = 0, building_block = 'pmamba', 
+                normalization = 'group', num_group = 8, 
+                activation = 'lrelu', dropout = 0., 
+                folding_times = 0, 
+                base_shape_config = {},
+                folding_hidden_channels = [512, 512],
+                residual_attention = False,
+                state_channel = 64, 
+                conv_kernel_size = 4, inner_factor = 2.0,  
+                head_channel = 64,
+                conv_bias=True, bias=False,
+                learnable_init_states = True, chunk_size=256,
+                dt_min=0.001, A_init_range=(1, 16),
+                dt_max=0.1, dt_init_floor=1e-4, 
+                dt_rank = None, dt_scale = 1.0,
+                skip_connection = True,
+                pointwise = False, **kwargs):
+        super().__init__(point_dim=point_dim, 
+                point_num = point_num,
+                in_channel = in_channel,
+                dense_channels = dense_channels,
+                normalization = normalization,
+                num_group = num_group,
+                activation = activation, dropout = dropout, 
+                folding_times = folding_times,
+                base_shape_config = base_shape_config,
+                pointwise = pointwise)
+        if len(kwargs) > 0:
+           logger.debug("redundant parameters:{}".format(kwargs))
+        
+        if self.folding_times > 0:
+            self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
+                                            activation=activation, 
+                                            norm = normalization, 
+                                            num_group = 1, 
+                                            dropout = dropout,
+                                            state_channel = state_channel, 
+                                            conv_kernel_size = conv_kernel_size, 
+                                            inner_factor = inner_factor,  
+                                            head_channel = head_channel,
+                                            conv_bias=conv_bias, bias=bias,
+                                            learnable_init_states = learnable_init_states, 
+                                            chunk_size=chunk_size,
+                                            dt_min=dt_min, A_init_range=A_init_range,
+                                            dt_max=dt_max, dt_init_floor=dt_init_floor, 
+                                            dt_rank = dt_rank, dt_scale = dt_scale,
+                                            skip_connection = skip_connection)
+            if self.folding_times < 1:
+                logger.warning('Folding times should be larger than 1.')
+            folding_channels = [dense_channels[-1] + 2, ] + [ dense_channels[-1] + point_dim] * (folding_times - 1)
+            folding_sequence = [FoldingLayer(BuildingBlock = self.BuildingBlock,
+                                in_channel = fc, out_channel = point_dim,
+                                hidden_channels = folding_hidden_channels) for fc in folding_channels]
+            self.fold = SequentialT(*folding_sequence)

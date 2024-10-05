@@ -10,7 +10,7 @@ model:
     building_block: single
     ## the value can be list or int
     image_size: 32
-    fc_channels: 128
+    dense_channels: 128
   ### loss function
   reconstruction_losses: 
     name: MSE
