@@ -115,7 +115,7 @@ def main():
     scheduler_config = train_config.get('lr_scheduler', None)
     eval_batch_num = train_config.get('eval_batch_num', 8)
     write_sample_num= train_config.get('write_sample_num', 16)
-
+    ignore_mismatched_keys = train_config.get('ignore_mismatched_keys', [])
 
     ## if scheduler is OneCycleLR, set as True
     ## otherwise, scheduler is called after a training epoch
@@ -151,11 +151,12 @@ def main():
 
     if pretrained is not None:
         logger.info(f'Using pre-trained model: {pretrained}')
-        load_checkpoint(pretrained, model)
+        load_checkpoint(pretrained, model, ignore_mismatched_keys = ignore_mismatched_keys)
 
     if resume is not None:
         logger.info(f'Resume from last pth: {resume}')
-        state = load_checkpoint(resume, model, optimizer=optimizer, scheduler=lr_scheduler)
+        state = load_checkpoint(resume, model, optimizer=optimizer, scheduler=lr_scheduler, 
+                            ignore_mismatched_keys = ignore_mismatched_keys)
         if state is not None:
             best_loss = state['best_loss']
             logger.info(f'previous best loss: {best_loss}')

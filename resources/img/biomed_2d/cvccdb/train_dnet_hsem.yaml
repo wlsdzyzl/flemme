@@ -2,10 +2,10 @@
 mode: train
 model:
   # can be AE, VAE and DDPM
-  name: SeM
+  name: HSeM
   # encoder config
   encoder:
-    name: UNet
+    name: DNet
     image_size: [320, 256]
     in_channel: 3
     out_channel: 1
@@ -55,7 +55,7 @@ val_loader:
       ## the value must be list
       size: [320, 256]
     - name: ToTensor
-check_point_dir: path/to/checkpoint/CVC-ClinicDB/UNet
+check_point_dir: path/to/checkpoint/CVC-ClinicDB/DNet
 
 ### parameter for optimizer
 optimizer:

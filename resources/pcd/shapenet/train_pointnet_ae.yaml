@@ -11,13 +11,18 @@ model:
     point_num: 1024
     building_block: dense
     local_graph_k: 20
-    folding_times: 2
     local_feature_channels: [64, 64, 128, 256, 512]
     dense_channels: [1024]
     decoder_dense_channels: [512, 256]
     activation: lrelu
     normalization: group
     pointwise: False
+    ## for decoder
+    # folding_times: 2
+    # base_shape: 
+    #   type: cylinderr
+      # width: 1.0
+      # height: 1.0
   reconstruction_losses: 
     - name: EMD
       eps: 0.005
@@ -39,7 +44,7 @@ loader:
       num: 1024
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet/PointNet_AE_EMD_LOCALK_FOLDING_RANDORDER
+check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet/PointNet_AE_EMD_LOCAL_K
 ### parameter for optimizer
 optimizer:
   name: Adam
@@ -50,6 +55,6 @@ lr_scheduler:
   name: LinearLR
   start_factor: 1.0
   end_factor: 0.01
-max_epoch: 500
+max_epoch: 250
 write_after_iters: 20
 save_after_epochs: 10

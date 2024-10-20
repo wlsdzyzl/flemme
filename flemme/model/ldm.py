@@ -95,7 +95,8 @@ class LatentDiffusionProbabilistic(DDPM):
         ae_res = self.ae_model(x0, c = ac)
         loss = super().compute_loss(ae_res['latent'], c = ec)[0]
         ### ae loss, althrough ae_model can be freezed.
-        loss = loss + self.ae_model.compute_loss(x0, res = ae_res)[0]
+        if not self.freezed_ae:
+            loss = loss + self.ae_model.compute_loss(x0, res = ae_res)[0]
         return loss, None
     
 ### almost the same with ldpm
@@ -173,5 +174,6 @@ class LatentDiffusionImplicit(DDIM):
         ae_res = self.ae_model(x0, c = ac)
         loss = super().compute_loss(ae_res['latent'], c = ec)[0]
         ### ae loss, althrough ae_model can be freezed.
-        loss = loss + self.ae_model.compute_loss(x0, res = ae_res)[0]
+        if not self.freezed_ae:
+            loss = loss + self.ae_model.compute_loss(x0, res = ae_res)[0]
         return loss, None

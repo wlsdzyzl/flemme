@@ -7,7 +7,9 @@ from flemme.logger import get_logger
 logger = get_logger("model.encoder.pointmamba")
         
 class PointMambaEncoder(PointEncoder):
-    def __init__(self, point_dim=3, time_channel = 0, 
+    def __init__(self, point_dim=3, 
+                projection_channel = 64,
+                time_channel = 0, 
                 local_graph_k=0, 
                 local_feature_channels = [64, 64, 128, 256], 
                 dense_channels = [256, 256],
@@ -26,6 +28,7 @@ class PointMambaEncoder(PointEncoder):
                 skip_connection = True,
                 **kwargs):
         super().__init__(point_dim=point_dim, 
+                projection_channel = projection_channel,
                 local_graph_k=local_graph_k, 
                 local_feature_channels = local_feature_channels, 
                 dense_channels = dense_channels,

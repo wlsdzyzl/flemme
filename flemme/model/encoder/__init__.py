@@ -2,12 +2,14 @@ from flemme.config import module_config
 
 from .cnn import *
 from .unet import *
+from .dnet import *
 from .pointwise import *
 from flemme.utils import DataForm
 from flemme.logger import get_logger
 
 supported_encoders = {'CNN':(CNNEncoder, CNNDecoder), 
                       'UNet':(UNetEncoder, UNetDecoder), 
+                      'DNet': (DNetEncoder, DNetDecoder),
                       'PointWise':(PointWiseEncoder, PointWiseDecoder)}
 if module_config['transformer']:
     from .vit import *
@@ -32,6 +34,7 @@ if module_config['point-cloud']:
 
 supported_buildingblocks_for_encoder = {'CNN': ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv'],
                         'UNet': ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv'],
+                        'DNet': ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv'],
                         'ViT': ['vit'],
                         'ViTU': ['vit'],
                         'Swin': ['swin', 'double_swin', 'res_swin',],
@@ -58,7 +61,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         eai_channel = encoder_config.pop('encoder_additional_in_channel', 0)
         encoder, decoder = None, None
         ### construct encoder and decoder
-        if encoder_name in ('CNN', 'UNet', 'ViT', 'ViTU', 'Swin', 'VMamba', 'SwinU', 'VMambaU'):
+        if encoder_name in ('CNN', 'UNet', 'DNet', 'ViT', 'ViTU', 'Swin', 'VMamba', 'SwinU', 'VMambaU'):
             data_form = DataForm.IMG
         elif encoder_name in ('PointNet', 'PointTrans', 'PointMamba'):
             data_form = DataForm.PCD
@@ -75,7 +78,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         else:
             raise RuntimeError(f'Unsupported encoder: {encoder_name}')
         if not building_block in supported_buildingblocks_for_encoder[encoder_name]:
-            logger.error(f'Unsupported building block for encoder {encoder_name}, please use one of {supported_buildingblocks_for_encoder[encoder_name]}.')
+            logger.error(f'Unsupported building block \'{building_block}\' for encoder {encoder_name}, please use one of {supported_buildingblocks_for_encoder[encoder_name]}.')
             exit(1)
         ### FC channels
         dense_channels = encoder_config.pop('dense_channels', [])
@@ -136,17 +139,21 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             assert len(up_channels) == len(down_channels), \
                 "The up-sampling in encoder is not consistent with the down-sampling in decoder!" 
             
-            if 'UNet' in encoder_name or encoder_name[-1] == 'U':
+            if 'UNet' in encoder_name or encoder_name[-1] == 'U' or \
+                    'DNet' in encoder_name or encoder_name[-1] == 'D':
                 assert len(down_channels) >= 2, \
                     "the number of down-sampling layers for U-Net should be larger than 1"
-                assert len(middle_channels) > 0 and middle_channels[-1] == 2 * down_channels[-1],\
-                    "UNet follows a special structure, the last value of middle channels should be twice of the last value of down channels."
-            
+                assert sum( d != u for d, u in zip(down_channels, up_channels[::-1])) == 0, \
+                    'For DNet and UNet, up_channels should be a reversed down_channels'
+                if 'UNet' in encoder_name or encoder_name[-1] == 'U':
+                    assert len(middle_channels) > 0 and middle_channels[-1] == 2 * down_channels[-1],\
+                        "UNet follows a special structure, the last value of middle channels should be twice of the last value of down channels."
+                
             if len(dense_channels) == 0:
                 logger.debug('Current model doesn\'t contain any fully connected (dense) layers')
 
             ### convolution based mmodel
-            if encoder_name in ['UNet', 'CNN']:
+            if encoder_name in ['UNet', 'DNet', 'CNN']:
                 down_attens = encoder_config.pop('down_attens', None)
                 if not isinstance(down_attens, list): 
                     down_attens = [down_attens for _ in down_channels] 
@@ -269,6 +276,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             point_num = encoder_config.pop('point_num', 2048)
             if not encoder_name == 'PointWise':
                 # encoder
+                projection_channel = encoder_config.pop('projection_channel', 64)
                 local_feature_channels = encoder_config.pop('local_feature_channels', [64, 128, 256])  
                 assert isinstance(local_feature_channels, list), 'feature channels should be a list.'
                 ## 0: without using local graph
@@ -278,6 +286,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 base_shape_config = encoder_config.pop('base_shape', {})
                 if return_encoder:
                     encoder = Encoder(point_dim=in_channel + eai_channel, 
+                                                projection_channel = projection_channel,
                                                 time_channel = time_channel,
                                                 local_graph_k = local_graph_k,
                                                 local_feature_channels=local_feature_channels, 

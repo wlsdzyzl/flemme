@@ -479,7 +479,7 @@ class SelfAttentionBlock(AttentionBlock):
         * `d_k` is the number of dimensions in each head
         * `n_groups` is the number of groups for [group normalization](../../normalization/group_norm/index.html)
         """
-        self.d_k = d_k or int(in_channel / num_heads)
+        self.d_k = d_k or int(in_channel / num_heads) or 1
         scale = qk_scale or self.d_k ** -0.5
         super().__init__(scale=scale, atten_dropout=atten_dropout)
 

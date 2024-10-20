@@ -8,6 +8,7 @@ from flemme.logger import get_logger
 logger = get_logger("model.encoder.pointnet")
 class PointEncoder(nn.Module):
     def __init__(self, point_dim=3, 
+                 projection_channel = 64,
                  local_graph_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
                  dense_channels = [256, 256],
@@ -25,6 +26,8 @@ class PointEncoder(nn.Module):
         self.pointwise = pointwise
         self.normalization = normalization
         self.num_group = num_group
+        self.point_proj = nn.Linear(point_dim, projection_channel)
+        self.projection_channel = projection_channel
         ## fully connected layers
         # z_count = 2 usually means we compute mean and variance.
         # compute embedding from global feature
@@ -41,7 +44,7 @@ class PointEncoder(nn.Module):
         self.dense = nn.ModuleList([nn.Sequential(* (dense_sequence.copy()) ) for _ in range(z_count) ])
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
-        self.lf_path = [point_dim,] + local_feature_channels
+        self.lf_path = [projection_channel,] + local_feature_channels
         self.lf = None
 
     def forward(self, x, t = None):
@@ -50,6 +53,7 @@ class PointEncoder(nn.Module):
         B = x.shape[0]
         # transfer to Nb * d * Np
         res = []
+        x = self.point_proj(x)
         for lf in self.lf[:-1]:
             x = lf(x, t)
             res.append(x)
@@ -74,7 +78,7 @@ class PointEncoder(nn.Module):
         return x
 
     def __str__(self):
-        _str = ''
+        _str = f'projection layer: {self.point_dim}->{self.projection_channel}\n'
         _str += 'Local feature extraction layers:'
         for c in self.lf_path[:-1]:
             _str += '{}->'.format(c)  
@@ -89,7 +93,9 @@ class PointEncoder(nn.Module):
         return _str 
 
 class PointNetEncoder(PointEncoder):
-    def __init__(self, point_dim=3, time_channel = 0, 
+    def __init__(self, point_dim=3, 
+                 projection_channel = 64,
+                 time_channel = 0, 
                  local_graph_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
                  dense_channels = [256, 256],
@@ -98,6 +104,7 @@ class PointNetEncoder(PointEncoder):
                  activation = 'lrelu', dropout = 0., 
                  z_count = 1, pointwise = False, **kwargs):
         super().__init__(point_dim=point_dim, 
+                projection_channel = projection_channel,
                 local_graph_k=local_graph_k, 
                 local_feature_channels = local_feature_channels, 
                 dense_channels = dense_channels,
@@ -123,7 +130,7 @@ class PointNetEncoder(PointEncoder):
                                             out_channel = self.lf_path[i+1], 
                                             BuildingBlock = self.BuildingBlock,
                                             is_seq = False) for i in range(len(self.lf_path) - 2) ]
-        ## lf, similar to pointnet
+        ## local feature, similar to pointnet
         else:    
             lf_sequence = [self.BuildingBlock(in_channel=self.lf_path[i], 
                                             out_channel=self.lf_path[i+1]) for i in range(len(self.lf_path) - 2) ]
@@ -162,11 +169,10 @@ class PointDecoder(nn.Module):
             self.fold = None
             base_shape = base_shape_config.get('type', 'grid')
             logger.info(f'using {base_shape} as base shape for folding.')
-            
+
             if base_shape == 'grid':
                 grid_len = int(point_num**0.5)
                 self.base_shape_dim = 2
-                self.actual_point_num = grid_len * grid_len
                 # Sample the grids in 2D space
                 width = base_shape_config.get('width', 1.0)
                 height = base_shape_config.get('height', 1.0)
@@ -175,12 +181,12 @@ class PointDecoder(nn.Module):
                 np_grid = np.stack(np.meshgrid(xx, yy), axis=-1)   # (45, 45, 2)
                 self.base_shape = torch.Tensor(np_grid).view(-1, 2)
 
-            else base_shape == 'cylinder':
+            elif base_shape == 'cylinder':
                 self.base_shape_dim = 3
                 c_len = int(point_num**0.5) * 2
                 c_num = int(point_num // c_len)
-                self.actual_point_num = c_num * c_len
                 height = base_shape_config.get('height', 1.6)
+                height_axis = base_shape_config.get('height_axis', 'z')
                 radius = base_shape_config.get('radius', 0.15)
                 # c_len 
                 z = np.linspace(-height / 2, height / 2, c_len, dtype=np.float32)
@@ -191,10 +197,19 @@ class PointDecoder(nn.Module):
                 xx = np.tile(x, c_len)
                 yy = np.tile(y, c_len)
                 zz = z.repeat(c_num)
-                np_cylinder = np.stack([xx, yy, zz], axis=-1)
+                if height_axis == 'z':
+                    np_cylinder = np.stack([xx, yy, zz], axis=-1)
+                elif height_axis == 'x':
+                    np_cylinder = np.stack([zz, xx, yy], axis=-1)
+                elif height_axis == 'y':
+                    np_cylinder = np.stack([xx, zz, yy], axis=-1)
+                else:
+                    logger.error('Height axis should be one of [x, y, z].')
+                    exit(1)
                 self.base_shape = torch.Tensor(np_cylinder)
             else:
-                raise NotImplementedError
+                logger.error('Unsupported base shape.')
+                exit(1)
         else:
             final_channel = point_dim * point_num if not self.pointwise else self.point_dim
             dense_sequence.append(DenseBlock(dense_channels[-1], final_channel, 
@@ -208,9 +223,11 @@ class PointDecoder(nn.Module):
         for c in self.dense_path[:-1]:
             _str += '{}->'.format(c)  
         _str += str(self.dense_path[-1])
-        _str += '\n'
         if self.folding_times > 0:
-            _str+= f'Fold for {self.folding_times}, 2 ->{self.point_dim}'
+            _str+= f'\nFold for {self.folding_times}, 2 ->{self.point_dim}'
+        elif self.dense_path[-1] != self.point_dim:
+            _str += f' ({self.point_num} * {self.point_dim})'
+        _str += '\n'
         return _str 
     def forward(self, x, t = None):
         x = self.dense(x)
@@ -221,7 +238,7 @@ class PointDecoder(nn.Module):
             # (grid_len * grid_len, 2) -> (B, grid_len * grid_len, 2) 
             shape = shape.unsqueeze(0).repeat(x.shape[0], 1, 1)
             # (B, D) -> (B, grid_len * grid_len, D)
-            x = x.unsqueeze(1).repeat(1, self.actual_point_num, 1, ) 
+            x = x.unsqueeze(1).repeat(1, shape.shape[1], 1) 
             x = self.fold(shape, x, t)[0]
             # x = self.final(x)
         elif not self.pointwise:

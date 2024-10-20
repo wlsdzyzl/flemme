@@ -467,6 +467,8 @@ if module_config['point-cloud']:
             logger.warning('unknow file format, save as ply file.')
             save_ply(filename+'.ply', x)
 
+    ### related to point cloud processing.
+
     ##### generate batch random rotation
     def _copysign(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
         """
@@ -560,10 +562,16 @@ if module_config['point-cloud']:
         ### x: (B, N, 3)
         ### rot: (B, 3, 3)
         ### trans: (B, 3)
+        batch_vec = False
+        if x.ndim == 2:
+            x = x.unsqueeze(1)
+            batch_vec = True
         if rotation is not None:
-            x = torch.bmm(x, rotation)
+            x = torch.bmm(x, rotation.transpose(1, 2))
         if translation is not None:
             x = x + translation[:, None, :]
+        if batch_vec:
+            x = x[:, 0, :]
         return x
 
     def batch_random_rotate(x):
@@ -573,3 +581,54 @@ if module_config['point-cloud']:
         ## batch matrix mulitplation
         return batch_transform(x, rotation=rot_mat)
 
+    def batch_normalize_vector(v):
+        return v / torch.norm(v, dim=-1, keepdim=True)
+
+    def rotation_from_vectors(vec1, vec2):
+        """ Find the rotation matrix that aligns vec1 to vec2
+        :param vec1: A 3d "source" vector
+        :param vec2: A 3d "destination" vector
+        :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
+        """
+        a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
+        
+        v = np.cross(a, b)
+        
+        c = np.dot(a, b)
+        
+        s = np.linalg.norm(v)
+        
+        kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+        rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
+        return rotation_matrix
+
+
+    def batch_rotations_from_vectors(bvec1, bvec2):
+        """ Find the rotation matrix that aligns a batch of vectors bvec1 to another batch of vectors bvec2
+        :param bvec1: 3d "source" batch of vectors
+        :param bvec2: 3d "destination" batch of vectors
+        :return mat: A transform matrix (3x3) which when applied to bvec1, aligns it with bvec2.
+        """
+        assert bvec1.shape[0] == bvec2.shape[0], 'A and B should has the same sizes'
+        # a, normalized bvec, B * 3
+        a = batch_normalize_vector(bvec1)
+        b = batch_normalize_vector(bvec2)
+        
+        # v: B * 3
+        v = torch.linalg.cross(a, b)
+        
+        # c: B * 1
+        c = torch.einsum('bi,bi->b', a, b).unsqueeze(1).unsqueeze(1)
+        # s: B * 1
+        s = torch.norm(v, dim=-1, keepdim=True).unsqueeze(1)
+        # kmat: B * 3 * 3
+        # kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+        kmat = torch.zeros(a.shape[0], 3, 3)
+        kmat[:, 0, 1] = -v[:, 2]
+        kmat[:, 0, 2] = v[:, 1]
+        kmat[:, 1, 0] = v[:, 2]
+        kmat[:, 1, 2] = -v[:, 0]
+        kmat[:, 2, 0] = -v[:, 1]
+        kmat[:, 2, 1] = v[:, 0]
+        rotations = torch.eye(3) + kmat + torch.bmm(kmat, kmat) * ((1 - c) / (s ** 2))
+        return rotations

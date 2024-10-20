@@ -1,6 +1,6 @@
 # Flemme: A **FLE**xible and **M**odular Learning Platform for **ME**dical Images
 ## Overview
-Flemme is a flexible and modular learning platform for medical images. In Flemme, we separate encoders from the model architectures, enabling fast model construction via different combinations for medical image segmentation, reconstruction and generation. In addition, a general hierarchical architecture with a pyramid loss is proposed for vertical feature refinement and integration.
+Flemme is a flexible and modular learning platform for medical images. In Flemme, we separate encoders from the model architectures, enabling fast model construction via different combinations for medical image segmentation, reconstruction and generation. In addition, a general hierarchical architecture with a pyramid loss is proposed for vertical feature refinement and integration. Please see [documentation of Flemme](https://flemme-docs.readthedocs.io/en/latest/) for more information.
 
 We are also working on Flemme to support point cloud modeling.
 
@@ -80,7 +80,7 @@ test_flemme --config path/to/test_config.yaml
 ```
 **Supported encoders**: 
 - [CNN, UNet, ViT, ViTU, Swin, SwinU, VMamba, VMambaU] for 2D/3D image 
-- [PointWise, PointNet, DGCNN] for point cloud.
+- [PointWise, PointNet, PointTrans, PointMamba] for point cloud.
 
 *A encoder named as XXU indicates it's a U-shaped encoder.*
 
@@ -95,9 +95,10 @@ test_flemme --config path/to/test_config.yaml
 
 *SDM refers to supervised diffusion model (use input as a input condition of ddpm).*
 
-*LDM refers to latent diffusion model, constructed with a auto-encoder/ vae and ddpm.*
+*LDM refers to latent diffusion model, constructed with a auto-encoder/vae and ddpm.*
 
 A detailed instruction of supported encoders, context embeddings, model architectures and training process can refer to [documentation of flemme](https://flemme-docs.readthedocs.io/en/latest/).
+
 ## Results
 
 For segmentation, we evaluate our methods on six public datasets: **CVC-ClinicDB, Echonet, ISIC, TN3K, BraTS21 (3D), ImageCAS (3D)**.
@@ -105,10 +106,14 @@ For segmentation, we evaluate our methods on six public datasets: **CVC-ClinicDB
 For reconstruction, we evaluate our methods on **FastMRI**.
 
 Configuration files are in `resources/img/biomed_2d` and `resources/img/biomed_3d`.
+
 ### Segmentation results
+
 ![](./images/seg_res.png)
 ### Reconstruction & Generation results
+
 ![](./images/recon_res.png)
+
 ## Play with Flemme
 #### Toy Example for Diffusion model
 Configuration file: `resources/toy_ddpm.yaml`

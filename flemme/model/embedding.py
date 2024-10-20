@@ -17,6 +17,7 @@ def get_embedding(emb_config):
     emb_name = emb_config.get('name')
 
     ### wait for image embedding and point embedding.
+    # print(emb_name, supported_encoders)
     if emb_name in supported_encoders:
         logger.info('Using encoder\'{}\' to compute embedding'.format(emb_name))    
         return create_encoder(emb_config, return_decoder=False)[0]
@@ -55,7 +56,6 @@ def add_embedding(x, c_emb, channel_dim = 1):
     if isinstance(x, tuple) or isinstance(x, list):
         ### return the tuple
         return type(x)((add_embedding(x[0], c_emb, channel_dim), ) )  + x[1:]
-    # print(type(x), type(c_emb))
     assert c_emb.shape[0] == x.shape[0], \
         "Batch size inconsistency."
     assert c_emb.shape[channel_dim] == x.shape[channel_dim], \

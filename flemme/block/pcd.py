@@ -269,17 +269,17 @@ class FoldingLayer(nn.Module):
         self.layers = SequentialT(*module_sequence)
         self.final = nn.Linear(in_channel, out_channel)
     ## codewords
-    def forward(self, grids, codewords, t = None):
+    def forward(self, shapes, codewords, t = None):
         """
         Parameters
         ----------
             codewords = B * N * D
-            grids: reshaped 2D grids or intermediate reconstructed point clouds
+            shapes: shapes or intermediate reconstructed point clouds
         """
-        assert grids.shape[-1] + codewords.shape[-1] == self.in_channel,\
-            f"channel of grid + channel of codewords should be equal to the channel of input, we get: {grids.shape[-1]} {codewords.shape[-1]} and {self.in_channel}."
+        assert shapes.shape[-1] + codewords.shape[-1] == self.in_channel,\
+            f"channel of grid + channel of codewords should be equal to the channel of input, we get: {shapes.shape[-1]} {codewords.shape[-1]} and {self.in_channel}."
         # concatenate
-        x = torch.cat([grids, codewords], dim=-1)
+        x = torch.cat([shapes, codewords], dim=-1)
         x, _ = self.layers(x, t)
         x = self.final(x)
         return x
@@ -311,15 +311,15 @@ class FoldingLayer(nn.Module):
         
 #         self.layers = nn.Sequential(*layers)
 
-#     def forward(self, grids, codewords, t = None):
+#     def forward(self, shapes, codewords, t = None):
 #         """
 #         Parameters
 #         ----------
-#             grids: reshaped 2D grids or intermediam reconstructed point clouds
+#             shapes: reshaped 2D shapes or intermediam reconstructed point clouds
 #         """
 #         # concatenate
-#         # print(grids.shape, codewords.shape)
-#         x = torch.cat([grids, codewords], dim=-1)
+#         # print(shapes.shape, codewords.shape)
+#         x = torch.cat([shapes, codewords], dim=-1)
 #         # shared mlp
 #         x = self.layers(x)
 #         return x

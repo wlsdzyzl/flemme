@@ -264,11 +264,19 @@ def save_checkpoint(ckp_dir, model, optimizer = None,
     if is_best_score:
         shutil.copyfile(path, "{}/ckp_best_score.pth".format(ckp_dir))
     
-def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None):
+def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None, ignore_mismatched_keys = []):
     logger.info('load model from {}'.format(ckp_path))
     state_dict = torch.load(ckp_path, map_location='cpu')
     if 'trained_model' in state_dict:
-        model.load_state_dict(state_dict.pop('trained_model'))
+        trained_model_state_dict = state_dict.pop('trained_model')
+        if len(ignore_mismatched_keys) > 0:
+            logger.info(f'ignore keys while loading model: {ignore_mismatched_keys}')
+            model_state_dict = model.state_dict()
+            for k in trained_model_state_dict:
+                ignored = sum([ imk in k for imk in ignore_mismatched_keys]) > 0
+                if ignored:
+                    trained_model_state_dict[k] = model_state_dict[k]
+        model.load_state_dict(trained_model_state_dict)
         if optimizer is not None:
             optimizer.load_state_dict(state_dict.pop('optimizer'))
         if scheduler is not None:

@@ -51,8 +51,11 @@ def main():
             logger.info('Conditional model, we will using label as condition.')
         model_path = test_config.get('model_path', None)
         assert model_path is not None, "Model path is not specified."
+
+        ignore_mismatched_keys = train_config.get('ignore_mismatched_keys', [])
         ## load check point
-        load_checkpoint(model_path, model)
+        load_checkpoint(model_path, model, ignore_mismatched_keys = ignore_mismatched_keys)
+
         model = model.to(device)
         ## turn to evaluation
         model.eval()

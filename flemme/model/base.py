@@ -68,9 +68,12 @@ class BaseModel(nn.Module):
         if de_emb_config is not None:
             logger.info("Create conditional embedding for decoder.")
             ### like an auto-regressive model
-            if de_emb_config == 'using_encoder':
-                logger.info('Using encoder to compute condition embedding for decoder, the condition should have the same shape as input.')
-                self.de_cemb = self.encoder
+            if de_emb_config == 'same_as_encoder':
+                logger.info('Using encoder\'s condition embedding to compute condition embedding for decoder.')
+                if not hasattr(self, 'en_cemb'):
+                    logger.error('This is no condition embedding for encoder.')
+                    exit(1)
+                self.de_cemb = self.en_cemb
             else:
                 self.de_cemb = get_embedding(de_emb_config)
 
