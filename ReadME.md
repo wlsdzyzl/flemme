@@ -43,7 +43,7 @@ cd flemme
 python setup.py install
 ```
 ### Usage
-Creating a deep learning model with Flemme is quite straightforward; you don't need to write any code. All things can be down through a `yaml` config file. An example of constructing a segmentation model with UNet encoder uisng ResConvBlock looks like:
+Creating a deep learning model with Flemme is quite straightforward; you don't need to write any code. All things can be down through a `yaml` config file. An example of constructing a segmentation model with UNet encoder using ResConvBlock looks like:
 ```yaml
 model:
   ### architecture
