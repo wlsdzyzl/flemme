@@ -102,6 +102,7 @@ class UNetDecoder(CNNDecoder):
         return _str 
     def forward(self, x, t = None):
         x, x_features = x
+        x_features = x_features[::-1]
         ## x, t
         res = []
         for i, (up, u_conv) in enumerate(zip(self.up, self.u_conv)):
@@ -125,7 +126,7 @@ if module_config['transformer']:
                     down_channels = [128, 256], middle_channels = [256, 256], 
                     down_num_heads = [3, 3], middle_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     abs_pos_embedding = False,
                     **kwargs):
@@ -150,7 +151,7 @@ if module_config['transformer']:
                     up_channels = [128, 64], final_channels = [64, 64], 
                     up_num_heads = [3, 3], final_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     return_features = False, **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
@@ -181,6 +182,7 @@ if module_config['transformer']:
         def forward(self, x, t = None):
             
             x, x_features = x
+            x_features = x_features[::-1]
             ## x, t
             res = []
             for i, (up, u_trans) in enumerate(zip(self.up, self.u_trans)):
@@ -201,7 +203,7 @@ if module_config['transformer']:
                     down_channels = [128, 256], middle_channels = [256, 256], 
                     down_num_heads = [3, 3], middle_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     abs_pos_embedding = False,
                     **kwargs):
@@ -227,7 +229,7 @@ if module_config['transformer']:
                     up_channels = [128, 64], final_channels = [64, 64], 
                     up_num_heads = [3, 3], final_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     return_features = False, **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
@@ -260,6 +262,7 @@ if module_config['transformer']:
                                                             ) for i in range(self.u_depth) ])
         def forward(self, x, t = None):
             x, x_features = x
+            x_features = x_features[::-1]
             ## x, t
             res = []
             for i, (up, u_trans) in enumerate(zip(self.up, self.u_trans)):
@@ -287,7 +290,7 @@ if module_config['mamba']:
                     dt_init_floor=1e-4, 
                     conv_bias=True, bias=False,             
                     dropout=0., drop_path=0.1, 
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     scan_mode = 'single', flip_scan = True,
                     abs_pos_embedding = False,
@@ -337,7 +340,7 @@ if module_config['mamba']:
                     head_channel = 64, 
                     learnable_init_states = True, 
                     chunk_size=256,
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     scan_mode = 'single', flip_scan = True, 
                     return_features = False, **kwargs):
@@ -379,6 +382,7 @@ if module_config['mamba']:
 
         def forward(self, x, t = None):
             x, x_features = x
+            x_features = x_features[::-1]
             ## x, t
             res = []
             for i, (up, u_ssm) in enumerate(zip(self.up, self.u_ssm)):

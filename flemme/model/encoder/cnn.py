@@ -136,7 +136,7 @@ class CNNEncoder(nn.Module):
         if self.d_depth > 0:
             for d_conv, down in zip(self.d_conv, self.down):
                 x = d_conv(x, t)
-                res = [x,] + res
+                res = res + [x,]
                 x = down(x)
         
         x, _ = self.middle(x, t)

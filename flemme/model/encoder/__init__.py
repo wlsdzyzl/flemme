@@ -18,10 +18,13 @@ if module_config['transformer']:
     supported_encoders['Swin'] = (SwinEncoder, SwinDecoder)
     supported_encoders['ViTU'] = (ViTUNetEncoder, ViTUNetDecoder)
     supported_encoders['SwinU'] = (SwinUNetEncoder, SwinUNetDecoder)
+    supported_encoders['ViTD'] = (ViTDNetEncoder, ViTDNetDecoder)
+    supported_encoders['SwinD'] = (SwinDNetEncoder, SwinDNetDecoder)
 if module_config['mamba']:
     from .vmamba import *
     supported_encoders['VMamba'] = (VMambaEncoder, VMambaDecoder)
     supported_encoders['VMambaU'] = (VMambaUNetEncoder, VMambaUNetDecoder)
+    supported_encoders['VMambaD'] = (VMambaDNetEncoder, VMambaDNetDecoder)
 if module_config['point-cloud']:
     from .pointnet import *
     from .pointtrans import *
@@ -37,10 +40,13 @@ supported_buildingblocks_for_encoder = {'CNN': ['single', 'conv', 'double', 'dou
                         'DNet': ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv'],
                         'ViT': ['vit'],
                         'ViTU': ['vit'],
+                        'ViTD': ['vit'],
                         'Swin': ['swin', 'double_swin', 'res_swin',],
                         'SwinU': ['swin', 'double_swin', 'res_swin',],
+                        'SwinD': ['swin', 'double_swin', 'res_swin',],
                         'VMamba': ['vmamba', 'double_vmamba', 'res_vmamba', 'vmamba2', 'double_vmamba2', 'res_vmamba2'],
                         'VMambaU': ['vmamba', 'double_vmamba', 'res_vmamba', 'vmamba2', 'double_vmamba2', 'res_vmamba2'],
+                        'VMambaD': ['vmamba', 'double_vmamba', 'res_vmamba', 'vmamba2', 'double_vmamba2', 'res_vmamba2'],
                         'PointWise': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
                         'PointNet': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
                         'PointTrans': ['pct_sa', 'pct_oa'],
@@ -61,7 +67,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         eai_channel = encoder_config.pop('encoder_additional_in_channel', 0)
         encoder, decoder = None, None
         ### construct encoder and decoder
-        if encoder_name in ('CNN', 'UNet', 'DNet', 'ViT', 'ViTU', 'Swin', 'VMamba', 'SwinU', 'VMambaU'):
+        if encoder_name in ('CNN', 'UNet', 'DNet', 'ViT', 'ViTU', 'ViTD', 'Swin', 'SwinU', 'SwinD', 'VMamba',  'VMambaU', 'VMambaD'):
             data_form = DataForm.IMG
         elif encoder_name in ('PointNet', 'PointTrans', 'PointMamba'):
             data_form = DataForm.PCD
@@ -201,7 +207,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                 final_attens=final_attens,
                                                 building_block=building_block, 
                                                 **encoder_config)
-            elif encoder_name in ['ViT', 'ViTU', 'Swin', 'SwinU']:
+            elif encoder_name in ['ViT', 'ViTU', 'ViTD', 'Swin', 'SwinU', 'SwinD']:
 
                 down_num_heads = encoder_config.pop('down_num_heads', 3)
                 if not isinstance(down_num_heads, list): 
@@ -243,7 +249,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                     final_num_heads = final_num_heads,
                                     building_block=building_block,
                                     **encoder_config)
-            elif encoder_name in ['VMamba', 'VMambaU']:
+            elif encoder_name in ['VMamba', 'VMambaU', 'VMambaD']:
                 if return_encoder:
                     encoder = Encoder(image_size = image_size, 
                                 image_channel = in_channel + eai_channel, 

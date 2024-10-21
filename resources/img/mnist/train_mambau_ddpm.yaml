@@ -15,7 +15,8 @@ model:
       patch_size: 1
       down_channels: [32, 64]
       middle_channels: [128, 128]
-      building_block: vmamba2
+      building_block: vmamba
+    normalization: layer2
       scan_mode: single
       flip_scan: false
       abs_pos_embedding: false

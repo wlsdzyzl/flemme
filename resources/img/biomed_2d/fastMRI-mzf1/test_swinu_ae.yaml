@@ -15,6 +15,7 @@ model:
     down_channels: [64, 128, 256]
     middle_channels: [512, 512]
     building_block: swin
+    normalization: layer
     abs_pos_embedding: false
     window_size: 10
   ### loss function

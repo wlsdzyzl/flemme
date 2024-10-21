@@ -13,6 +13,7 @@ model:
     middle_channels: [32, 32]
     # up_channels: [16, 8]
     building_block: swin
+    normalization: layer
     dense_channels: [128]
     abs_pos_embedding: false
     # decoder_dense_channels: [64, 32]

@@ -43,7 +43,6 @@ class DNetEncoder(CNNEncoder):
                                                         dim=self.dim, in_channel=down_channels[i] if i < 2 else sum(down_channels[1:i+1]), 
                                                         out_channel=down_channels[i+1], 
                                                         atten=down_attens[i]) for i in range(len(down_channels) - 1) ])
-        self.down_path = [self.image_channel, ] + down_channels
 
         middle_channels = [sum(down_channels[1:]) if len(down_channels) >= 2 else down_channels[-1], ] + middle_channels 
         module_sequence = [MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
@@ -52,7 +51,6 @@ class DNetEncoder(CNNEncoder):
                                           atten = middle_attens[i]) for i in range(len(middle_channels) - 1)]
         
         self.middle = SequentialT(*module_sequence)
-        self.middle_path = middle_channels
 
         ## down sample layers for dense connections
         self.down_for_dense = nn.ModuleList([
@@ -63,23 +61,6 @@ class DNetEncoder(CNNEncoder):
         self.down_for_dense.append(nn.ModuleList( [  DownSamplingBlock(dim=self.dim, in_channel=down_channels[i], 
                                 func=dsample_function, scale_factor=np.prod(shape_scaling[i-1:]) ) for i in range(1, len(down_channels) - 1)]))
         
-
-    def __str__(self):
-        _str = ''
-        # print down sampling
-        _str += 'Down-sampling and convolution layers: '
-        for c in self.down_path[:-1]:
-            _str += '{}->'.format(c)  
-        _str += str(self.down_path[-1])
-        _str += '\n'
-
-        if len(self.middle_path) > 1:
-            _str += 'Middle convolution layers: '
-            for c in self.middle_path[:-1]:
-               _str += '{}->'.format(c)  
-            _str += str(self.middle_path[-1])
-            _str += '\n'
-        return _str 
 
     def forward(self, x, t = None):
         x = self.image_proj(x)
@@ -148,7 +129,6 @@ class DNetDecoder(CNNDecoder):
             for j in range(0, len(down_channels)):
                 up_shape_scaling = np.prod(shape_scaling[0:i+1]) / np.prod(down_shape_scaling[j:])
                 ## should be down sampling
-                # print(up_shape_scaling)
                 if up_shape_scaling < 1:
                     tmp_module.append(DownSamplingBlock(dim=self.dim, in_channel=down_channels[j], 
                                     out_channel = up_channels[i + 1],
@@ -161,27 +141,13 @@ class DNetDecoder(CNNDecoder):
                                         scale_factor=int(up_shape_scaling)))
             ## features from decoder
             for j in range(0, i):
-                tmp_module.append(UpSamplingBlock(dim=self.dim, in_channel=up_channels[j], 
+                tmp_module.append(UpSamplingBlock(dim=self.dim, 
+                                        in_channel=up_channels[j], 
                                         out_channel=up_channels[i + 1], 
                                         func=usample_function, 
                                         scale_factor=np.prod(shape_scaling[j:i+1])))
             self.sample_for_dense.append(nn.ModuleList(tmp_module))
 
-    def __str__(self):
-        _str = ''
-        # print up sampling
-        _str += 'Up-sampling and convolution layers: '
-        for c in self.up_path[:-1]:
-            _str += '{}->'.format(c)  
-        _str += str(self.up_path[-1])
-        _str += '\n'
-        if len(self.final_path) > 1:
-            _str += 'Final convolution layer: '
-            for c in self.final_path[:-1]:
-               _str += '{}->'.format(c)  
-            _str += str(self.final_path[-1])
-            _str += '\n'
-        return _str 
     def forward(self, x, t = None):
         ## existing features but without x
         x, existing_features = x
@@ -200,6 +166,7 @@ class DNetDecoder(CNNDecoder):
         if self.return_features:
             return x, res
         return x
+
 if module_config['transformer']:
     from .vit import ViTEncoder, ViTDecoder
     from .swin import SwinEncoder, SwinDecoder
@@ -213,7 +180,7 @@ if module_config['transformer']:
                     down_channels = [128, 256], middle_channels = [256, 256], 
                     down_num_heads = [3, 3], middle_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     abs_pos_embedding = False,
                     **kwargs):
@@ -229,6 +196,67 @@ if module_config['transformer']:
                 z_count = 1, dense_channels = [], return_features = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
+
+            down_channels = [self.patch_channel, ] + down_channels
+            self.d_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+                                                            num_heads = down_num_heads[i],
+                                                            in_channel=down_channels[i] if i < 2 else sum(down_channels[1:i+1]), 
+                                                            out_channel = down_channels[i+1],
+                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            ) for i in range(self.d_depth) ])
+
+
+            middle_channels = [sum(down_channels[1:]) if len(down_channels) >= 2 else down_channels[-1], ] + middle_channels 
+            self.middle = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+                                                            num_heads = middle_num_heads[i],
+                                                            in_channel = middle_channels[i],
+                                                            out_channel = middle_channels[i+1],
+                                                            kwargs_list = {"drop_path": [self.drop_path[(i + self.d_depth)*self.num_block + ni] 
+                                                                                        for ni in range(self.num_block) ] }
+                                                            ) for i in range(self.m_depth) ])
+                
+
+            ## down sample layers for dense connections
+            self.down_for_dense = nn.ModuleList([
+            nn.ModuleList( [  PatchMergingBlock(dim=self.dim, 
+                                    in_channel=down_channels[j],
+                                    out_channel=down_channels[j],
+                                    norm = normalization,
+                                    num_group = num_group,
+                                    factor=2 ** (i - j + 1) ) for j in range(1, i)])
+            for i in range(2, len(down_channels) - 1) ] )
+            ### for middle layers
+            self.down_for_dense.append(nn.ModuleList( [  
+                                    PatchMergingBlock(dim=self.dim, 
+                                    in_channel=down_channels[i],
+                                    out_channel=down_channels[i],
+                                    norm = normalization,
+                                    num_group = num_group,
+                                    factor=2 ** (self.d_depth - i + 1) ) for i in range(1, len(down_channels) - 1)]))
+
+        def forward(self, x, t = None):
+
+            x = self.patch_emb(x)
+            res = []
+            if self.absolute_pos_embed is not None:
+                x = x + self.absolute_pos_embed
+            for i, (d_trans, down) in enumerate(zip(self.d_trans, self.down)):
+                concat_feature = []
+                if i >= 2:
+                    for r, dd in zip(res[:-1], self.down_for_dense[i - 2]):
+                        concat_feature.append(dd(r))
+                    x = torch.cat(concat_feature + [x], dim=-1)
+                x = d_trans(x, t)
+                res = res + [x, ]
+                x = down(x)
+            concat_feature = [dd(r) for r, dd in zip(res[:-1], self.down_for_dense[-1])]
+            x = torch.cat(concat_feature + [x], dim=-1)
+            x, _ = self.middle(x, t)
+
+            if self.return_features:
+                return x, res
+            return x
+
     class ViTDNetDecoder(ViTDecoder):
         def __init__(self, image_size, image_channel = 3, 
                     patch_size = 2, in_channel = 64,
@@ -238,7 +266,7 @@ if module_config['transformer']:
                     up_channels = [128, 64], final_channels = [64, 64], 
                     up_num_heads = [3, 3], final_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     return_features = False, **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
@@ -253,33 +281,71 @@ if module_config['transformer']:
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
+            down_channels = up_channels[::-1]
             up_channels = [in_channel] + up_channels
             self.up = nn.ModuleList([PatchExpansionBlock(dim = self.dim,
                                                         in_channel = up_channels[i],
-                                                        out_channel = up_channels[i] // 2,
+                                                        out_channel = up_channels[i + 1], 
                                                         norm = normalization, 
                                                         num_group = num_group) for i in range(self.u_depth)])
-            ### building block
+                
             self.u_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
                                                             num_heads = up_num_heads[i],
-                                                            in_channel = up_channels[i+1] * 2,
-                                                            out_channel = up_channels[i+1],
+                                                            in_channel=(len(down_channels) + i + 1) * up_channels[i+1], 
+                                                            out_channel=up_channels[i+1], 
                                                             kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
                                                             ) for i in range(self.u_depth) ])
+
+            ## down / up sample layers for dense connections
+            self.sample_for_dense = nn.ModuleList([])
+            for i in range(0, len(up_channels) - 1):
+                tmp_module = []
+                ## features from encoder
+                for j in range(0, len(down_channels)):
+                    up_times = i+1 - self.u_depth + j
+                    if up_times < 0:
+                        tmp_module.append(PatchMergingBlock(dim=self.dim, 
+                                    in_channel=down_channels[j],
+                                    out_channel=up_channels[i + 1],
+                                    norm = normalization,
+                                    num_group = num_group,
+                                    factor=2**(-up_times)))
+                    else:
+                        tmp_module.append(PatchExpansionBlock(dim = self.dim,
+                                            in_channel=down_channels[j],
+                                            out_channel=up_channels[i + 1], 
+                                            norm = normalization, 
+                                            num_group = num_group,
+                                            factor=2**up_times))
+                ## features from decoder
+                for j in range(0, i):
+                    tmp_module.append(PatchExpansionBlock(dim = self.dim,
+                                            in_channel=up_channels[j],
+                                            out_channel=up_channels[i + 1], 
+                                            norm = normalization, 
+                                            num_group = num_group,
+                                            factor=2**(i+1-j)))
+                self.sample_for_dense.append(nn.ModuleList(tmp_module))
+
         def forward(self, x, t = None):
-            
-            x, x_features = x
+            ## existing features but without x
+            x, existing_features = x
             ## x, t
             res = []
             for i, (up, u_trans) in enumerate(zip(self.up, self.u_trans)):
-                ### channel information 
-                x = u_trans(torch.cat((x_features[i], up(x)), dim = -1), t)
-                res = res + [x, ]
+                concat_features = []
+                for tf, dus in zip(existing_features, self.sample_for_dense[i]):
+                    concat_features.append(dus(tf))
+                concat_features.append(up(x))
+                existing_features = existing_features + [x,]
+                x = u_trans(torch.cat(concat_features, dim = -1), t)
+                res = res + [x,]
             x, _ = self.final(x, t)
             x = self.patch_recov(x)
             if self.return_features:
                 return x, res
-            return x
+            return x 
+
     class SwinDNetEncoder(SwinEncoder):
         def __init__(self, image_size, image_channel = 3, 
                     window_size = 8, time_channel = 0,
@@ -289,7 +355,7 @@ if module_config['transformer']:
                     down_channels = [128, 256], middle_channels = [256, 256], 
                     down_num_heads = [3, 3], middle_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     abs_pos_embedding = False,
                     **kwargs):
@@ -306,6 +372,68 @@ if module_config['transformer']:
                 z_count = 1, dense_channels = [], return_features = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
+            down_channels = [self.patch_channel, ] + down_channels
+            self.d_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+                                                            num_heads = down_num_heads[i],
+                                                            in_channel=down_channels[i] if i < 2 else sum(down_channels[1:i+1]), 
+                                                            out_channel = down_channels[i+1],
+                                                            patch_image_size = self.patch_image_pyramid[i],
+                                                            kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_block) ],
+                                                                        "drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            ) for i in range(self.d_depth) ])
+
+
+            middle_channels = [sum(down_channels[1:]) if len(down_channels) >= 2 else down_channels[-1], ] + middle_channels 
+            self.middle = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+                                                            num_heads = middle_num_heads[i],
+                                                            in_channel = middle_channels[i],
+                                                            out_channel = middle_channels[i+1],
+                                                            patch_image_size = self.patch_image_pyramid[-1],
+                                                            kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_block) ],
+                                                                        "drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            ) for i in range(self.m_depth) ])
+                
+
+            ## down sample layers for dense connections
+            self.down_for_dense = nn.ModuleList([
+            nn.ModuleList( [  PatchMergingBlock(dim=self.dim, 
+                                    in_channel=down_channels[j],
+                                    out_channel=down_channels[j],
+                                    norm = normalization,
+                                    num_group = num_group,
+                                    factor=2 ** (i - j + 1) ) for j in range(1, i)])
+            for i in range(2, len(down_channels) - 1) ] )
+            ### for middle layers
+            self.down_for_dense.append(nn.ModuleList( [  
+                                    PatchMergingBlock(dim=self.dim, 
+                                    in_channel=down_channels[i],
+                                    out_channel=down_channels[i],
+                                    norm = normalization,
+                                    num_group = num_group,
+                                    factor=2 ** (self.d_depth - i + 1) ) for i in range(1, len(down_channels) - 1)]))
+
+        def forward(self, x, t = None):
+
+            x = self.patch_emb(x)
+            res = []
+            if self.absolute_pos_embed is not None:
+                x = x + self.absolute_pos_embed
+            for i, (d_trans, down) in enumerate(zip(self.d_trans, self.down)):
+                concat_feature = []
+                if i >= 2:
+                    for r, dd in zip(res[:-1], self.down_for_dense[i - 2]):
+                        concat_feature.append(dd(r))
+                    x = torch.cat(concat_feature + [x], dim=-1)
+                x = d_trans(x, t)
+                res = res + [x, ]
+                x = down(x)
+            concat_feature = [dd(r) for r, dd in zip(res[:-1], self.down_for_dense[-1])]
+            x = torch.cat(concat_feature + [x], dim=-1)
+            x, _ = self.middle(x, t)
+
+            if self.return_features:
+                return x, res
+            return x
     class SwinDNetDecoder(SwinDecoder):
         def __init__(self, image_size, image_channel = 3, 
                     window_size = 8, time_channel = 0,
@@ -315,7 +443,7 @@ if module_config['transformer']:
                     up_channels = [128, 64], final_channels = [64, 64], 
                     up_num_heads = [3, 3], final_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     return_features = False, **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
@@ -331,34 +459,73 @@ if module_config['transformer']:
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
+            down_channels = up_channels[::-1]
             up_channels = [in_channel] + up_channels
             self.up = nn.ModuleList([PatchExpansionBlock(dim = self.dim,
                                                         in_channel = up_channels[i],
-                                                        out_channel = up_channels[i] // 2,
+                                                        out_channel = up_channels[i + 1], 
                                                         norm = normalization, 
                                                         num_group = num_group) for i in range(self.u_depth)])
-            ### building block
+                
             self.u_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
                                                             num_heads = up_num_heads[i],
-                                                            in_channel = up_channels[i+1] * 2,
-                                                            out_channel = up_channels[i+1],
+                                                            in_channel=(len(down_channels) + i + 1) * up_channels[i+1], 
+                                                            out_channel=up_channels[i+1], 
                                                             patch_image_size = self.patch_image_pyramid[i+1],
                                                             kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_block) ],
                                                                         "drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
                                                             ) for i in range(self.u_depth) ])
+
+            ## down / up sample layers for dense connections
+            self.sample_for_dense = nn.ModuleList([])
+            for i in range(0, len(up_channels) - 1):
+                tmp_module = []
+                ## features from encoder
+                for j in range(0, len(down_channels)):
+                    up_times = i+1 - self.u_depth + j
+                    if up_times < 0:
+                        tmp_module.append(PatchMergingBlock(dim=self.dim, 
+                                    in_channel=down_channels[j],
+                                    out_channel=up_channels[i + 1],
+                                    norm = normalization,
+                                    num_group = num_group,
+                                    factor=2**(-up_times)))
+                    else:
+                        tmp_module.append(PatchExpansionBlock(dim = self.dim,
+                                            in_channel=down_channels[j],
+                                            out_channel=up_channels[i + 1], 
+                                            norm = normalization, 
+                                            num_group = num_group,
+                                            factor=2**up_times))
+                ## features from decoder
+                for j in range(0, i):
+                    tmp_module.append(PatchExpansionBlock(dim = self.dim,
+                                            in_channel=up_channels[j],
+                                            out_channel=up_channels[i + 1], 
+                                            norm = normalization, 
+                                            num_group = num_group,
+                                            factor=2**(i+1-j)))
+                self.sample_for_dense.append(nn.ModuleList(tmp_module))
+
         def forward(self, x, t = None):
-            x, x_features = x
+            ## existing features but without x
+            x, existing_features = x
             ## x, t
             res = []
             for i, (up, u_trans) in enumerate(zip(self.up, self.u_trans)):
-                ### channel information 
-                x = u_trans(torch.cat((x_features[i], up(x)), dim = -1), t)
-                res = res + [x, ]
+                concat_features = []
+                for tf, dus in zip(existing_features, self.sample_for_dense[i]):
+                    concat_features.append(dus(tf))
+                concat_features.append(up(x))
+                existing_features = existing_features + [x,]
+                x = u_trans(torch.cat(concat_features, dim = -1), t)
+                res = res + [x,]
             x, _ = self.final(x, t)
             x = self.patch_recov(x)
             if self.return_features:
                 return x, res
-            return x
+            return x 
+
 if module_config['mamba']:
     from .vmamba import VMambaEncoder, VMambaDecoder
     class VMambaDNetEncoder(VMambaEncoder):
@@ -375,7 +542,7 @@ if module_config['mamba']:
                     dt_init_floor=1e-4, 
                     conv_bias=True, bias=False,             
                     dropout=0., drop_path=0.1, 
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     scan_mode = 'single', flip_scan = True,
                     abs_pos_embedding = False,
@@ -407,6 +574,64 @@ if module_config['mamba']:
                     return_features = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
+
+            down_channels = [self.patch_channel, ] + down_channels
+            self.d_ssm = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+                                                            in_channel=down_channels[i] if i < 2 else sum(down_channels[1:i+1]), 
+                                                            out_channel = down_channels[i+1],
+                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            ) for i in range(self.d_depth) ])
+
+
+            middle_channels = [sum(down_channels[1:]) if len(down_channels) >= 2 else down_channels[-1], ] + middle_channels 
+            self.middle = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+                                                            in_channel = middle_channels[i],
+                                                            out_channel = middle_channels[i+1],
+                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            ) for i in range(self.m_depth) ])
+                
+
+            ## down sample layers for dense connections
+            self.down_for_dense = nn.ModuleList([
+            nn.ModuleList( [  PatchMergingBlock(dim=self.dim, 
+                                    in_channel=down_channels[j],
+                                    out_channel=down_channels[j],
+                                    norm = normalization,
+                                    num_group = num_group,
+                                    factor=2 ** (i - j + 1) ) for j in range(1, i)])
+            for i in range(2, len(down_channels) - 1) ] )
+            ### for middle layers
+            self.down_for_dense.append(nn.ModuleList( [  
+                                    PatchMergingBlock(dim=self.dim, 
+                                    in_channel=down_channels[i],
+                                    out_channel=down_channels[i],
+                                    norm = normalization,
+                                    num_group = num_group,
+                                    factor=2 ** (self.d_depth - i + 1) ) for i in range(1, len(down_channels) - 1)]))
+
+        def forward(self, x, t = None):
+
+            x = self.patch_emb(x)
+            res = []
+            if self.absolute_pos_embed is not None:
+                x = x + self.absolute_pos_embed
+            for i, (d_ssm, down) in enumerate(zip(self.d_ssm, self.down)):
+                concat_feature = []
+                if i >= 2:
+                    for r, dd in zip(res[:-1], self.down_for_dense[i - 2]):
+                        concat_feature.append(dd(r))
+                    x = torch.cat(concat_feature + [x], dim=-1)
+                x = d_ssm(x, t)
+                res = res + [x, ]
+                x = down(x)
+            concat_feature = [dd(r) for r, dd in zip(res[:-1], self.down_for_dense[-1])]
+            x = torch.cat(concat_feature + [x], dim=-1)
+            x, _ = self.middle(x, t)
+
+            if self.return_features:
+                return x, res
+            return x
+
     class VMambaDNetDecoder(VMambaDecoder):
         def __init__(self, image_size, image_channel = 3, 
                     patch_size = 2, in_channel = 64,
@@ -425,7 +650,7 @@ if module_config['mamba']:
                     head_channel = 64, 
                     learnable_init_states = True, 
                     chunk_size=256,
-                    normalization = 'layer', num_group = 8, 
+                    normalization = 'group', num_group = 8, 
                     num_block = 2, activation = 'silu', 
                     scan_mode = 'single', flip_scan = True, 
                     return_features = False, **kwargs):
@@ -451,30 +676,67 @@ if module_config['mamba']:
                     dense_channels = [], return_features = return_features)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
-            ### use patch expansion block for up sampling
+
+            down_channels = up_channels[::-1]
             up_channels = [in_channel] + up_channels
             self.up = nn.ModuleList([PatchExpansionBlock(dim = self.dim,
                                                         in_channel = up_channels[i],
-                                                        out_channel = up_channels[i] // 2,
+                                                        out_channel = up_channels[i + 1], 
                                                         norm = normalization, 
                                                         num_group = num_group) for i in range(self.u_depth)])
-            ### building block
+
             self.u_ssm = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
-                                                            in_channel = up_channels[i+1]*2,
-                                                            out_channel = up_channels[i+1],
+                                                            in_channel=(len(down_channels) + i + 1) * up_channels[i+1], 
+                                                            out_channel=up_channels[i+1], 
                                                             kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
                                                             ) for i in range(self.u_depth) ])
 
+            ## down / up sample layers for dense connections
+            self.sample_for_dense = nn.ModuleList([])
+            for i in range(0, len(up_channels) - 1):
+                tmp_module = []
+                ## features from encoder
+                for j in range(0, len(down_channels)):
+                    up_times = i+1 - self.u_depth + j
+                    if up_times < 0:
+                        tmp_module.append(PatchMergingBlock(dim=self.dim, 
+                                    in_channel=down_channels[j],
+                                    out_channel=up_channels[i + 1],
+                                    norm = normalization,
+                                    num_group = num_group,
+                                    factor=2**(-up_times)))
+                    else:
+                        tmp_module.append(PatchExpansionBlock(dim = self.dim,
+                                            in_channel=down_channels[j],
+                                            out_channel=up_channels[i + 1], 
+                                            norm = normalization, 
+                                            num_group = num_group,
+                                            factor=2**up_times))
+                ## features from decoderup
+                for j in range(0, i):
+                    tmp_module.append(PatchExpansionBlock(dim = self.dim,
+                                            in_channel=up_channels[j],
+                                            out_channel=up_channels[i + 1], 
+                                            norm = normalization, 
+                                            num_group = num_group,
+                                            factor=2**(i+1-j)))
+                self.sample_for_dense.append(nn.ModuleList(tmp_module))
+
         def forward(self, x, t = None):
-            x, x_features = x
+            ## existing features but without x
+            x, existing_features = x
             ## x, t
             res = []
             for i, (up, u_ssm) in enumerate(zip(self.up, self.u_ssm)):
-                ### channel information 
-                x = u_ssm(torch.cat((x_features[i], up(x)), dim = -1), t)
+                concat_features = []
+                for tf, dus in zip(existing_features, self.sample_for_dense[i]):
+                    concat_features.append(dus(tf))
+                concat_features.append(up(x))
+                existing_features = existing_features + [x,]
+                x = u_ssm(torch.cat(concat_features, dim = -1), t)
                 res = res + [x,]
             x, _ = self.final(x, t)
             x = self.patch_recov(x)
             if self.return_features:
                 return x, res
-            return x
+            return x 

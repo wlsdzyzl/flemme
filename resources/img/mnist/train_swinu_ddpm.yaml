@@ -16,6 +16,7 @@ model:
       down_channels: [32, 64]
       middle_channels: [128, 128]
       building_block: swin
+    normalization: layer
       window_size: [7, 7]
       abs_pos_embedding: false
   ## 2D ddpm

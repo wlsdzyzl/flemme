@@ -1,11 +1,11 @@
 # train ae or vae
-mode: test
+mode: train
 model:
   # can be AE, VAE and DDPM
-  name: HSeM
+  name: SeM
   # encoder config
   encoder:
-    name: VMambaU
+    name: VMambaD
     image_size: [320, 256]
     in_channel: 3
     out_channel: 1
@@ -28,8 +28,26 @@ loader:
     label_dir: masks
     data_suffix: jpg
   data_path_list: 
-    - path/to/datasets/CVC-ClinicDB/fold5/
-  batch_size: 16
+    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold1/
+    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold2/
+    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold3/
+  batch_size: 2
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [320, 256]
+    - name: ToTensor
+val_loader:
+  dataset: 
+    name: ImgSegDataset
+    data_dir: images
+    label_dir: masks
+    data_suffix: jpg
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold4/
+  batch_size: 2
   num_workers: 8
   shuffle: false
   data_transforms:
@@ -37,17 +55,24 @@ loader:
       ## the value must be list
       size: [320, 256]
     - name: ToTensor
-  label_transforms:
-    - name: Resize
-      ## the value must be list
-      size: [320, 256]
-    - name: ToTensor
-    - name: ToBinaryMask
-      threshold: 0.5
-model_path: path/to/checkpoint/CVC-ClinicDB/MambaU_HSeg/ckp_best.pth
-seg_dir: path/to/results/seg/CVC-ClinicDB/MambaU_HSeg
+
+check_point_dir: path/to/checkpoint/CVC-ClinicDB/MambaD
+
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0003
+  weight_decay: 0.00000001
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
 evaluation_metrics:
   seg:
     - name: Dice
     - name: ACC
     - name: mIoU
+max_epoch: 500
+warmup_epoch: 2
+write_after_iters: 5
+save_after_epochs: 2

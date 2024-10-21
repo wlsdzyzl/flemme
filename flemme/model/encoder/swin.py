@@ -18,7 +18,7 @@ class SwinEncoder(nn.Module):
                  down_channels = [128, 256], middle_channels = [256, 256], 
                  down_num_heads = [3, 3], middle_num_heads = [3, 3],
                  dropout=0., atten_dropout=0., drop_path=0.1, 
-                 normalization = 'layer', num_group = 8, 
+                 normalization = 'group', num_group = 8, 
                  num_block = 2, activation = 'silu', 
                  abs_pos_embedding = False,
                  return_features = False,
@@ -130,7 +130,7 @@ class SwinEncoder(nn.Module):
             x = x + self.absolute_pos_embed
         for d_trans, down in zip(self.d_trans, self.down):
             x = d_trans(x, t)
-            res = [x,] + res
+            res = res + [x,]
             x = down(x)
         x, _ = self.middle(x, t)
         ### The last dimension is feature channel
@@ -176,7 +176,7 @@ class SwinDecoder(nn.Module):
                  up_channels = [128, 64], final_channels = [64, 64], 
                  up_num_heads = [3, 3], final_num_heads = [3, 3],
                  dropout=0., atten_dropout=0., drop_path=0.1, 
-                 normalization = 'layer', num_group = 8, 
+                 normalization = 'group', num_group = 8, 
                  num_block = 2, activation = 'silu', 
                  return_features = False, **kwargs):
         super().__init__()

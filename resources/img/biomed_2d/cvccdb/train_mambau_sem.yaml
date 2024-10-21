@@ -14,6 +14,7 @@ model:
     down_channels: [64, 128, 256]
     middle_channels: [512, 512]
     building_block: vmamba
+    normalization: layer
     scan_mode: single
     flip_scan: false
   ### loss function
@@ -27,10 +28,10 @@ loader:
     label_dir: masks
     data_suffix: jpg
   data_path_list: 
-    - path/to/datasets/CVC-ClinicDB/fold1/
-    - path/to/datasets/CVC-ClinicDB/fold2/
-    - path/to/datasets/CVC-ClinicDB/fold3/
-  batch_size: 8
+    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold1/
+    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold2/
+    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold3/
+  batch_size: 2
   num_workers: 8
   shuffle: true
   data_transforms:
@@ -45,8 +46,8 @@ val_loader:
     label_dir: masks
     data_suffix: jpg
   data_path_list: 
-    - path/to/datasets/CVC-ClinicDB/fold4/
-  batch_size: 8
+    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold4/
+  batch_size: 2
   num_workers: 8
   shuffle: false
   data_transforms:
@@ -55,7 +56,7 @@ val_loader:
       size: [320, 256]
     - name: ToTensor
 
-check_point_dir: path/to/checkpoint/CVC-ClinicDB/MambaU_Cross
+check_point_dir: path/to/checkpoint/CVC-ClinicDB/MambaU
 
 ### parameter for optimizer
 optimizer:

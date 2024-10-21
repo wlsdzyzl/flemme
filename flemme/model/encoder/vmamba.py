@@ -23,7 +23,7 @@ class VMambaEncoder(nn.Module):
                 dt_init_floor=1e-4, 
                 conv_bias=True, bias=False,             
                 dropout=0., drop_path=0.1, 
-                normalization = 'layer', num_group = 8, 
+                normalization = 'group', num_group = 8, 
                 num_block = 2, activation = 'silu', 
                 scan_mode = 'single',
                 flip_scan = True,
@@ -137,7 +137,7 @@ class VMambaEncoder(nn.Module):
             x = x + self.absolute_pos_embed
         for d_ssm, down in zip(self.d_ssm, self.down):
             x = d_ssm(x, t)
-            res = [x,] + res
+            res = res + [x,]
             x = down(x)
         x, _ = self.middle(x, t)
         ### The last dimension is feature channel
@@ -194,7 +194,7 @@ class VMambaDecoder(nn.Module):
                 learnable_init_states = True, 
                 chunk_size=256,             
                 dropout=0., drop_path=0.1, 
-                normalization = 'layer', num_group = 8, 
+                normalization = 'group', num_group = 8, 
                 num_block = 2, activation = 'silu', 
                 scan_mode = 'single', flip_scan = True, 
                 return_features = False,

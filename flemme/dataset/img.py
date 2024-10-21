@@ -23,6 +23,7 @@ class ImgDataset(Dataset):
         self.mode = mode
         self.data_transform = data_transform
         self.dim = dim
+        self.data_path = data_path
     def __len__(self):
         return len(self.img_path_list)
     ### the dataset will not be stored in the memory

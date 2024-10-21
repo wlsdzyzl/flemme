@@ -13,6 +13,7 @@ model:
     down_channels: [64, 128]
     middle_channels: [256, 256]
     building_block: swin
+    normalization: layer
     window_size: [5, 8, 5]
   ### loss function
   segmentation_losses: 

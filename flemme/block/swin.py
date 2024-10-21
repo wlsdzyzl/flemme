@@ -5,6 +5,7 @@ import torch.nn as nn
 import numpy as np
 from flemme.logger import get_logger
 from einops import rearrange
+import math
 logger = get_logger('swin_block')
 ### blocks about swin transformer
 ### patch related blocks
@@ -83,14 +84,17 @@ class PatchRecoveryBlock(NormBlock):
 ### not that in the rest of this file, the channel should be the last dimension    
 class PatchMergingBlock(NormBlock):
 
-    def __init__(self, dim, in_channel, out_channel = None, norm = None, 
-                 num_group = 4, activation = None, order="mn"):
+    def __init__(self, dim, in_channel, out_channel = None, 
+                 factor = 2, norm = None, num_group = 4, 
+                 activation = None, order="mn"):
         super().__init__(_channel_dim = -1)
         self.dim = dim
         self.in_channel = in_channel
         self.out_channel = out_channel or 2 * self.in_channel
-
-        self.reduction = nn.Linear(2 ** self.dim * in_channel, self.out_channel, bias=False)
+        assert factor > 0 and (factor & (factor - 1)) == 0, \
+            "Patch merging factor should be a power of 2."
+        self.merge_times = int(math.log2(factor))
+        self.reduction = nn.Linear((2 ** self.dim)**self.merge_times * in_channel, self.out_channel, bias=False)
 
         norm_channel = self.out_channel
         if order.index('n') < order.index('m'):
@@ -100,37 +104,39 @@ class PatchMergingBlock(NormBlock):
         # activation function
         self.act = get_act(activation)
         self.order = order
+    def merge(self, x):
+        for _ in range(self.merge_times):
+            if self.dim == 2:
+                B, H, W, C = x.shape
+                assert H % 2 == 0 and W % 2 == 0, f"x size ({H}*{W}) are not even."
 
+                x0 = x[:, 0::2, 0::2, :]  
+                x1 = x[:, 1::2, 0::2, :]  
+                x2 = x[:, 0::2, 1::2, :]  
+                x3 = x[:, 1::2, 1::2, :]  
+                x = torch.cat([x0, x1, x2, x3], -1)  # B H/2 W/2 4*C
+            else:
+                B, H, W, D, C = x.shape
+                assert H % 2 == 0 and W % 2 == 0 and D % 2 == 0, f"x size ({H}*{W}*{D}) are not even."
+
+                x0 = x[:, 0::2, 0::2, 0::2, :]  
+                x1 = x[:, 1::2, 0::2, 0::2, :]  
+                x2 = x[:, 0::2, 1::2, 0::2, :]  
+                x3 = x[:, 1::2, 1::2, 0::2, :]  
+                x4 = x[:, 0::2, 0::2, 1::2, :]  
+                x5 = x[:, 1::2, 0::2, 1::2, :]  
+                x6 = x[:, 0::2, 1::2, 1::2, :]  
+                x7 = x[:, 1::2, 1::2, 1::2, :]  
+                x = torch.cat([x0, x1, x2, x3, x4, x5, x6, x7], -1)  # B H/2 W/2 D/2 8*C
+        x = self.reduction(x)
+        return x
     def forward(self, x, _ = None):
         """
         x: B, H*W, C
         """
         for m in self.order:
             if m == 'm':
-                
-                if self.dim == 2:
-                    B, H, W, C = x.shape
-                    assert H % 2 == 0 and W % 2 == 0, f"x size ({H}*{W}) are not even."
-
-                    x0 = x[:, 0::2, 0::2, :]  
-                    x1 = x[:, 1::2, 0::2, :]  
-                    x2 = x[:, 0::2, 1::2, :]  
-                    x3 = x[:, 1::2, 1::2, :]  
-                    x = torch.cat([x0, x1, x2, x3], -1)  # B H/2 W/2 4*C
-                else:
-                    B, H, W, D, C = x.shape
-                    assert H % 2 == 0 and W % 2 == 0 and D % 2 == 0, f"x size ({H}*{W}*{D}) are not even."
-
-                    x0 = x[:, 0::2, 0::2, 0::2, :]  
-                    x1 = x[:, 1::2, 0::2, 0::2, :]  
-                    x2 = x[:, 0::2, 1::2, 0::2, :]  
-                    x3 = x[:, 1::2, 1::2, 0::2, :]  
-                    x4 = x[:, 0::2, 0::2, 1::2, :]  
-                    x5 = x[:, 1::2, 0::2, 1::2, :]  
-                    x6 = x[:, 0::2, 1::2, 1::2, :]  
-                    x7 = x[:, 1::2, 1::2, 1::2, :]  
-                    x = torch.cat([x0, x1, x2, x3, x4, x5, x6, x7], -1)  # B H/2 W/2 D/2 8*C
-                x = self.reduction(x)
+                x = self.merge(x)
             if m == 'n':
                 x = self.normalize(x)
         x = self.act(x)
@@ -147,8 +153,9 @@ class PatchExpansionBlock(NormBlock):
         self.out_channel = out_channel or in_channel // factor
         l_out_channel = self.out_channel * (factor ** self.dim)
         ## expansion factor
-        self.factor = factor
-        # assert self.factor == 2 or self.factor == 4, "Patch expansion factor can only be 2 or 4."
+        self.factor = int(factor)
+        assert self.factor > 1 and self.factor % 2 == 0 or self.factor == 1, \
+            "Patch expansion factor should be an even number or 1."
         self.expand = nn.Linear(
             in_channel, l_out_channel, bias=False) if in_channel != l_out_channel else nn.Identity()
 
