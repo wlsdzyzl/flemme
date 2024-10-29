@@ -26,7 +26,7 @@ class AutoEncoder(BaseModel):
             logger.info('Reconstruction under supervision.')
         
     def __str__(self):
-        _str = '********************* Auto-Encoder ({}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.encoder.__str__(), self.decoder.__str__())
+        _str = '********************* Auto-Encoder ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def get_loss_name(self):
         return self.recon_loss_names
@@ -70,7 +70,7 @@ class HAutoEncoder(HBaseModel):
         self.is_supervised = model_config.get('is_supervised', False)
         
     def __str__(self):
-        _str = '********************* H-Auto-Encoder ({}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.encoder.__str__(), self.decoder.__str__())
+        _str = '********************* H-Auto-Encoder ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def get_loss_name(self):
         return self.recon_loss_names + ['hierarchical_' + s for s in self.recon_loss_names]

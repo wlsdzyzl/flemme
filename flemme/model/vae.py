@@ -28,7 +28,7 @@ class VariationalAutoEncoder(AutoEncoder):
         self.distr_loss = get_loss(distr_loss_config, self.data_form)
         self.is_generative = True
     def __str__(self):
-        _str = '********************* Variational Auto-Encoder ({}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.encoder.__str__(), self.decoder.__str__())
+        _str = '********************* Variational Auto-Encoder ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def encode(self, x, c=None):
         mean, logvar = super().encode(x, c = c)

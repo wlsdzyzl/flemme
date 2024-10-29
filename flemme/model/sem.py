@@ -26,7 +26,7 @@ class SegmentationModel(BaseModel):
         
         
     def __str__(self):
-        _str = '********************* SeM ({}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.encoder.__str__(), self.decoder.__str__())
+        _str = '********************* SeM ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def get_loss_name(self):
         return self.seg_loss_names
@@ -61,7 +61,7 @@ class HSegmentationModel(HBaseModel):
             self.seg_losses.append(get_loss(loss_config, self.data_form))
         
     def __str__(self):
-        _str = '********************* HSeM ({}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.encoder.__str__(), self.decoder.__str__())
+        _str = '********************* HSeM ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def get_loss_name(self):
         return self.seg_loss_names + ['hierarchical_' + s for s in self.seg_loss_names]

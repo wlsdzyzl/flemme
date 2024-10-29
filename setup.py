@@ -5,7 +5,7 @@ setup(
     name="flemme",
     packages=find_packages(exclude=["tests"]),
     version=__version__,
-    author="Adrian Wolny, Lorenzo Cerrone",
+    author="Guoqing Zhang, Jingyun Yang",
     license="MIT",
     python_requires='>=3.7', 
     entry_points={'console_scripts': [

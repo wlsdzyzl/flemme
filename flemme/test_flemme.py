@@ -46,13 +46,13 @@ def main():
         is_conditional = model.is_conditional
         is_supervised = model.is_supervised
         if is_supervised:
-            logger.info('Supervising model, we will using label as target.')
+            logger.info('Supervising model, we will use label as target.')
         elif is_conditional:
             logger.info('Conditional model, we will using label as condition.')
         model_path = test_config.get('model_path', None)
         assert model_path is not None, "Model path is not specified."
 
-        ignore_mismatched_keys = train_config.get('ignore_mismatched_keys', [])
+        ignore_mismatched_keys = test_config.get('ignore_mismatched_keys', [])
         ## load check point
         load_checkpoint(model_path, model, ignore_mismatched_keys = ignore_mismatched_keys)
 

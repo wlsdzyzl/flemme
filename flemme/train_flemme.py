@@ -8,6 +8,7 @@ from flemme.model import create_model
 from flemme.dataset import create_loader
 from flemme.logger import get_logger
 from flemme.sampler import create_sampler
+from datetime import datetime
 
 logger = get_logger('train_flemme')
 ## if we want to train pcd or image, 
@@ -73,7 +74,7 @@ def main():
         assert sum([score_metric in e for e in evaluators.values()]) > 0, "Score metric is not in the evaluation metrics."
     
     if is_supervised:
-        logger.info('Supervising model, we will using label as target.')
+        logger.info('Supervising model, we will use label as target.')
     elif is_conditional:
         logger.info('Conditional model, we will using label as condition.')
 
@@ -175,6 +176,7 @@ def main():
 
 
     for epoch in range(start_epoch, max_epoch+1):
+        start_time = datetime.now()
         ### training process
         model.train()
         results = {'input':[], 'target':[], 'condition':[], 'latent':[], 'recon':[], 'seg':[], 'cluster':[]}
@@ -247,6 +249,9 @@ def main():
 
         ### training epoch finished
         logger.info('epoch {:03d}/{:03d}, training loss: {}'.format(epoch, max_epoch, loss.item()))
+        remaining_time = (datetime.now() - start_time) * (max_epoch - epoch)
+        logger.info(f'The training is expected to be completed in {str(remaining_time)}.')
+
         if epoch > warmup_epoch and lr_scheduler is not None:
             if isinstance(lr_scheduler, ReduceLROnPlateau):
                 lr_scheduler.step(loss)

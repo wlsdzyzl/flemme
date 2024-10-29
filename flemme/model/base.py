@@ -19,12 +19,17 @@ class BaseModel(nn.Module):
         super().__init__()
         encoder_config = model_config.get('encoder', None)
         decoder_config = encoder_config.copy()
+        specified_decoder_config = model_config.get('decoder', None)
+        if specified_decoder_config is not None:
+            for k in specified_decoder_config:
+                decoder_config[k] = specified_decoder_config[k]
+
         assert encoder_config is not None, 'There is no encoder configuration.'
         self.encoder_name = encoder_config.get('name')
+        self.decoder_name = decoder_config.get('name')
 
         self.in_channel = encoder_config.get('in_channel')
         self.out_channel = encoder_config.get('out_channel', self.in_channel)
-
         ### time_embedding
         self.time_channel = model_config.get('time_channel', 0)
         self.with_time_embedding = (self.time_channel > 0)
@@ -103,7 +108,7 @@ class BaseModel(nn.Module):
         self.channel_dim = -1 if self.data_form == DataForm.PCD else 1
 
     def __str__(self):
-        _str = '********************* BaseModel ({}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.encoder.__str__(), self.decoder.__str__())
+        _str = '********************* BaseModel ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def encode(self, x, t = None, c = None):
         if hasattr(self, 'en_cemb'):
@@ -206,7 +211,7 @@ class HBaseModel(BaseModel):
                                             combine = combine, 
                                             apply_fft=apply_fft)
         self.channel_recover = False
-        if self.encoder_name in ['Swin', 'SwinU', 'VMamba', 'VMambaU']:
+        if self.decoder_name in ['Swin', 'SwinU', 'SwinD', 'VMamba', 'VMambaU', 'VMambaD']:
             self.channel_recover = True
             self.abbs = nn.ModuleList([VMambaBlock(dim = self.encoder.dim,
                                     in_channel=upc, 
@@ -235,7 +240,7 @@ class HBaseModel(BaseModel):
         
         
     def __str__(self):
-        _str = '********************* HBaseModel ({}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.encoder.__str__(), self.decoder.__str__())
+        _str = '********************* HBaseModel ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def forward(self, x, t = None, c = None, return_z = False):
         if t is not None:
@@ -293,7 +298,7 @@ class HBaseModel(BaseModel):
 #                                             mode = self.inter_mode,
 #                                             combine = combine)
 #         self.channel_recover = False
-#         if self.encoder_name in ['Swin', 'SwinU', 'VMamba', 'VMambaU']:
+#         if self.decoder_name in ['Swin', 'SwinU', 'VMamba', 'VMambaU']:
 #             self.channel_recover = True
 #         if not self.with_time_embedding:
 #             self.convs = nn.ModuleList([ResConvBlock(dim = self.encoder.dim, 

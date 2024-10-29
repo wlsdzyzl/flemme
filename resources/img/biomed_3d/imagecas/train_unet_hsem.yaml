@@ -22,9 +22,9 @@ model:
   # in ddpm, it can be the time steps and so on.
 loader:
   data_path_list: 
-    - /work/guoqingzhang/datasets/biomed_3d_dataset/ImageCAS/fold1
-    - /work/guoqingzhang/datasets/biomed_3d_dataset/ImageCAS/fold2
-    - /work/guoqingzhang/datasets/biomed_3d_dataset/ImageCAS/fold3 
+    - path/to/datasets/biomed_3d_dataset/ImageCAS/fold1
+    - path/to/datasets/biomed_3d_dataset/ImageCAS/fold2
+    - path/to/datasets/biomed_3d_dataset/ImageCAS/fold3 
   dataset: 
     name: ImgSegDataset
     dim: 3
@@ -42,7 +42,7 @@ val_loader:
     dim: 3
     data_suffix: .nii.gz
   data_path_list: 
-    - /work/guoqingzhang/datasets/biomed_3d_dataset/ImageCAS/fold4  
+    - path/to/datasets/biomed_3d_dataset/ImageCAS/fold4  
   batch_size: 2
   num_workers: 8
   shuffle: false
@@ -50,7 +50,7 @@ val_loader:
     - name: Resize
       size: [96, 192, 192]
     - name: ToTensor
-check_point_dir: /work/guoqingzhang/gengen-main/checkpoint/ImageCAS/UNet_HSeg
+check_point_dir: path/to/checkpointcheckpoint/ImageCAS/UNet_HSeg
 
 ### parameter for optimizer
 optimizer:

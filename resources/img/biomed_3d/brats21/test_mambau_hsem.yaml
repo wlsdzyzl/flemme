@@ -36,7 +36,7 @@ loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /work/guoqingzhang/datasets/biomed_3d_dataset/BraTS2021/fold5
+    - path/to/datasets/biomed_3d_dataset/BraTS2021/fold5
   batch_size: 4
   num_workers: 8
   shuffle: false
@@ -55,7 +55,7 @@ loader:
       ignore_background: False
     - name: ToTensor
 
-model_path: /work/guoqingzhang/gengen-main/checkpoint/BRATS21/MambaU_HSeg/ckp_last.pth
+model_path: path/to/checkpointcheckpoint/BRATS21/MambaU_HSeg/ckp_last.pth
 seg_dir: /work/guoqingzhang/results/BRATS21/MambaU_HSeg
 # evaluation_metrics:
 #   seg:

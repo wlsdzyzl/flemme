@@ -92,7 +92,7 @@ class OnlyDecoder(nn.Module):
         decoder_config = decoder_config or model_config.get('decoder', None)
 
         assert decoder_config is not None, 'There is no decoder configuration.'
-        self.encoder_name = decoder_config.get('name')
+        self.decoder_name = decoder_config.get('name')
         self.in_channel = decoder_config.get('decoder_in_channel')
         self.out_channel = decoder_config.get('out_channel')
 
@@ -118,7 +118,7 @@ class OnlyDecoder(nn.Module):
         self.channel_dim = -1 if self.data_form == DataForm.PCD else 1
 
     def __str__(self):
-        _str = '********************* BaseModel ({}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.encoder.__str__(), self.decoder.__str__())
+        _str = '********************* OnlyDecoder ({}) *********************\n------- Decoder -------\n{}'.format(self.decoder_name, self.decoder.__str__())
         return _str
     ### usually t-embedding should be the same for encoder and decoder
     def decode(self, z, c = None):

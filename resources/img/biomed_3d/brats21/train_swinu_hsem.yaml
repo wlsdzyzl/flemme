@@ -35,9 +35,9 @@ loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /work/guoqingzhang/datasets/biomed_3d_dataset/BraTS2021/fold1
-    - /work/guoqingzhang/datasets/biomed_3d_dataset/BraTS2021/fold2
-    - /work/guoqingzhang/datasets/biomed_3d_dataset/BraTS2021/fold3
+    - path/to/datasets/biomed_3d_dataset/BraTS2021/fold1
+    - path/to/datasets/biomed_3d_dataset/BraTS2021/fold2
+    - path/to/datasets/biomed_3d_dataset/BraTS2021/fold3
   batch_size: 2
   num_workers: 8
   shuffle: true
@@ -69,7 +69,7 @@ val_loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /work/guoqingzhang/datasets/biomed_3d_dataset/BraTS2021/fold4
+    - path/to/datasets/biomed_3d_dataset/BraTS2021/fold4
   batch_size: 2
   num_workers: 8
   shuffle: false
@@ -87,7 +87,7 @@ val_loader:
       num_classes: 4
       ignore_background: False
     - name: ToTensor
-check_point_dir: /work/guoqingzhang/gengen-main/checkpoint/BRATS21/SwinU_HSeg
+check_point_dir: path/to/checkpointcheckpoint/BRATS21/SwinU_HSeg
 
 ### parameter for optimizer
 optimizer:
