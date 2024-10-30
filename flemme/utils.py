@@ -283,6 +283,9 @@ def load_img(input_path):
     img = Image.open(input_path)
     return img
 
+def load_img_as_numpy(input_path):
+    return np.array(load_img(input_path))
+
     # img = np.asarray(imageio.imread(input_path))
     # if len(img.shape) == 2:
     #     img = img[...,None]

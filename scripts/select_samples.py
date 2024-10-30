@@ -6,7 +6,7 @@ import shutil
 import math
 from glob import glob
 from flemme.logger import get_logger
-from flemme.utils import load_img, load_itk, load_npy
+from flemme.utils import load_img, load_itk, load_npy, get_boundingbox
 from flemme.metrics import get_metrics
 import numpy as np
 logger = get_logger('scripts')
@@ -16,19 +16,22 @@ def main(argv):
     result_path = None
     target_path = None
     sub_dirs = ['.']
+    target_sub_dirs = ['.']
     suffix = ['']
     target_suffix = ''
     conditions = ['']
     eval_config = {'name':'mIoU'}
-    opts, _ = getopt.getopt(argv, "h", ['help', 'result_path=', 'sub_dirs=', 'suffix=', 'target_path=', 'target_suffix=', 'conditions=', 'eval='])
+    ## for better visualization
+    compute_middle_for_3d = False
+    opts, _ = getopt.getopt(argv, "h", ['help', 'result_path=', 'sub_dirs=', 'suffix=', 'target_path=',  'target_sub_dirs=', 'target_suffix=', 'conditions=', 'eval=', 'compute_middle_for_3d'])
     ### move is faster, but with higher risk for losing data.
     if len(opts) == 0:
-        logger.info('unknow options, usage: selected_samples.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_suffix <target_suffix=\'\'> --conditions <conditions=> --eval <eval=>')
+        logger.info('unknow options, usage: selected_samples.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=.> --conditions <conditions=> --eval <eval=>')
         sys.exit()
     for opt, arg in opts:
         # print(arg)
         if opt in ('-h', '--help'):
-            logger.info('usage: selected_samples.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_suffix <target_suffix=\'\'> --conditions <conditions=> --eval <eval=>')
+            logger.info('usage: selected_samples.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=\'\'> --conditions <conditions=> --eval <eval=>')
             sys.exit()
         if opt in ('--result_path',):
             result_path = arg
@@ -38,13 +41,16 @@ def main(argv):
             suffix = arg.split(',')
         elif opt in ('--target_path',):
             target_path = arg
+        elif opt in ('--target_sub_dirs',):
+            target_sub_dirs = arg.split(',')
         elif opt in ('--target_suffix',):
-            target_suffix = arg
+            target_suffix = arg.split(',')
         elif opt in ('--conditions', ):
-            
             conditions = arg.split(',')
         elif opt in ('--eval',):
             eval_config['name'] = arg
+        elif opt in ('--compute_middle_for_3d',):
+            compute_middle_for_3d = True
     if result_path is None:
         logger.error('result_path is required.')
         sys.exit()
@@ -54,9 +60,15 @@ def main(argv):
     eval_func = get_metrics(eval_config)
     if len(suffix) == 1:
         suffix = suffix * len(sub_dirs)
+    if len(target_sub_dirs) == 1:
+        target_sub_dirs = target_sub_dirs * len(sub_dirs)
+    if len(target_suffix) == 1:
+        target_suffix = target_suffix * len(sub_dirs)
     # logger.info(suffix, sub_dirs)
     assert len(suffix) == len(sub_dirs), 'sub_dirs and suffix should have the same length.'
-    assert sum([s == '' for s in sub_dirs]) == 0, 'sub_dirs includes empty folder name.'
+    assert len(sub_dirs) == len(target_sub_dirs), 'sub_dirs and target_sub_dirs should have the same length.'
+    assert sum([s == '' for s in sub_dirs]) == 0, 'sub_dirs contains empty folder name.'
+    assert sum([s == '' for s in target_sub_dirs]) == 0, 'target_sub_dirs contains empty folder name.'
 
     result_files = []
     for sd, sf in zip(sub_dirs, suffix):
@@ -66,10 +78,12 @@ def main(argv):
         else:
             result_files.append([ file.replace(sub_dirs[0], sd).replace(suffix[0], sf) for file in result_files[0]])
 
-    target_files = [ file.replace(result_path + '/' + sub_dirs[0], target_path).replace(suffix[0], target_suffix) 
-                        for file in result_files[0]]
+    target_files = [[file.replace(result_path + '/' + sub_dirs[idx], target_path + '/' + target_sub_dirs[idx]).replace(suffix[idx], target_suffix[idx]) for file in files ]
+        for idx, files in enumerate(result_files)]
+    # print(result_path + '/' + sub_dirs[0], target_path + '/' + target_sub_dirs[0])
+    # print(target_files)
     ### sample ids
-    selected_samples = list(range(len(target_files)))
+    selected_samples = list(range(len(target_files[0])))
     for cond in conditions:
         assert '>' in cond or '<' in cond, 'conditions should be \'>\' or \'<\''
         if '>' in cond:
@@ -80,28 +94,42 @@ def main(argv):
         result_ids = [int(r) for r in result_ids]
         new_selected_samples = []
         for sample_id in selected_samples:
-            if 'nii.gz' in target_suffix:
-                res1, _ = load_itk(result_files[result_ids[0]][sample_id])
-                res2, _ = load_itk(result_files[result_ids[1]][sample_id])
-                tar, _ = load_itk(target_files[sample_id])
-            elif 'png' in target_suffix:
+            if 'nii.gz' in suffix[0]:
+                res1 = load_itk(result_files[result_ids[0]][sample_id])[0]
+                res2 = load_itk(result_files[result_ids[1]][sample_id])[0]
+                tar1 = load_itk(target_files[result_ids[0]][sample_id])[0]
+                tar2 = load_itk(target_files[result_ids[1]][sample_id])[0]
+                if compute_middle_for_3d:
+                    min_zxy, max_zxy = get_boundingbox(tar1, background = 0)
+                    middle_z = int(min_zxy[0] + max_zxy[0]) // 2
+                    res1, tar1 = res1[middle_z], tar1[middle_z]
+                    
+                    min_zxy, max_zxy = get_boundingbox(tar2, background = 0)
+                    middle_z = int(min_zxy[0] + max_zxy[0]) // 2
+                    res2, tar2 = res2[middle_z], tar2[middle_z]                
+            elif 'png' in suffix[0]:
                 res1 = np.array(load_img(result_files[result_ids[0]][sample_id]))
                 res2 = np.array(load_img(result_files[result_ids[1]][sample_id]))
-                tar = np.array(load_img(target_files[sample_id]))
+                tar1 = np.array(load_img(target_files[result_ids[0]][sample_id]))
+                tar2 = np.array(load_img(target_files[result_ids[1]][sample_id]))
                 res1 = ((res1 / 255) > 0.5).astype(int)
                 res2 = ((res2 / 255) > 0.5).astype(int)
-                tar = ((tar / 255) > 0.5).astype(int)
+                tar1 = ((tar1 / 255) > 0.5).astype(int)
+                tar2 = ((tar2 / 255) > 0.5).astype(int)
             else:
                 res1 = load_npy(result_files[result_ids[0]][sample_id])
                 res2 = load_npy(result_files[result_ids[1]][sample_id])
-                tar = load_npy(target_files[sample_id])
-            if eval_func(tar, res1) >= eval_func(tar, res2):
+                tar1 = load_npy(target_files[result_ids[0]][sample_id])
+                tar2 = load_npy(target_files[result_ids[1]][sample_id])
+            score1, score2 = eval_func(tar1, res1), eval_func(tar2, res2)
+            if score1 >= score2:
                 new_selected_samples.append(sample_id)
         selected_samples = new_selected_samples
         if len(selected_samples) == 0: break
-    sample_name = [target_files[sid] for sid in selected_samples]
-    print(f'selected {len(sample_name)} samples')
+    sample_name = [os.path.basename(target_files[0][sid]) for sid in selected_samples]
+    print(f'selected {len(sample_name)} samples from {len(target_files[0])} samples')
     print(sample_name)
             
 if __name__ == "__main__":
     main(sys.argv[1:])
+

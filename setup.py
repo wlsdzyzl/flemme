@@ -12,6 +12,8 @@ setup(
         # train
         'train_flemme=flemme.train_flemme:main',    
         # test
-        'test_flemme=flemme.test_flemme:main']
+        'test_flemme=flemme.test_flemme:main',
+        # eval
+        'eval_flemme=flemme.eval_flemme:main']
         }
 )

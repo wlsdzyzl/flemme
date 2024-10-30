@@ -295,22 +295,19 @@ def unfreeze(model):
 ## we save 2D image to png, 3D image to nii.gz, point cloud to ply.
 def save_data(output, data_form, output_path, segmentation = False):    
     if data_form == DataForm.IMG:
-        ## write image
-        ## note that 2D image and 3D image has different save functions.
-        ## normalized image
-        ### CHW
-        if len(output.shape) == 3:
-            ### non-binary segmentation will be saved as npy
-            if segmentation and (output.max() > 1 or output.shape[0] > 1):
+        # remove channel dimension
+        if segmentation: output = output[0]
+        if len(output.shape) == 2:
+            ### segmentation will be saved as npy
+            if segmentation:
                 save_npy(output_path+'.npy', output)
-            ### binary segmentation will be saved as png
+            ### reconstruction
             else:
                 if output.max() > 1 or output.min() < 0:
                     output = normalize_img(output)
                 save_img(output_path+'.png', (output * 255).astype('uint8'))
         ## CDHW
-        elif len(output.shape) == 4:
-            output = output[0]
+        elif len(output.shape) == 3:
             save_itk(output_path+'.nii.gz', output)
     elif data_form == DataForm.PCD:
         if segmentation:
