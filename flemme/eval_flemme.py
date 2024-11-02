@@ -31,16 +31,7 @@ def main():
         pred_suffix = pred_info.get('suffix')    
         
 
-        if pred_suffix.endswith('png') or pred_suffix.endswith('jpg') or pred_suffix.endswith('tif'):
-            load_data = load_img_as_numpy
-        elif pred_suffix.endswith('nii.gz') :
-            load_data = load_itk
-        elif pred_suffix.endswith('npy'):
-            load_data = load_npy
-        elif pred_suffix.endswith('xyz') or pred_suffix.endswith('ply'):
-            load_data = load_pcd
-        elif pred_suffix.endswith('txt') or pred_suffix.endswith('seg'):
-            load_data = np.loadtxt
+        load_data = get_load_function(pred_suffix)[0]
 
         verbose = eval_config.get('verbose', False)
         eval_batch_num = eval_config.get('eval_batch_num', float('inf'))
@@ -90,6 +81,7 @@ def main():
                         p = p[0]
                     filename = os.path.basename(p).replace(input_suffix, pred_suffix)
                     tmp = load_data(os.path.join(pred_path, filename))
+                    if type(tmp) == tuple: tmp = tmp[0]
                     if eval_type == 'seg':
                         if num_classes > 2:
                             tmp = label_to_onehot(tmp, channel_dim = channel_dim, num_classes = num_classes)
@@ -104,7 +96,6 @@ def main():
                         
                     res.append(tmp)  
                 res = np.stack(res)
-
                 results[eval_type].append(res)                          
             else: break
         results = compact_results(results)    

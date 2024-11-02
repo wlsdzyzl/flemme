@@ -292,30 +292,6 @@ def unfreeze(model):
     for param in model.parameters():
         param.requires_grad = True
 
-## we save 2D image to png, 3D image to nii.gz, point cloud to ply.
-def save_data(output, data_form, output_path, segmentation = False):    
-    if data_form == DataForm.IMG:
-        # remove channel dimension
-        if segmentation: output = output[0]
-        if len(output.shape) == 2:
-            ### segmentation will be saved as npy
-            if segmentation:
-                save_npy(output_path+'.npy', output)
-            ### reconstruction
-            else:
-                if output.max() > 1 or output.min() < 0:
-                    output = normalize_img(output)
-                save_img(output_path+'.png', (output * 255).astype('uint8'))
-        ## CDHW
-        elif len(output.shape) == 3:
-            save_itk(output_path+'.nii.gz', output)
-    elif data_form == DataForm.PCD:
-        if segmentation:
-            np.savetxt(output_path+'.seg', output)
-        else:
-            save_ply(output_path+'.ply', output)
-    else:
-        raise NotImplementedError
 def append_results(results, x, y, res, data_form, path = None,  is_supervised = False, is_conditional = False):
 
         results['input'].append(x.cpu().detach().numpy())
@@ -494,3 +470,52 @@ def combine_figures(figs, row_length, size = (32, 32)):
                 j * size[1] : (j + 1) * size[1],
             ] = f
     return figure
+
+## we save 2D image to png, 3D image to nii.gz, point cloud to ply.
+def save_data(output, data_form, output_path, segmentation = False):    
+    if data_form == DataForm.IMG:
+        # remove channel dimension
+        if len(output.shape) == 3:
+            ### non-binary segmentation will be saved as npy
+            if segmentation:
+                output = output[0]
+                save_npy(output_path+'.npy', output)
+            ### binary segmentation will be saved as png
+            else:
+                if output.max() > 1 or output.min() < 0:
+                    output = normalize_img(output)
+                save_img(output_path+'.png', (output * 255).astype('uint8'))
+        ## CDHW
+        elif len(output.shape) == 4:
+            output = output[0]
+            save_itk(output_path+'.nii.gz', output)
+    elif data_form == DataForm.PCD:
+        if segmentation:
+            np.savetxt(output_path+'.seg', output)
+        else:
+            save_ply(output_path+'.ply', output)
+    else:
+        raise NotImplementedError
+
+def get_load_function(suffix):
+    load_data = None
+    data_type = 'img'
+    if suffix.endswith('png') or suffix.endswith('jpg') or suffix.endswith('tif'):
+        load_data = load_img_as_numpy
+    elif suffix.endswith('nii.gz') :
+        load_data = load_itk
+        data_type = 'vol'
+    elif suffix.endswith('npy'):
+        load_data = load_npy
+        data_type = 'npy'
+    if module_config['point-cloud']:
+        if suffix.endswith('xyz') or suffix.endswith('ply'):
+            data_type = 'pcd'
+            load_data = load_pcd
+        elif suffix.endswith('txt') or suffix.endswith('seg'):
+            load_data = np.loadtxt
+            data_type = 'txt'
+    if load_data is None:
+        logger.error('Unknown data type.')
+        exit(1)
+    return load_data, data_type

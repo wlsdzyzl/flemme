@@ -138,6 +138,7 @@ Configuration files are in `resources/img/cifar10`
 **Denoising Diffusion Probabilistic Model (conditional)**
 ![](./images/cddpm_cifar10.png)
 ## BibTeX
+If you find our project helpful, please cite:
 ```
 @misc{zhang2024flemmeflexiblemodularlearning,
       title={Flemme: A Flexible and Modular Learning Platform for Medical Images}, 
