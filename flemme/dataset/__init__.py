@@ -3,7 +3,7 @@ from .img import *
 from torch.utils.data import DataLoader, ConcatDataset
 from flemme.utils import DataForm
 from torchvision.transforms import Compose
-from flemme.augment import get_transforms, select_label_transforms
+from flemme.augment import get_transforms, select_label_transforms, check_random_transforms
 from flemme.logger import get_logger
 if module_config['point-cloud']:
     from .pcd import *
@@ -66,6 +66,9 @@ def create_loader(loader_config):
     elif dataset_cls_str == 'ToyDataset':
         dataset_class = ToyDataset
         data_form = DataForm.VEC
+    elif dataset_cls_str == 'GraphDataset':
+        dataset_class = GraphDataset
+        data_form = DataForm.GRAPH
     else:
         raise RuntimeError(f'Unsupported dataset class: {dataset_cls_str}')
     img_dim = None
@@ -84,12 +87,14 @@ def create_loader(loader_config):
     ### label_transform and label
     if process_label:
         label_trans_config_list = loader_config.get('label_transforms', None)
-        logger.warning('Note that all transforms that would deform the image or change the number or order of points should be applied in front of other transforms that introduce random operations.')
         if label_trans_config_list is None:
             logger.info('There is no specified transforms for labels, we would generate the necessary transforms for labels automatically.')
             label_trans_config_list = \
                 select_label_transforms(trans_config_list, data_form)
-        
+
+        ### check random operations are in the same order.
+        check_random_transforms(trans_config_list, label_trans_config_list)
+
         label_transforms = get_transforms(label_trans_config_list, data_form, img_dim=img_dim)
         label_transforms = Compose(label_transforms)
         dataset_config['label_transform'] = label_transforms

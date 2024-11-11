@@ -95,12 +95,12 @@ def get_in(in_dim, channel):
             return nn.InstanceNorm2d(channel)
         elif in_dim == 3:
             return nn.InstanceNorm3d(channel)   
-def get_norm(norm_name, norm_channel, dim = -1, num_group = -1):
+def get_norm(norm_name, norm_channel, dim = -1, num_groups = 0):
         ### normalization layer
         if norm_name == 'batch' and dim > 0:
             return get_bn(dim, norm_channel), Norm.BATCH
-        elif norm_name == 'group' and num_group > 0:
-            return nn.GroupNorm(num_group, norm_channel), Norm.GROUP
+        elif norm_name == 'group' and num_groups > 0:
+            return nn.GroupNorm(num_groups, norm_channel), Norm.GROUP
         elif norm_name == 'layer':
             return nn.LayerNorm(norm_channel), Norm.LAYER
         elif norm_name == 'instance':
@@ -288,7 +288,7 @@ class TimeEmbeddingBlock(nn.Module):
         return emb
 class DenseBlock(NormBlock):
     def __init__(self, in_channel, out_channel, time_channel = 0, 
-                norm = None, num_group = 0, 
+                norm = None, num_groups = 0, 
                 activation = 'relu', dropout=None, order="ln", **kwargs):
         super().__init__(_channel_dim = -1)
         if len(kwargs) > 0:
@@ -298,7 +298,7 @@ class DenseBlock(NormBlock):
         norm_channel = out_channel
         if order.index('n') < order.index('l'):
             norm_channel = in_channel
-        self.norm, self.norm_type = get_norm(norm, norm_channel, 1, num_group)
+        self.norm, self.norm_type = get_norm(norm, norm_channel, 1, num_groups)
         if dropout is None or dropout <= 0:
             self.dropout = nn.Identity()
         else:
@@ -334,7 +334,7 @@ class DenseBlock(NormBlock):
 ## Multi Layer Perception block
 class MultiLayerPerceptionBlock(nn.Module):
     def __init__(self, in_channel, out_channel, hidden_channels, 
-                time_channel = 0, norm = None, num_group = 16, 
+                time_channel = 0, norm = None, num_groups = 0, 
                 activation = 'relu', dropout=None, 
                 order="ln", final_activation = True,
                 **kwargs):
@@ -344,7 +344,7 @@ class MultiLayerPerceptionBlock(nn.Module):
         channels = [in_channel, ] + hidden_channels + [out_channel, ]
         module_sequence = [DenseBlock( in_channel = channels[idx], 
                     out_channel = channels[idx+1], time_channel = time_channel, norm = norm,
-                    num_group = num_group, 
+                    num_groups = num_groups, 
                     activation = activation, dropout = dropout, 
                     order=order,
                     ) for idx in range(len(channels) - 2)]
@@ -357,7 +357,7 @@ class MultiLayerPerceptionBlock(nn.Module):
         else:
             module_sequence = module_sequence + [DenseBlock( in_channel = channels[-2], 
                     out_channel = channels[-1], time_channel = time_channel, norm = norm,
-                    num_group = num_group, 
+                    num_groups = num_groups, 
                     activation = activation, dropout = dropout, 
                     order=order,
                     ), ]
@@ -368,17 +368,17 @@ class MultiLayerPerceptionBlock(nn.Module):
 
 class DoubleDenseBlock(nn.Module):
     def __init__(self, in_channel, out_channel, 
-        time_channel = 0, norm = None, num_group = 0, 
+        time_channel = 0, norm = None, num_groups = 0, 
         activation = 'relu', dropout=None, 
         order="ln", **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.dense1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
-            norm=norm, num_group = num_group, activation = activation, 
+            norm=norm, num_groups = num_groups, activation = activation, 
             dropout = dropout, order = order)
         self.dense2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
-            norm=norm, num_group = num_group, activation = activation, 
+            norm=norm, num_groups = num_groups, activation = activation, 
             dropout = dropout, order = order)    
         self.time_channel = time_channel
         if self.time_channel > 0:
@@ -393,16 +393,16 @@ class DoubleDenseBlock(nn.Module):
         return x
 class ResDenseBlock(nn.Module):
     def __init__(self, in_channel, out_channel, time_channel, norm = None,
-        num_group = 0, activation = 'relu', dropout=None, 
+        num_groups = 0, activation = 'relu', dropout=None, 
         order="ln", **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.dense1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
-            norm=norm, num_group = num_group, activation = activation, 
+            norm=norm, num_groups = num_groups, activation = activation, 
             dropout = dropout, order = order)
         self.dense2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
-            norm=norm, num_group = num_group, activation = None, 
+            norm=norm, num_groups = num_groups, activation = None, 
             dropout = dropout, order = order)  
         self.act = get_act(activation)  
         self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
@@ -610,7 +610,7 @@ class ConvBlock(NormBlock):
     def __init__(self, dim, in_channel, out_channel, 
             time_channel = 0, kernel_size = 3, 
             padding = 1, depthwise = False, activation = 'relu', 
-            norm='batch', num_group = -1, 
+            norm='batch', num_groups = 0, 
             order = 'cn', atten = None, num_heads = 1, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
             dropout = None, skip_connection = False, **kwargs):
@@ -641,7 +641,7 @@ class ConvBlock(NormBlock):
         norm_channel = out_channel
         if order.index('n') < order.index('c'):
             norm_channel = in_channel
-        self.norm, self.norm_type = get_norm(norm, norm_channel, dim, num_group)
+        self.norm, self.norm_type = get_norm(norm, norm_channel, dim, num_groups)
         
         if atten == 'atten':
             self.atten = SelfAttentionBlock(in_channel=out_channel, num_heads=num_heads, d_k = d_k, 
@@ -681,7 +681,7 @@ class DoubleConvBlock(nn.Module):
     def __init__(self, dim, in_channel, out_channel, 
             time_channel = 0, kernel_size = 3, 
             padding = 1, depthwise = False, 
-            activation = 'relu', norm='batch', num_group = -1, order = 'cn', 
+            activation = 'relu', norm='batch', num_groups = 0, order = 'cn', 
             atten = None, num_heads = 1, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
             dropout = None, skip_connection = False,  **kwargs):
@@ -691,14 +691,14 @@ class DoubleConvBlock(nn.Module):
         self.conv1 = ConvBlock(dim = dim, in_channel=in_channel, out_channel=out_channel, 
                                kernel_size=kernel_size, padding=padding, 
                                depthwise = depthwise, activation=activation, 
-                               norm=norm, num_group=num_group, order = order, 
+                               norm=norm, num_groups=num_groups, order = order, 
                                atten=atten, num_heads=num_heads, d_k=d_k, 
                                qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
                                dropout = dropout, skip_connection = skip_connection)
         self.conv2 = ConvBlock(dim = dim, in_channel=out_channel, out_channel=out_channel, 
                                kernel_size=kernel_size, padding=padding, 
                                depthwise = depthwise, activation=activation,
-                               norm=norm, num_group=num_group, order = order, 
+                               norm=norm, num_groups=num_groups, order = order, 
                                atten=atten, num_heads=num_heads, d_k=d_k, 
                                qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
                                dropout = dropout, skip_connection = skip_connection)
@@ -722,7 +722,7 @@ class ResConvBlock(nn.Module):
     def __init__(self, dim, in_channel, out_channel, 
         time_channel = 0, kernel_size = 3, 
         padding = 1, depthwise = False, 
-        activation = 'relu', norm='batch', num_group = -1, order = 'cn', 
+        activation = 'relu', norm='batch', num_groups = 0, order = 'cn', 
         atten = None, num_heads = 1, d_k = None,
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
         dropout = None, skip_connection = False, **kwargs):
@@ -732,14 +732,14 @@ class ResConvBlock(nn.Module):
         self.conv1 = ConvBlock(dim = dim, in_channel=in_channel, out_channel=out_channel, 
                                kernel_size=kernel_size, padding=padding, 
                                depthwise = depthwise, activation=activation, 
-                               norm=norm, num_group=num_group, order = order, 
+                               norm=norm, num_groups=num_groups, order = order, 
                                atten=atten, num_heads=num_heads, d_k=d_k, 
                                qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
                                dropout = dropout, skip_connection = skip_connection)
         self.conv2 = ConvBlock(dim = dim, in_channel=out_channel, out_channel=out_channel, 
                                kernel_size=kernel_size, padding=padding, 
                                depthwise = depthwise, activation=None,
-                               norm=norm, num_group=num_group, order = order, 
+                               norm=norm, num_groups=num_groups, order = order, 
                                atten=atten, num_heads=num_heads, d_k=d_k, 
                                qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
                                dropout = dropout, skip_connection = skip_connection)

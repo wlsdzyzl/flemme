@@ -17,7 +17,6 @@ class ImgDataset(Dataset):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
-        label_suffix = label_suffix or data_suffix
         logger.info("loading data from the directory: {}".format(data_path))
         self.img_path_list = sorted(glob(os.path.join(data_path+'/' + data_dir, "*" + data_suffix)))
         self.mode = mode
@@ -138,7 +137,9 @@ class MultiModalityImgSegDataset(Dataset):
         if crop_nonzero is not None:
             self.crop_nonzero = partial(crop_boundingbox, margin = crop_nonzero.get('margin', (0,0,0)), background=0)
             self.crop_by = crop_nonzero.get('crop_by', 'raw')
-        if data_combine == 'sum':
+        if data_combine is None:
+            self.data_combine = lambda x: x
+        elif data_combine == 'sum':
             self.data_combine = sum
         elif data_combine == 'mean':
             self.data_combine = lambda x: sum(x) / len(x)
@@ -147,8 +148,10 @@ class MultiModalityImgSegDataset(Dataset):
         else:
             logger.error('Unknown way to combine different modality datas.')
             exit(1)
-
-        if label_combine == 'sum':
+            
+        if label_combine is None:
+            label_combine = lambda x: x
+        elif label_combine == 'sum':
             self.label_combine = sum
         elif label_combine == 'mean':
             self.label_combine = lambda x: sum(x) / len(x)

@@ -3,11 +3,14 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import DenseBlock, SequentialT, get_building_block, FoldingLayer, LocalGraphLayer
+from flemme.block import DenseBlock, SequentialT, get_building_block
 from flemme.logger import get_logger
 logger = get_logger("model.encoder.pointnet")
-class PointEncoder(nn.Module):
-    def __init__(self, point_dim=3, 
+class GraphEncoder(nn.Module):
+    def __init__(self, node_dim=0, pos_dim=3, 
+                 node_num=2048,
+                 edge_num=None,
+                 ### wait to be implemented
                  projection_channel = 64,
                  local_graph_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
@@ -18,36 +21,10 @@ class PointEncoder(nn.Module):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
-        self.point_dim = point_dim
-        self.z_count = z_count
-        self.activation = activation
-        self.local_graph_k = local_graph_k
-        self.dropout = dropout
-        self.pointwise = pointwise
-        self.normalization = normalization
-        self.num_groups = num_groups
-        self.point_proj = nn.Linear(point_dim, projection_channel)
-        self.projection_channel = projection_channel
-        ## fully connected layers
-        # z_count = 2 usually means we compute mean and variance.
-        # compute embedding from global feature
-        assert len(local_feature_channels) > 1, "Point encoder need more than one local feature channel to extract local feature!"
-        assert len(dense_channels) > 0, "Point encoder need to have fully connected layers!"
-        dense_channels = [local_feature_channels[-1] * 2, ] + dense_channels
-        if self.pointwise:
-            dense_channels[0] += local_feature_channels[-1]
-        dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
-                                            activation = self.activation, dropout=self.dropout, 
-                                            norm = normalization, num_groups=num_groups) for i in range(len(dense_channels) - 2)]
-        # the last layer is a linear layer, without batch normalization
-        dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], activation = None, norm = None), ]
-        self.dense = nn.ModuleList([nn.Sequential(* (dense_sequence.copy()) ) for _ in range(z_count) ])
-        self.out_channel = dense_channels[-1]
-        self.dense_path = dense_channels
-        self.lf_path = [projection_channel,] + local_feature_channels
-        self.lf = None
+        self.node_dim = node_dim 
+        self.pos_dim = pos_dim
 
-    def forward(self, x, t = None):
+    def forward(self, data, t = None):
         if self.lf is None:
             raise NotImplementedError
         B = x.shape[0]
@@ -92,53 +69,7 @@ class PointEncoder(nn.Module):
         _str += '\n'
         return _str 
 
-class PointNetEncoder(PointEncoder):
-    def __init__(self, point_dim=3, 
-                 projection_channel = 64,
-                 time_channel = 0, 
-                 local_graph_k=0, 
-                 local_feature_channels = [64, 64, 128, 256], 
-                 dense_channels = [256, 256],
-                 building_block = 'dense', 
-                 normalization = 'group', num_groups = 8, 
-                 activation = 'lrelu', dropout = 0., 
-                 z_count = 1, pointwise = False, **kwargs):
-        super().__init__(point_dim=point_dim, 
-                projection_channel = projection_channel,
-                local_graph_k=local_graph_k, 
-                local_feature_channels = local_feature_channels, 
-                dense_channels = dense_channels,
-                normalization = normalization,
-                num_groups = num_groups,
-                activation = activation, dropout = dropout, 
-                z_count = z_count, pointwise = pointwise)
-        if len(kwargs) > 0:
-            logger.debug("redundant parameters: {}".format(kwargs))
 
-        self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = time_channel, 
-                                        activation=activation, 
-                                        norm = normalization, 
-                                        num_groups = num_groups, 
-                                        dropout = dropout)
-
-        # compute point features
-        ## local graph feature
-        if self.local_graph_k > 0:
-            lf_sequence = [LocalGraphLayer(k = self.local_graph_k, 
-                                            in_channel = self.lf_path[i],
-                                            out_channel = self.lf_path[i+1], 
-                                            BuildingBlock = self.BuildingBlock,
-                                            is_seq = False) for i in range(len(self.lf_path) - 2) ]
-        ## local feature, similar to pointnet
-        else:    
-            lf_sequence = [self.BuildingBlock(in_channel=self.lf_path[i], 
-                                            out_channel=self.lf_path[i+1]) for i in range(len(self.lf_path) - 2) ]
-            
-        lf_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
-                                        out_channel=self.lf_path[-1]))
-
-        self.lf = nn.ModuleList(lf_sequence)
 
 class PointDecoder(nn.Module):
     def __init__(self, point_dim=3, point_num = 2048, 
@@ -246,40 +177,4 @@ class PointDecoder(nn.Module):
         return x
 
 
-class PointNetDecoder(PointDecoder):
-    def __init__(self, point_dim=3, point_num = 2048, 
-                in_channel = 256, dense_channels = [256], 
-                time_channel = 0, building_block = 'dense', 
-                normalization = 'group', num_groups = 8, 
-                activation = 'lrelu', dropout = 0., 
-                folding_times = 0, 
-                base_shape_config = {},
-                folding_hidden_channels = [512, 512],
-                pointwise = False, **kwargs):
-        super().__init__(point_dim=point_dim, 
-                point_num = point_num,
-                in_channel = in_channel,
-                dense_channels = dense_channels,
-                normalization = normalization,
-                num_groups = num_groups,
-                activation = activation, dropout = dropout, 
-                folding_times = folding_times,
-                base_shape_config = base_shape_config,
-                pointwise = pointwise)
-        if len(kwargs) > 0:
-           logger.debug("redundant parameters:{}".format(kwargs))
-        
-        if self.folding_times > 0:
-            self.BuildingBlock = get_building_block(building_block, 
-                                            time_channel = time_channel, 
-                                            activation=activation, 
-                                            norm = normalization, 
-                                            num_groups = 1)
-            if self.folding_times < 1:
-                logger.warning('Folding times should be larger than 1.')
-            folding_channels = [dense_channels[-1] + self.base_shape_dim, ] + [ dense_channels[-1] + point_dim] * (folding_times - 1)
-            folding_sequence = [FoldingLayer(BuildingBlock = self.BuildingBlock,
-                                    in_channel = fc, out_channel = point_dim,
-                                    hidden_channels = folding_hidden_channels) for fc in folding_channels]
-            self.fold = SequentialT(*folding_sequence)
 

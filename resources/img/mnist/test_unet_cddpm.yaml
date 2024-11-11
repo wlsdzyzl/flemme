@@ -24,7 +24,7 @@ model:
       activation: silu
       num_block: 2
       normalization: group
-      num_group: 16
+      num_groups: 16
       dropout: 0.1
       ## the value can be list or int
     condition_embedding:

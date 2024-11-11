@@ -9,8 +9,7 @@ from skimage import measure
 from skimage.filters import gaussian
 from flemme.utils import label_to_onehot, relabel
 from functools import partial
-# WARN: use fixed random state for reproducibility; if you want to randomize on each run seed with `time.time()` e.g.
-GLOBAL_RANDOM_STATE = np.random.RandomState(47)
+
 eps = 1e-8
 
 class RandomFlip:
@@ -176,32 +175,23 @@ class ElasticDeform:
         return m
 
 
-class CropToFixed:
-    def __init__(self, size=(256, 256), centered=False, **kwargs):
+class CenterCropXY:
+    def __init__(self, size=(256, 256), **kwargs):
         self.crop_y, self.crop_x = size
-        self.centered = centered
+    @staticmethod
+    def _padding(pad_total):
+        half_total = pad_total // 2
+        return (half_total, pad_total - half_total)
+
+    @staticmethod
+    def _start_and_pad(crop_size, max_size):
+        # print('center crop')
+        if crop_size < max_size:
+            return (max_size - crop_size) // 2, (0, 0)
+        else:
+            return 0, _padding(crop_size - max_size)
 
     def __call__(self, m):
-        def _padding(pad_total):
-            half_total = pad_total // 2
-            return (half_total, pad_total - half_total)
-
-        def _rand_range_and_pad(crop_size, max_size):
-            """
-            Returns a tuple:
-                max_value (int) for the corner dimension. The corner dimension is chosen as `np.random(max_value)`
-                pad (int): padding in both directions; if crop_size is lt max_size the pad is 0
-            """
-            if crop_size < max_size:
-                return max_size - crop_size, (0, 0)
-            else:
-                return 1, _padding(crop_size - max_size)
-
-        def _start_and_pad(crop_size, max_size):
-            if crop_size < max_size:
-                return (max_size - crop_size) // 2, (0, 0)
-            else:
-                return 0, _padding(crop_size - max_size)
 
         assert m.ndim in (3, 4)
         if m.ndim == 3:
@@ -209,16 +199,8 @@ class CropToFixed:
         else:
             _, _, y, x = m.shape
 
-        if not self.centered:
-            y_range, y_pad = _rand_range_and_pad(self.crop_y, y)
-            x_range, x_pad = _rand_range_and_pad(self.crop_x, x)
-
-            y_start = np.random.randint(y_range)
-            x_start = np.random.randint(x_range)
-
-        else:
-            y_start, y_pad = _start_and_pad(self.crop_y, y)
-            x_start, x_pad = _start_and_pad(self.crop_x, x)
+        y_start, y_pad = self._start_and_pad(self.crop_y, y)
+        x_start, x_pad = self._start_and_pad(self.crop_x, x)
 
         if m.ndim == 3:
             result = m[:, y_start:y_start + self.crop_y, x_start:x_start + self.crop_x]
@@ -230,7 +212,16 @@ class CropToFixed:
                 channels.append(np.pad(result, pad_width=((0, 0), y_pad, x_pad), mode='reflect'))
             return np.stack(channels, axis=0)
 
-
+class RandomCropXY(CenterCropXY):
+    def __init__(self, size=(256, 256), **kwargs):
+        super().__init__(size = size)
+    @staticmethod
+    def _start_and_pad(crop_size, max_size):
+        # print('random crop')
+        if crop_size < max_size:
+            return np.random.randint(max_size - crop_size), (0, 0)
+        else:
+            return 0, _padding(crop_size - max_size)
 
 class Normalize:
     """

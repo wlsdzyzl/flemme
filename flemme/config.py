@@ -6,6 +6,9 @@ module_config = {
     'mamba': True,
     ### plyfile, POT
     'point-cloud': True,
+    ### geometric_torch
+    'graph': True
     'logger_level': logging.INFO,
     'color_map': 'Custom'
+
 }

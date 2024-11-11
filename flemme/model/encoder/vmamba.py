@@ -23,7 +23,7 @@ class VMambaEncoder(nn.Module):
                 dt_init_floor=1e-4, 
                 conv_bias=True, bias=False,             
                 dropout=0., drop_path=0.1, 
-                normalization = 'group', num_group = 8, 
+                normalization = 'group', num_groups = 8, 
                 num_block = 2, activation = 'silu', 
                 scan_mode = 'single',
                 flip_scan = True,
@@ -68,7 +68,7 @@ class VMambaEncoder(nn.Module):
                                 dt_init = dt_init,
                                 conv_bias = conv_bias, bias = bias,
                                 dropout = dropout,
-                                norm = normalization, num_group = num_group,
+                                norm = normalization, num_groups = num_groups,
                                 state_channel = state_channel,
                                 head_channel = head_channel, 
                                 learnable_init_states = learnable_init_states, 
@@ -100,7 +100,7 @@ class VMambaEncoder(nn.Module):
                                                      in_channel = down_channels[i+1],
                                                      out_channel = down_channels[i+1],
                                                      norm = normalization, 
-                                                     num_group = num_group)  for i in range(self.d_depth)])
+                                                     num_groups = num_groups)  for i in range(self.d_depth)])
         self.down_path = [self.image_channel, ] + down_channels        
         ## middle convolution layer
         if not self.vector_embedding:
@@ -122,7 +122,7 @@ class VMambaEncoder(nn.Module):
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *dense_channels[0])
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],
-                                                norm = normalization, num_group=num_group, 
+                                                norm = normalization, num_groups=num_groups, 
                                                 activation = self.activation) for i in range(len(dense_channels) - 2)]
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
             self.dense = nn.ModuleList([nn.Sequential(*(dense_sequence.copy()) ) for _ in range(z_count) ])
@@ -194,7 +194,7 @@ class VMambaDecoder(nn.Module):
                 learnable_init_states = True, 
                 chunk_size=256,             
                 dropout=0., drop_path=0.1, 
-                normalization = 'group', num_group = 8, 
+                normalization = 'group', num_groups = 8, 
                 num_block = 2, activation = 'silu', 
                 scan_mode = 'single', flip_scan = True, 
                 return_features = False,
@@ -235,7 +235,7 @@ class VMambaDecoder(nn.Module):
                                 chunk_size=chunk_size,
                                 conv_bias = conv_bias, bias = bias,
                                 dropout = dropout,
-                                norm = normalization, num_group = num_group,
+                                norm = normalization, num_groups = num_groups,
                                 state_channel = state_channel,
                                 activation = activation,
                                 scan_mode = scan_mode, flip_scan = flip_scan)
@@ -249,13 +249,13 @@ class VMambaDecoder(nn.Module):
             # used for view (reshape)
             self.view_shape = [-1, ] +[int(im_size // (self.patch_size * (2** self.u_depth))) for im_size in self.image_size ]  + [int( dense_channels[-1]),]
             module_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                norm = normalization, num_group=num_group,
+                                                norm = normalization, num_groups=num_groups,
                                                 activation = self.activation) for i in range(len(dense_channels) - 2)]
             # to construct image shape
             # if there is not fc layer, then we also don't need this step
             module_sequence.append(DenseBlock(dense_channels[-2],  
                                                        int( dense_channels[-1] * math.prod(self.image_size) / ((2**self.u_depth * self.patch_size)**self.dim  )), 
-                                                        norm = normalization, num_group=num_group, 
+                                                        norm = normalization, num_groups=num_groups, 
                                                         activation = self.activation))
             self.dense = nn.Sequential(*module_sequence)  
         self.dense_path = dense_channels
@@ -266,7 +266,7 @@ class VMambaDecoder(nn.Module):
                                                      in_channel = up_channels[i],
                                                      out_channel = up_channels[i],
                                                      norm = normalization, 
-                                                     num_group = num_group) for i in range(self.u_depth)])
+                                                     num_groups = num_groups) for i in range(self.u_depth)])
         ### building block
         self.u_ssm = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
                                                         in_channel = up_channels[i],

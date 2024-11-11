@@ -225,7 +225,7 @@ class HBaseModel(BaseModel):
                                     in_channel=upc, 
                                     out_channel=upc,
                                     normalization='group',
-                                    num_group=16,
+                                    num_groups=16,
                                     activation='relu',
                                     time_channel=self.final_time_channel) 
                                     for upc in self.decoder.up_path])
@@ -285,7 +285,7 @@ class HBaseModel(BaseModel):
 #         encoder_config['return_features'] = True
 #         activation = encoder_config.get('activation', 'relu')
 #         normalization = encoder_config.get('normalization', 'group')
-#         num_group = encoder_config.get('num_group', 8)
+#         num_groups = encoder_config.get('num_groups', 8)
 #         super().__init__(model_config)
 #         assert self.data_form == DataForm.IMG, "Currently, HSeM only support image data."
 
@@ -306,7 +306,7 @@ class HBaseModel(BaseModel):
 #                                     out_channel=upc, 
 #                                     activation=activation, 
 #                                     norm=normalization,
-#                                     num_group=num_group) for upc in self.decoder.up_path])
+#                                     num_groups=num_groups) for upc in self.decoder.up_path])
 #             self.final_convs = nn.ModuleList([ConvBlock(dim = self.encoder.dim, 
 #                                     in_channel=upc, 
 #                                     out_channel=self.decoder.image_channel, 
@@ -319,7 +319,7 @@ class HBaseModel(BaseModel):
 #                                     time_channel=self.final_time_channel,
 #                                     activation=activation, 
 #                                     norm=normalization,
-#                                     num_group=num_group) for upc in self.decoder.up_path])
+#                                     num_groups=num_groups) for upc in self.decoder.up_path])
 #             self.final_convs = nn.ModuleList([ConvTBlock(dim = self.encoder.dim, 
 #                                     in_channel=upc, 
 #                                     out_channel=self.decoder.image_channel, 

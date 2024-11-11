@@ -6,6 +6,8 @@ if module_config['mamba']:
     from flemme.block.vmamba import *
 if module_config['point-cloud']:
     from flemme.block.pcd import *
+if module_config['graph']:
+    from flemme.block.graph import *
 
 from flemme.logger import get_logger
 logger = get_logger('flemme.block')
@@ -28,7 +30,7 @@ class MultipleBuildingBlocks(nn.Module):
         x, _ = self.building_blocks(x, t)
         return x
 
-def get_building_block(name, **kwargs):
+def get_building_block(building_block, **kwargs):
     logger.debug('building block parameters: {}'.format(kwargs))
     # image
     if name in ['single','conv']:
@@ -76,6 +78,13 @@ def get_building_block(name, **kwargs):
     ## point cloud mamba2
     elif name == 'pmamba2':
         return partial(PointMambaBlock, mamba='Mamba2', **kwargs)
+    ## graph convolution layer
+    elif name == 'gcn':
+        return partial(GraphConvBlock, **kwargs)
+    elif name == 'cheb':
+        return partial(ChebConvBlock, **kwargs)
+    elif name == 'gtrans':
+        return partial(TransformerConv, **kwargs)
     else:
         logger.error(f'Unsupported building block: {name}')
         exit(1)

@@ -12,7 +12,7 @@ logger = get_logger("model.encoder.pointwise")
 ### Note that point-wise network can be used on any kinds of data, because it only operate the last channel.
 class PointWiseEncoder(nn.Module):
     def __init__(self, point_dim=3, time_channel = 0, building_block = 'dense', dense_channels = [256], 
-                normalization = 'group', num_group = 8, 
+                normalization = 'group', num_groups = 8, 
                 activation = 'lrelu', dropout = 0., z_count = 1, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -24,7 +24,7 @@ class PointWiseEncoder(nn.Module):
         self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
                                                 activation=activation, 
                                                 norm = normalization, 
-                                                num_group = num_group, 
+                                                num_groups = num_groups, 
                                                 dropout = dropout)
         dense_channels = [point_dim,] + dense_channels
         dense_sequence = [self.BuildingBlock(in_channel=dense_channels[i], out_channel=dense_channels[i+1]) 
@@ -56,7 +56,7 @@ class PointWiseEncoder(nn.Module):
 class PointWiseDecoder(nn.Module):
     def __init__(self, point_dim=3, in_channel = 256, time_channel = 0, 
                 building_block = 'fc', dense_channels = [256], 
-                normalization = 'group', num_group = 8, 
+                normalization = 'group', num_groups = 8, 
                 activation = 'lrelu', dropout = 0., **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -64,7 +64,7 @@ class PointWiseDecoder(nn.Module):
         self.point_dim = point_dim
         self.activation = activation
         self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
-                                                num_group = num_group)
+                                                num_groups = num_groups)
         dense_channels = [in_channel,] + dense_channels
         dense_sequence = [self.BuildingBlock(in_channel=dense_channels[i], out_channel=dense_channels[i+1], 
                                               activation=activation, 

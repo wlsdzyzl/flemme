@@ -26,7 +26,7 @@ class CNNEncoder(nn.Module):
                  shape_scaling = [2, 2],  middle_channels = [256, 256], 
                  middle_attens = [None, None], depthwise = False, kernel_size = 3, 
                  dense_channels = [256], dsample_function = 'conv', building_block='single', 
-                 normalization = 'group', num_group = 8, cn_order = 'cn', num_block = 2,
+                 normalization = 'group', num_groups = 8, cn_order = 'cn', num_block = 2,
                  activation = 'relu', z_count = 1, dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  abs_pos_embedding = False, return_features = False,
@@ -53,7 +53,7 @@ class CNNEncoder(nn.Module):
         self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
                                         activation = activation, depthwise = depthwise,
                                         kernel_size = kernel_size, padding = (kernel_size - 1) // 2,
-                                        norm = normalization, num_group = num_group, 
+                                        norm = normalization, num_groups = num_groups, 
                                         order = cn_order, dropout = dropout,  
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
@@ -96,7 +96,7 @@ class CNNEncoder(nn.Module):
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)  *dense_channels[0])
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                            norm = normalization, num_group=num_group, 
+                                            norm = normalization, num_groups=num_groups, 
                                             activation = self.activation) for i in range(len(dense_channels) - 2)]
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
             self.dense = nn.ModuleList([nn.Sequential(*(dense_sequence.copy()) ) for _ in range(z_count) ])
@@ -169,7 +169,7 @@ class CNNDecoder(nn.Module):
                  shape_scaling = [2, 2], final_channels = [], 
                  final_attens = [], depthwise = False, kernel_size = 3, 
                  usample_function = 'conv', building_block='single', 
-                 normalization = 'group', num_group = 8, cn_order = 'cn', 
+                 normalization = 'group', num_groups = 8, cn_order = 'cn', 
                  num_block = 2, activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  return_features = False, **kwargs):
@@ -191,7 +191,7 @@ class CNNDecoder(nn.Module):
         self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
                                         depthwise = depthwise, activation=activation, 
                                         kernel_size = kernel_size, padding = (kernel_size - 1) // 2,
-                                        norm = normalization, num_group = num_group, 
+                                        norm = normalization, num_groups = num_groups, 
                                         order = cn_order, dropout = dropout,
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
@@ -205,13 +205,13 @@ class CNNDecoder(nn.Module):
             # used for view (reshape)
             self.view_shape = [-1, int( dense_channels[-1]),] +[int(im_size // (self.patch_size * math.prod(shape_scaling) )) for im_size in self.image_size ]
             module_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                    norm = normalization, num_group=num_group, 
+                                                    norm = normalization, num_groups=num_groups, 
                                                     activation = self.activation) for i in range(len(dense_channels) - 2)]
             # to construct image shape
             # if there is not fc layer, then we also don't need this step
             module_sequence.append(DenseBlock(dense_channels[-2],  
                                                        int( dense_channels[-1] * math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)), 
-                                                       norm = normalization, num_group=num_group,  
+                                                       norm = normalization, num_groups=num_groups,  
                                                        activation = self.activation))
             self.dense = nn.Sequential(*module_sequence)  
         self.dense_path = dense_channels

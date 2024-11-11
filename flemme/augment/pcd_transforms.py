@@ -83,6 +83,29 @@ class LinearTransformation(object):
         data = torch.matmul(data, self.matrix.to(data.dtype).to(data.device))
         return data
 
+class Rotate(object):
+    r"""Rotates node positions around a specific axis by a randomly sampled
+    factor within a given interval.
+    Args:
+        degrees (tuple or float): rotation degree
+        axis (int, optional): The rotation axis. (default: :obj:`0`)
+    """
+
+    def __init__(self, degree, axis=0):
+        self.degree = degree
+        self.axis = axis
+
+    def __call__(self, data):
+        degree = math.pi * self.degree / 180.0
+        sin, cos = math.sin(degree), math.cos(degree)
+
+        if self.axis == 0:
+            matrix = [[1, 0, 0], [0, cos, sin], [0, -sin, cos]]
+        elif self.axis == 1:
+            matrix = [[cos, 0, -sin], [0, 1, 0], [sin, 0, cos]]
+        else:
+            matrix = [[cos, sin, 0], [-sin, cos, 0], [0, 0, 1]]
+        return LinearTransformation(torch.tensor(matrix), )(data)
 
 class RandomRotate(object):
     r"""Rotates node positions around a specific axis by a randomly sampled
@@ -195,32 +218,7 @@ class RandomTranslate(object):
         return data
 
 
-class Rotate(object):
-    r"""Rotates node positions around a specific axis by a randomly sampled
-    factor within a given interval.
-    Args:
-        degrees (tuple or float): Rotation interval from which the rotation
-            angle is sampled. If :obj:`degrees` is a number instead of a
-            tuple, the interval is given by :math:`[-\mathrm{degrees},
-            \mathrm{degrees}]`.
-        axis (int, optional): The rotation axis. (default: :obj:`0`)
-    """
 
-    def __init__(self, degree, axis=0):
-        self.degree = degree
-        self.axis = axis
-
-    def __call__(self, data):
-        degree = math.pi * self.degree / 180.0
-        sin, cos = math.sin(degree), math.cos(degree)
-
-        if self.axis == 0:
-            matrix = [[1, 0, 0], [0, cos, sin], [0, -sin, cos]]
-        elif self.axis == 1:
-            matrix = [[cos, 0, -sin], [0, 1, 0], [sin, 0, cos]]
-        else:
-            matrix = [[cos, sin, 0], [-sin, cos, 0], [0, 0, 1]]
-        return LinearTransformation(torch.tensor(matrix), )(data)
 class ShufflePoints(object):
     r"""Shuffle order of points in point cloud
     """

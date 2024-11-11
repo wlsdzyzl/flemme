@@ -23,7 +23,7 @@ model:
       activation: silu
       num_block: 2
       normalization: group
-      num_group: 16
+      num_groups: 16
       dropout: 0.1
   ## 2D ddpm
   eps_loss:

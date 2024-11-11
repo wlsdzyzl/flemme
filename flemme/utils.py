@@ -25,6 +25,7 @@ class DataForm(Enum):
     VEC = auto()
     IMG = auto()
     PCD = auto()
+    GRAPH = auto()
 
 def get_random_state():
     return np.random.get_state(), torch.get_rng_state()
@@ -405,19 +406,31 @@ def crop_boundingbox(data = None, margin = (0, 0, 0), background = 0, follows = 
     
     return cropped_follows, (start_idx, end_idx)
 
-if module_config['point-cloud']:
+if module_config['point-cloud'] or module_config['graph']:
     from plyfile import PlyData,PlyElement
     ##### load ply file for training
     ## here we only focus on the coordinate information.
     ## later we can add more informations
-    def load_ply(inputfile):
+    ## without edge features
+    def load_ply(inputfile, vertex_features = None, with_edges = False):
         plydata = PlyData.read(inputfile)
-        pcd = np.zeros((plydata['vertex']['x'].shape[0], 3 ))
+        pcd = np.zeros((plydata['vertex'].count, 3 + len(vertex_features) ))
         pcd[:, 0] = plydata['vertex']['x']
         pcd[:, 1] = plydata['vertex']['y']
         pcd[:, 2] = plydata['vertex']['z']
-        return pcd
+        if vertex_features is not None:
+            for fid, fname in enumerate(vertex_features):
+                pcd[:, fid + 1] = plydata['vertex'][fname]
+        if 'edge' in plydata._element_lookup:
+            edges = np.zeros((plydata['edge'].count, 2), dtype=np.int64)
+            ### read edges
+            edges[:, 0] = plydata['edge']['vertex1']
+            edges[:, 1] = plydata['edge']['vertex2']
+            return pcd, edges     
+        ### currently, reading face is not implemented 
+        return pcd, None
 
+        
     ### save ply file, with points and colors
     ## here, the face information will be ignored
     ## We can use other packages or cpp program for mesh extraction from point cloud
@@ -458,7 +471,6 @@ if module_config['point-cloud']:
         else:
             logger.warning('unsupported file format.')
             raise NotImplementedError
-        
     def save_pcd(filename, x):
         basename = os.path.basename(filename)
         suffix = basename.split('.')[-1]
@@ -626,12 +638,27 @@ if module_config['point-cloud']:
         s = torch.norm(v, dim=-1, keepdim=True).unsqueeze(1)
         # kmat: B * 3 * 3
         # kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
-        kmat = torch.zeros(a.shape[0], 3, 3)
+        kmat = torch.zeros(a.shape[0], 3, 3, device=bvec1.device)
         kmat[:, 0, 1] = -v[:, 2]
         kmat[:, 0, 2] = v[:, 1]
         kmat[:, 1, 0] = v[:, 2]
         kmat[:, 1, 2] = -v[:, 0]
         kmat[:, 2, 0] = -v[:, 1]
         kmat[:, 2, 1] = v[:, 0]
-        rotations = torch.eye(3) + kmat + torch.bmm(kmat, kmat) * ((1 - c) / (s ** 2))
+        rotations = torch.eye(3, device=bvec1.device) + kmat + torch.bmm(kmat, kmat) * ((1 - c) / (s ** 2))
         return rotations
+
+if module_config['graph']:
+    def load_graph(filename, vertex_features = None):
+        basename = os.path.basename(filename)
+        suffix = basename.split('.')[-1]
+        if suffix == 'ply':
+            return load_ply(filename, vertex_features = vertex_features, with_edges = True)
+        elif suffix == 'xyz' or suffix == 'pts':
+            return load_xyz(filename), None
+        ## graph saved by torch
+        elif suffix == 'pt'
+            return torch.load(filename)
+        else:
+            logger.warning('unsupported file format.')
+            raise NotImplementedError

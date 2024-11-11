@@ -76,9 +76,9 @@ def main():
                                         is_supervised=is_supervised,
                                         is_conditional=is_conditional)
                 res = []
+                if type(path[0]) == tuple:
+                    path = path[0]
                 for p in path:
-                    if type(p) == tuple:
-                        p = p[0]
                     filename = os.path.basename(p).replace(input_suffix, pred_suffix)
                     tmp = load_data(os.path.join(pred_path, filename))
                     if type(tmp) == tuple: tmp = tmp[0]

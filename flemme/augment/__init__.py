@@ -14,6 +14,8 @@ seg_label_transform_table = {
     'img':['rotate', 'rotation', 'elastic', 'flip', 'crop', 'resize', 'totensor'],
     'pcd':['fixedpoints', 'shufflepoints', 'totensor']
 }
+random_transforms = [
+    'ElasticDeform', 'GaussianBlur', 'FixedPoints', 'ShufflePoints' ]
 ### ToTensor is not in the dataset.transforms
 def get_transforms(trans_config_list, data_form = DataForm.IMG, img_dim = 2):
     transforms = []
@@ -43,7 +45,17 @@ def get_transforms(trans_config_list, data_form = DataForm.IMG, img_dim = 2):
             logger.warning(f"Unsupported transforms:{trans_name} for module {module}")
     
     return transforms
-
+def check_random_transforms(data_trans_config_list, label_trans_config_list):
+    data_random_transform_list = [ t['name']  for t in data_trans_config_list if t['name'] in random_transforms or 'Random' in t['name']]
+    label_random_transform_list = [ t['name']  for t in label_trans_config_list if t['name'] in random_transforms or 'Random' in t['name']]
+    if len(data_random_transform_list) < len(label_random_transform_list):
+        logger.warning('Label transforms introduce more random operations, are you sure this is what you want?')
+    for drt, lrt in zip(data_random_transform_list, label_random_transform_list):
+        if drt != lrt:
+            logger.error('Transforms that introduce random operations shoule have the same order for data and label.')
+            logger.error(f'random transforms for data: {data_random_transform_list}')
+            logger.error(f'random transforms for label: {label_random_transform_list}')
+            exit(1)
 def select_label_transforms(trans_config_list, data_form):
     label_config_list = []
     selector = []

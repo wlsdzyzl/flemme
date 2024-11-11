@@ -293,7 +293,6 @@ def unfreeze(model):
         param.requires_grad = True
 
 def append_results(results, x, y, res, data_form, path = None,  is_supervised = False, is_conditional = False):
-
         results['input'].append(x.cpu().detach().numpy())
         if y is not None:
             if is_supervised:

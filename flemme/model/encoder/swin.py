@@ -18,7 +18,7 @@ class SwinEncoder(nn.Module):
                  down_channels = [128, 256], middle_channels = [256, 256], 
                  down_num_heads = [3, 3], middle_num_heads = [3, 3],
                  dropout=0., atten_dropout=0., drop_path=0.1, 
-                 normalization = 'group', num_group = 8, 
+                 normalization = 'group', num_groups = 8, 
                  num_block = 2, activation = 'silu', 
                  abs_pos_embedding = False,
                  return_features = False,
@@ -60,7 +60,7 @@ class SwinEncoder(nn.Module):
                                 qk_scale = qk_scale,
                                 dropout = dropout,
                                 atten_dropout = atten_dropout,
-                                norm = normalization, num_group = num_group,
+                                norm = normalization, num_groups = num_groups,
                                 activation = activation)
         ### construct patch
         self.patch_emb = PatchConstructionBlock(dim = self.dim, 
@@ -89,7 +89,7 @@ class SwinEncoder(nn.Module):
                                                      in_channel = down_channels[i+1],
                                                      out_channel = down_channels[i+1],
                                                      norm = normalization, 
-                                                     num_group = num_group)  for i in range(self.d_depth)])
+                                                     num_groups = num_groups)  for i in range(self.d_depth)])
         self.down_path = [self.image_channel, ] + down_channels
 
         if not self.vector_embedding:
@@ -115,7 +115,7 @@ class SwinEncoder(nn.Module):
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *dense_channels[0])
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                norm = normalization, num_group=num_group, 
+                                                norm = normalization, num_groups=num_groups, 
                                                 activation = self.activation) for i in range(len(dense_channels) - 2)]
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
             self.dense = nn.ModuleList([nn.Sequential(*(dense_sequence.copy()) ) for _ in range(z_count) ])
@@ -176,7 +176,7 @@ class SwinDecoder(nn.Module):
                  up_channels = [128, 64], final_channels = [64, 64], 
                  up_num_heads = [3, 3], final_num_heads = [3, 3],
                  dropout=0., atten_dropout=0., drop_path=0.1, 
-                 normalization = 'group', num_group = 8, 
+                 normalization = 'group', num_groups = 8, 
                  num_block = 2, activation = 'silu', 
                  return_features = False, **kwargs):
         super().__init__()
@@ -215,7 +215,7 @@ class SwinDecoder(nn.Module):
                                 qk_scale = qk_scale,
                                 dropout = dropout,
                                 atten_dropout = atten_dropout,
-                                norm = normalization, num_group = num_group,
+                                norm = normalization, num_groups = num_groups,
                                 activation = activation)
         ## fully connected layer
         dense_channels = [in_channel, ] + dense_channels 
@@ -226,13 +226,13 @@ class SwinDecoder(nn.Module):
             # used for view (reshape)
             self.view_shape = [-1, ] + [int(im_size // (self.patch_size * (2** self.u_depth))) for im_size in self.image_size ] + [int( dense_channels[-1]),]
             module_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                    norm = normalization, num_group=num_group, 
+                                                    norm = normalization, num_groups=num_groups, 
                                                     activation = self.activation) for i in range(len(dense_channels) - 2)]
             # to construct image shape
             # if there is not fc layer, then we also don't need this step
             module_sequence.append(DenseBlock(dense_channels[-2],  
                                                        int( dense_channels[-1] * math.prod(self.image_size) / ((2**self.u_depth * self.patch_size)**self.dim  )), 
-                                                       norm = normalization, num_group=num_group,  
+                                                       norm = normalization, num_groups=num_groups,  
                                                        activation = self.activation))
             self.dense = nn.Sequential(*module_sequence)  
         self.dense_path = dense_channels
@@ -242,7 +242,7 @@ class SwinDecoder(nn.Module):
                                                      in_channel = up_channels[i],
                                                      out_channel = up_channels[i],
                                                      norm = normalization, 
-                                                     num_group = num_group) for i in range(self.u_depth)])
+                                                     num_groups = num_groups) for i in range(self.u_depth)])
         ### building block
         self.u_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
                                                         num_heads = up_num_heads[i],

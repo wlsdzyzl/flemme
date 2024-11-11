@@ -80,7 +80,7 @@ class PointTransformerBlock(NormBlock):
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
         dropout = None, residual_attention = False, 
         skip_connection = True, attention = 'SA', 
-        activation = 'relu', norm='batch', num_group = -1, **kwargs):
+        activation = 'relu', norm='batch', num_groups = -1, **kwargs):
         
         super().__init__(_channel_dim = -1)
         self.in_channel = in_channel
@@ -94,7 +94,7 @@ class PointTransformerBlock(NormBlock):
             qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
             dropout = dropout, skip_connection = residual_attention)
 
-        self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_group)
+        self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_groups)
         self.act = get_act(activation)
         self.time_channel = time_channel
         self.skip_connection = skip_connection
@@ -128,7 +128,7 @@ class PointMambaBlock(NormBlock):
         dt_max=0.1, dt_init_floor=1e-4, 
         dt_rank = None, dt_scale = 1.0,
         dropout = None, skip_connection = True, mamba = 'Mamba', 
-        activation = 'relu', norm='batch', num_group = -1, **kwargs):
+        activation = 'relu', norm='batch', num_groups = -1, **kwargs):
         
         super().__init__(_channel_dim = -1)
         self.in_channel = in_channel
@@ -150,7 +150,7 @@ class PointMambaBlock(NormBlock):
                         dt_init_floor = dt_init_floor,
                         A_init_range = A_init_range)
 
-        self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_group)
+        self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_groups)
         self.act = get_act(activation)
         self.time_channel = time_channel
         self.skip_connection = skip_connection
