@@ -7,7 +7,7 @@ module_config = {
     ### plyfile, POT
     'point-cloud': True,
     ### geometric_torch
-    'graph': True
+    'graph': True,
     'logger_level': logging.INFO,
     'color_map': 'Custom'
 

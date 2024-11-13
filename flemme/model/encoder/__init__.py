@@ -34,6 +34,10 @@ if module_config['point-cloud']:
     if module_config['mamba']:
         from .pointmamba import *
         supported_encoders['PointMamba'] = (PointMambaEncoder, PointMambaDecoder)
+### graph encoder
+# if module_config['graph']:
+
+
 
 supported_buildingblocks_for_encoder = {'CNN': ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv'],
                         'UNet': ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv'],

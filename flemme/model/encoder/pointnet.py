@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, FoldingLayer, LocalGraphLayer
 from flemme.logger import get_logger
+import copy
 logger = get_logger("model.encoder.pointnet")
 class PointEncoder(nn.Module):
     def __init__(self, point_dim=3, 
@@ -41,7 +42,7 @@ class PointEncoder(nn.Module):
                                             norm = normalization, num_groups=num_groups) for i in range(len(dense_channels) - 2)]
         # the last layer is a linear layer, without batch normalization
         dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], activation = None, norm = None), ]
-        self.dense = nn.ModuleList([nn.Sequential(* (dense_sequence.copy()) ) for _ in range(z_count) ])
+        self.dense = nn.ModuleList([nn.Sequential(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
         self.lf_path = [projection_channel,] + local_feature_channels
@@ -51,7 +52,7 @@ class PointEncoder(nn.Module):
         if self.lf is None:
             raise NotImplementedError
         B = x.shape[0]
-        # transfer to Nb * d * Np
+        ## N * Np * d
         res = []
         x = self.point_proj(x)
         for lf in self.lf[:-1]:
@@ -67,8 +68,9 @@ class PointEncoder(nn.Module):
         x = torch.concat((x1, x2), dim = -1)
         if self.pointwise:
             # B * D -> B * N * D
+            # local feature plus global feature
             x = x.unsqueeze(1).repeat(1, N, 1)
-            x = torch.concat([x, pf], dim=1)
+            x = torch.concat([x, pf], dim=-1)
         else:
             x = x.reshape(B, -1)
         ## compute embedding vectors

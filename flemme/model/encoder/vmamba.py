@@ -7,6 +7,7 @@ from flemme.block import PatchConstructionBlock, PatchRecoveryBlock,\
     PatchExpansionBlock, PatchMergingBlock, \
     SequentialT, get_building_block, MultipleBuildingBlocks, DenseBlock
 from flemme.logger import get_logger
+import copy
 logger = get_logger("model.encoder.vmamba")
 
 class VMambaEncoder(nn.Module):
@@ -102,7 +103,11 @@ class VMambaEncoder(nn.Module):
                                                      norm = normalization, 
                                                      num_groups = num_groups)  for i in range(self.d_depth)])
         self.down_path = [self.image_channel, ] + down_channels        
-        ## middle convolution layer
+        
+        ## middle layer
+        dense_channels = [ middle_channels[-1], ] + dense_channels
+        self.dense_path = dense_channels.copy()
+
         if not self.vector_embedding:
             middle_channels = [mc * self.z_count for mc in middle_channels]
         ### middle SSM
@@ -116,16 +121,13 @@ class VMambaEncoder(nn.Module):
         self.middle_path = middle_channels
 
         ### fully connected layers
-        dense_channels = [ int(middle_channels[-1] / self.z_count) if not self.vector_embedding else middle_channels[-1], ] + dense_channels
-        
-        self.dense_path = dense_channels.copy()
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *dense_channels[0])
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],
                                                 norm = normalization, num_groups=num_groups, 
                                                 activation = self.activation) for i in range(len(dense_channels) - 2)]
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
-            self.dense = nn.ModuleList([nn.Sequential(*(dense_sequence.copy()) ) for _ in range(z_count) ])
+            self.dense = nn.ModuleList([nn.Sequential(*(copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
 
         ## set out_channel
         self.out_channel = dense_channels[-1]
@@ -145,7 +147,7 @@ class VMambaEncoder(nn.Module):
             x = x.reshape(x.shape[0], -1)
             x = [ self.dense[i](x) for i in range(self.z_count) ]
         else:
-            x = torch.split(x, self.out_channel, dim=-1)
+            x = torch.chunk(x, self.z_count, dim = -1)
         if self.z_count == 1:
             x = x[0]
         if self.return_features:

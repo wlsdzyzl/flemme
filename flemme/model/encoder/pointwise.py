@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch import nn
 from flemme.block import get_building_block, SequentialT
 from flemme.logger import get_logger
+import copy
 logger = get_logger("model.encoder.pointwise")
 1### A very simple point-wise encoder
 ## Point-wise encoder only has linear and activation layers
@@ -29,7 +30,7 @@ class PointWiseEncoder(nn.Module):
         dense_channels = [point_dim,] + dense_channels
         dense_sequence = [self.BuildingBlock(in_channel=dense_channels[i], out_channel=dense_channels[i+1]) 
                                         for i in range(len(dense_channels) - 1) ]
-        self.dense = nn.ModuleList([SequentialT(*(dense_sequence.copy())) for _ in range(z_count)])
+        self.dense = nn.ModuleList([SequentialT(*(copy.deepcopy(dense_sequence))) for _ in range(z_count)])
         self.dense_path = dense_channels
         self.out_channel = dense_channels[-1]
 

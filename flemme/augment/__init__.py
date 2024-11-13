@@ -6,13 +6,16 @@ from flemme.logger import get_logger
 
 if module_config['point-cloud']:
     from . import pcd_transforms
-
+if module_config['graph']:
+    from . import graph_transforms
 
 logger = get_logger('flemme.augment')
 ### label transforms table
 seg_label_transform_table = {
     'img':['rotate', 'rotation', 'elastic', 'flip', 'crop', 'resize', 'totensor'],
-    'pcd':['fixedpoints', 'shufflepoints', 'totensor']
+    'pcd':['fixedpoints', 'shufflepoints', 'totensor'],
+    ## wait to be implemented
+    'graph': ['fixedpoints',]
 }
 random_transforms = [
     'ElasticDeform', 'GaussianBlur', 'FixedPoints', 'ShufflePoints' ]
@@ -32,6 +35,8 @@ def get_transforms(trans_config_list, data_form = DataForm.IMG, img_dim = 2):
             exit(1)
     elif data_form == DataForm.PCD:
         module = pcd_transforms
+    elif data_form == DataForm.GRAPH:
+        module = graph_transforms
     else:
         raise NotImplementedError
     
@@ -63,6 +68,8 @@ def select_label_transforms(trans_config_list, data_form):
         selector = seg_label_transform_table['img']
     elif data_form == DataForm.PCD:
         selector = seg_label_transform_table['pcd']
+    elif data_form == DataForm.GRAPH:
+        selector = seg_label_transform_table['graph']
     for t in trans_config_list:
         for s in selector:
             if s in t['name'].lower():

@@ -8,12 +8,14 @@ model:
   encoder:
     name: PointNet
     in_channel: 3
-    point_num: 2048
-    building_block: single
-    conv_channels: [64, 64, 128, 256, 512]
+    point_num: 1024
+    building_block: dense
+    local_graph_k: 20
+    local_feature_channels: [64, 64, 128, 256, 512]
     dense_channels: [1024]
     decoder_dense_channels: [512, 256]
     activation: lrelu
+    normalization: group
     pointwise: False
   reconstruction_losses: 
     - name: EMD
@@ -26,18 +28,17 @@ loader:
     data_dir: 02691156/points
     data_suffix: .pts
   data_path_list: 
-    - path/to/datasets/shapenetcore_v0  
-  batch_size: 4
+    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0  
+  batch_size: 32
   num_workers: 8
   shuffle: true
-  drop_last: true
   data_transforms:
-    - name: MinMaxNormalize
+    - name: Normalize
     - name: FixedPoints
-      num: 2048
+      num: 1024
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet_VAE_Chamfer
+check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet/PointNet_VAE_EMD_LOCAL_K
 ### parameter for optimizer
 optimizer:
   name: Adam

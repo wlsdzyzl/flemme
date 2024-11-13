@@ -6,7 +6,6 @@ import os
 import glob
 from flemme.utils import load_pcd, save_pcd, get_random_state, set_random_state
 from flemme.logger import get_logger
-import copy
 ### Pure point cloud dataset
 ## there can be other types of datasets, such as point cloud segmentation or point cloud classification
 ## other types of datasets can be used for conditional generation

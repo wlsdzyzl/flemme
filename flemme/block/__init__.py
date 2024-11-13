@@ -30,7 +30,7 @@ class MultipleBuildingBlocks(nn.Module):
         x, _ = self.building_blocks(x, t)
         return x
 
-def get_building_block(building_block, **kwargs):
+def get_building_block(name, **kwargs):
     logger.debug('building block parameters: {}'.format(kwargs))
     # image
     if name in ['single','conv']:

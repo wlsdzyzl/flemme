@@ -657,7 +657,7 @@ if module_config['graph']:
         elif suffix == 'xyz' or suffix == 'pts':
             return load_xyz(filename), None
         ## graph saved by torch
-        elif suffix == 'pt'
+        elif suffix == 'pt':
             return torch.load(filename)
         else:
             logger.warning('unsupported file format.')
