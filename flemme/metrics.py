@@ -13,6 +13,7 @@ from functools import partial
 from flemme.logger import get_logger
 from scipy.optimize import linear_sum_assignment
 from flemme.utils import label_to_onehot, DataForm
+from flemme.loss import GraphNodeLoss
 logger = get_logger('metrics')
 #### image similarity
 ### multi channel case
@@ -230,7 +231,43 @@ if module_config['point-cloud']:
                 logger.error("Invalid direction type. Supported types: \'y_x\', \'x_y\', \'bi\'")
                 raise ValueError
             return chamfer_dist
+if module_config['graph']:
+    ## graph node distance
+    class GND(GraphNodeLoss):
+        def __init__(self,
+                    lambda_pos = 1.0, lambda_feature = 1.0):
+            super().__init__(reduction = 'sum', 
+                lambda_pos = lambda_pos, 
+                lambda_feature = lambda_feature)
+        def __call__(self, x, y):
+            assert type(pred) == tuple, 'the prediction of graph should be a tuple.'
+            x = ( _x.detach() if _x is not None else _x for _x in x) 
+            y = y.detach()
+            return super().forward(x, y).item()
+    ## graph edge accuracy
+    class GEA:
+        def __call__(self, pred, data):
+            assert type(pred) == tuple, 'the prediction of graph should be a tuple.'
+            pred = ( _x.detach() if _x is not None else _x for _x in pred) 
+            batch_size = data.batch_size
+            recon_edge = pred[-1]
+            gt_edge_index = data.edge_index
 
+            if recon_edge is not None and edge_index is not None:
+                valid_count = len(recon_edge.values())
+                recon_edge = torch.sparse_coo_tensor(indices = recon_edge.indices(), 
+                        values = (recon_edge.values() > 0 ).float() ), size = recon_edge.shape)
+                gt_edge = torch.sparse_coo_tensor(indices = gt_edge_index, 
+                        values = torch.ones(gt_edge_index.shape[1], dtype=torch.float32, 
+                        device = recon_edge.device), size = recon_edge.shape)
+               
+                incorrect_count = (recon_edge - gt_edge).abs().sum() 
+                return (1.0 - incorrect_count / valid_count) * batch_size
+            else:
+                logger.warning('There is no edge in graph or model doesn\'t predict edges.')
+            return 0.0
+
+    
 
 def get_metrics(metric_config, data_form = DataForm.IMG):
     channel_dim = 0
@@ -269,10 +306,13 @@ def get_metrics(metric_config, data_form = DataForm.IMG):
         return AMIS(**metric_config)
     if name == 'CACC':
         return CACC(**metric_config)
-    if module_config['point-cloud']:
-        ### point cloud
-        if name == 'EMD':
-            return EMD(**metric_config)
-        if name == 'CD' or name == 'Chamfer':
-            return CD(**metric_config)
+    ### point cloud
+    if name == 'EMD':
+        return EMD(**metric_config)
+    if name == 'CD' or name == 'Chamfer':
+        return CD(**metric_config)
+    if name == 'GND' or name == 'GraphNodeDistance':
+        return GND(**metric_config)
+    if name == 'GEA' or name == 'GraphNodeAccuracy': 
+        return GEA(**metric_config)
     return None

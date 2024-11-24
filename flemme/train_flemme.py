@@ -236,8 +236,8 @@ def main():
         ### evaluate after each epoch
         ### write evaluation
         if evaluators is not None:
-            results = compact_results(results)
-            eval_res = evaluate_results(results, evaluators)
+            results = compact_results(results, data_form = model.data_form)
+            eval_res = evaluate_results(results, evaluators, data_form = model.data_form)
 
             if len(eval_res) > 0:
                 for eval_type, eval in eval_res.items():
@@ -303,8 +303,8 @@ def main():
                                 input_map=vres, iter_id=epoch, prefix='val')
                     ### evaluation on val datasets
                     if evaluators is not None:
-                        vresults = compact_results(vresults)
-                        eval_res = evaluate_results(vresults, evaluators)
+                        vresults = compact_results(vresults, data_form = model.data_form)
+                        eval_res = evaluate_results(vresults, evaluators, data_form = model.data_form)
                         if len(eval_res) > 0:
                             for eval_type, eval in eval_res.items():
                                 for eval_metric, eval_value in eval.items():

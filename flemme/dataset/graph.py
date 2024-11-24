@@ -16,18 +16,33 @@ class GraphDataset(Dataset):
                   vertex_features = None, data_transform = None, 
                   pre_transform=None, pre_filter=None,
                   mode = 'train', data_dir = '', 
-                  data_suffix = '.ply', processed_dir = '.', **kwargs):
-        super().__init__(data_path, transform, pre_transform, pre_filter)
+                  data_suffix = '.ply', 
+                  processed_dir = 'processed',
+                  vertex_features = None, **kwargs):
         logger.info("loading data from the directory: {}".format(data_path))
-        self.graph_path_list = sorted(glob(os.path.join(data_path+'/' + data_dir, "*" + data_suffix)))
         self.mode = mode
-        self.data_transform = data_transform
         self.data_path = data_path
-        self.vertex_features = None
+        root = os.path.join(data_path, data_dir)
+        processed_dir = os.path.join(data_path, processed_dir)
+        self.vertex_features = vertex_features
+        self.data_suffix = data_suffix
+        self.graph_path_list = sorted(glob(os.path.join(root, "*" + self.data_suffix)))
+        self.processed_path_list = [os.path.join(processed_dir, f'gdata_{idx}.pt') for idx in range(len(self.graph_path_list))]
+
+
+        super().__init__(os.path.join(data_path, data_dir), 
+            transform = data_transform, 
+            pre_transform = pre_transform, 
+            pre_filter = pre_filter)
+        
+    @property
+    def processed_paths(self):
+        return self.processed_path_list
+
     def process(self):
         for idx, graph_path in enumerate(self.graph_path_list):
             # Read data from `raw_path`.
-            data = load_graph(graph_path, vertex_features = vertex_features)
+            data = load_graph(graph_path, vertex_features = self.vertex_features)
             if type(data) == tuple:
                 vertices, edges = data
                 pos = torch.from_numpy(vertices[:, 0:3])
@@ -39,11 +54,11 @@ class GraphDataset(Dataset):
                 continue
             if self.pre_transform is not None:
                 data = self.pre_transform(data)
-            torch.save(data, os.path.join(self.processed_dir, f'gdata_{idx}.pt'))
+            torch.save(data, self.processed_path_list[idx])
     def len(self):
         return len(self.graph_path_list)
     def get(self, idx):
-        data = torch.load(osp.join(self.processed_dir, f'gdata_{idx}.pt'))
+        data = torch.load(self.processed_path_list[idx])
         return data
 
 class GraphShapeNetWrapper(ShapeNet):

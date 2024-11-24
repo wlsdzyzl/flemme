@@ -2,8 +2,7 @@
 from .common import *
 # import torch
 # import torch.nn as nn
-from torch_geometric.nn import GCNConv, ChebConv, TransformerConv
-from torch_geometric.nn import norm as gnorm, conv as gconv
+from torch_geometric.nn import GCNConv, ChebConv, TransformerConv, norm as gnorm, conv as gconv
 from functools import partial
 def get_graph_norm(norm_name, norm_channel, num_groups = 0):
         ### normalization layer
@@ -118,3 +117,10 @@ class TransConvBlock(GraphConvBlock):
           heads = num_heads, concat = concat, 
           beta = beta, dropout = dropout,
           bias = bias)
+
+class InnerProductBlock(nn.Module):
+    def forward(self, z, edge_index = None):
+        if edge_index is not None:
+            return (z[edge_index[0]] * z[edge_index[1]]).sum(dim=1)
+        else: 
+            return torch.matmul(z, z.t())

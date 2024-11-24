@@ -15,7 +15,7 @@ class TorchLoss(nn.Module):
         if self.channel_dim != 1:
             x, y = x.transpose(1, self.channel_dim), y.transpose(1, self.channel_dim)
         res = self.torch_loss(x, y)
-        #### spatial mean
+        #### spatial and channel mean
         if res.ndim > 1:
             res = res.mean(dim = tuple(range(1, res.ndim)))
         if self.reduction == 'none':    
@@ -134,3 +134,67 @@ if module_config['point-cloud']:
                 return loss.mean()
             else:
                 return loss
+
+if module_config['graph']:    
+    ### loss for graph reconstruction
+    ## mse
+    class GraphNodeLoss(nn.Module):
+        def __init__(self, reduction = 'mean', 
+                    lambda_pos = 1.0, lambda_feature = 1.0):
+            super().__init__()
+            self.pos_loss = TorchLoss(torch_loss = nn.MSELoss, reduction = reduction)
+            self.feature_loss = TorchLoss(torch_loss = nn.MSELoss, reduction = reduction)
+        def forward(self, pred, data):
+            assert type(pred) == tuple, 'the prediction of graph should be a tuple.'
+            batch_size = data.batch_size
+            recon_pos, recon_feature, _ = pred
+            gt_pos, gt_feature, batch = data.pos, data.x, data.batch
+            
+            loss = 0
+            if recon_pos is not None and gt_pos is not None:
+                # BN * F -> B * N * F
+                recon_pos = torch.stack(torch.chunk(recon_pos, batch_size, dim = 0), dim = 0)
+                gt_pos = torch.stack(torch.chunk(gt_pos, batch_size, dim=0), dim = 0)
+                loss = lambda_pos * self.pos_loss(recon_pos, gt_pos)
+                
+            if recon_feature is not None and gt_feature is not None:
+                recon_feature = torch.stack(torch.chunk(recon_feature, batch_size, dim = 0), dim = 0)
+                gt_feature = torch.stack(torch.chunk(gt_feature, batch_size, dim=0), dim = 0)
+                lf = lambda_feature * self.feature_loss(recon_feature, gt_feature)
+                loss = lf + loss if loss is not None else lf
+            return loss
+    ### BCE loss
+    class GraphEdgeLoss(nn.Module):
+        def __init__(self, reduction = 'mean'):
+            super().__init__()
+        def forward(self, pred, data):
+            assert type(pred) == tuple, 'the prediction of graph should be a tuple.'
+            batch_size = data.batch_size
+            recon_edge = pred[-1]
+            gt_edge_index = data.edge_index
+
+            if recon_edge is not None and edge_index is not None:
+                pp_recon_edge = torch.sparse_coo_tensor(indices = recon_edge.indices(), 
+                        values = torch.log(torch.sigmoid(recon_edge.values())), size = recon_edge.shape).coalesce()
+                np_recon_edge = torch.sparse_coo_tensor(indices = recon_edge.indices(), 
+                        values = torch.log(1 - torch.sigmoid(recon_edge.values())), size = recon_edge.shape).coalesce()
+                gt_edge = torch.sparse_coo_tensor(indices = gt_edge_index, 
+                        values = torch.ones(gt_edge_index.shape[1], dtype=torch.float32, 
+                        device = recon_edge.device), size = recon_edge.shape).coalesce()
+                one_minus_gt_edge = torch.sparse_coo_tensor(indices = recon_edge.indices(), 
+                        values = torch.ones(recon_edge.indices.shape[1], dtype=torch.float32, 
+                        device = recon_edge.device), size = recon_edge.shape).coalesce() - gt_edge
+                # eps = torch.sparse_coo_tensor(indices = recon_edge.indices(), 
+                #         values = torch.ones(gt_edge_index.shape[1], dtype=torch.float32, 
+                #         device = recon_edge.device) * 1e-8, size = recon_edge.shape).coalesce()
+                le = -(pp_recon_edge * gt_edge + np_recon_edge * one_minus_gt_edge) 
+                le = torch.stack(torch.chunk(le.values(), batch_size, dim = 0), dim = 0)
+                le = le.mean(dim = -1)
+                if self.reduction == 'mean':
+                    le = le.mean()
+                elif self.reduction == 'sum'
+                    le = le.sum()
+                return le
+            else:
+                logger.warning('There is no edge in graph or model doesn\'t predict edges.')
+                return torch.Tensor([0.0])

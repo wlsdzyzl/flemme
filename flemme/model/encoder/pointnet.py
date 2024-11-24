@@ -10,6 +10,7 @@ logger = get_logger("model.encoder.pointnet")
 class PointEncoder(nn.Module):
     def __init__(self, point_dim=3, 
                  projection_channel = 64,
+                 time_channel = 0,
                  local_graph_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
                  dense_channels = [256, 256],
@@ -29,6 +30,7 @@ class PointEncoder(nn.Module):
         self.num_groups = num_groups
         self.point_proj = nn.Linear(point_dim, projection_channel)
         self.projection_channel = projection_channel
+        self.time_channel = time_channel
         ## fully connected layers
         # z_count = 2 usually means we compute mean and variance.
         # compute embedding from global feature
@@ -38,11 +40,12 @@ class PointEncoder(nn.Module):
         if self.pointwise:
             dense_channels[0] += local_feature_channels[-1]
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
+                                            time_channel = self.time_channel,
                                             activation = self.activation, dropout=self.dropout, 
                                             norm = normalization, num_groups=num_groups) for i in range(len(dense_channels) - 2)]
         # the last layer is a linear layer, without batch normalization
         dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], activation = None, norm = None), ]
-        self.dense = nn.ModuleList([nn.Sequential(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
+        self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
         self.lf_path = [projection_channel,] + local_feature_channels
@@ -74,7 +77,7 @@ class PointEncoder(nn.Module):
         else:
             x = x.reshape(B, -1)
         ## compute embedding vectors
-        x = [self.dense[i](x) for i in range(self.z_count)]
+        x = [self.dense[i](x, t)[0] for i in range(self.z_count)]
         if self.z_count == 1:
             x = x[0]
         return x
@@ -97,7 +100,6 @@ class PointEncoder(nn.Module):
 class PointNetEncoder(PointEncoder):
     def __init__(self, point_dim=3, 
                  projection_channel = 64,
-                 time_channel = 0, 
                  local_graph_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
                  dense_channels = [256, 256],
@@ -118,7 +120,7 @@ class PointNetEncoder(PointEncoder):
             logger.debug("redundant parameters: {}".format(kwargs))
 
         self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = time_channel, 
+                                        time_channel = self.time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
                                         num_groups = num_groups, 
@@ -144,7 +146,8 @@ class PointNetEncoder(PointEncoder):
 
 class PointDecoder(nn.Module):
     def __init__(self, point_dim=3, point_num = 2048, 
-                in_channel = 256, dense_channels = [], 
+                in_channel = 256, time_channel = 0, 
+                dense_channels = [], 
                 normalization = 'group', num_groups = 8, 
                 activation = 'lrelu', dropout = 0., 
                 folding_times = 0, 
@@ -158,10 +161,12 @@ class PointDecoder(nn.Module):
         self.point_dim = point_dim
         self.activation = activation
         self.pointwise = pointwise
+        self.time_channel = time_channel
         self.folding_times = folding_times
         ## fully connected layer
         dense_channels = [in_channel,] + dense_channels 
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+                                        time_channel = self.time_channel
                                         norm = normalization, num_groups=num_groups, 
                                         activation = activation, dropout=dropout) for i in range(len(dense_channels) - 1)]
 
@@ -217,7 +222,7 @@ class PointDecoder(nn.Module):
             dense_sequence.append(DenseBlock(dense_channels[-1], final_channel, 
                             activation = None, norm = None))
             dense_channels = dense_channels + [final_channel, ]
-        self.dense = nn.Sequential(*dense_sequence) 
+        self.dense = SequentialT(*dense_sequence) 
         self.dense_path = dense_channels
     def __str__(self):
         _str = ''
@@ -232,7 +237,7 @@ class PointDecoder(nn.Module):
         _str += '\n'
         return _str 
     def forward(self, x, t = None):
-        x = self.dense(x)
+        x,_ = self.dense(x, t)
         if self.folding_times > 0:
             if self.fold is None: raise NotImplementedError
             # repeat grid for batch operation
@@ -251,7 +256,7 @@ class PointDecoder(nn.Module):
 class PointNetDecoder(PointDecoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 in_channel = 256, dense_channels = [256], 
-                time_channel = 0, building_block = 'dense', 
+                building_block = 'dense', 
                 normalization = 'group', num_groups = 8, 
                 activation = 'lrelu', dropout = 0., 
                 folding_times = 0, 
@@ -273,7 +278,7 @@ class PointNetDecoder(PointDecoder):
         
         if self.folding_times > 0:
             self.BuildingBlock = get_building_block(building_block, 
-                                            time_channel = time_channel, 
+                                            time_channel = self.time_channel, 
                                             activation=activation, 
                                             norm = normalization, 
                                             num_groups = 1)

@@ -8,6 +8,9 @@ from flemme.logger import get_logger
 if module_config['point-cloud']:
     from .pcd import *
     from .point import PointDataset, ToyDataset
+if module_config['graph']:
+    from .graph import *
+    from torch_geometric.loader import DataLoader as GraphLoader
 logger = get_logger('dataset')
 
 
@@ -68,6 +71,12 @@ def create_loader(loader_config):
         data_form = DataForm.VEC
     elif dataset_cls_str == 'GraphDataset':
         dataset_class = GraphDataset
+        data_form = DataForm.GRAPH
+    elif dataset_cls_str == 'GraphModelNet':
+        dataset_class = GraphModelNetWrapper
+        data_form = GraphDataset
+    elif dataset_cls_str == 'GraphShapeNet':
+        dataset_class = GraphShapeNetWrapper
         data_form = DataForm.GRAPH
     else:
         raise RuntimeError(f'Unsupported dataset class: {dataset_cls_str}')
@@ -140,6 +149,10 @@ def create_loader(loader_config):
     else:
         ### single dataset, all related information is contained in dataset configuration
         datasets.append(dataset_class(**dataset_config))
-    loader['data_loader'] = DataLoader(ConcatDataset(datasets), 
-        batch_size = batch_size, shuffle = shuffle, num_workers = num_workers, drop_last = drop_last)
+    if data_form == DataForm.GRAPH:
+        loader['data_loader'] = GraphLoader(ConcatDataset(datasets), 
+            batch_size = batch_size, shuffle = shuffle, num_workers = num_workers, drop_last = drop_last)
+    else:
+        loader['data_loader'] = DataLoader(ConcatDataset(datasets), 
+            batch_size = batch_size, shuffle = shuffle, num_workers = num_workers, drop_last = drop_last)
     return loader

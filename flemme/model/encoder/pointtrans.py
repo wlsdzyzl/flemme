@@ -9,7 +9,6 @@ logger = get_logger("model.encoder.pointtrans")
 class PointTransEncoder(PointEncoder):
     def __init__(self, point_dim=3, 
                  projection_channel = 64,
-                 time_channel = 0, 
                  local_graph_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
                  dense_channels = [256, 256],
@@ -31,7 +30,7 @@ class PointTransEncoder(PointEncoder):
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 
-        self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
+        self.BuildingBlock = get_building_block(building_block, time_channel = self.time_channel, 
                                         activation=activation, 
                                         norm = normalization, num_groups = num_groups, 
                                         dropout = dropout,
@@ -61,7 +60,7 @@ class PointTransEncoder(PointEncoder):
 class PointTransDecoder(PointDecoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 in_channel = 256, dense_channels = [256], 
-                time_channel = 0, building_block = 'pct_sa', 
+                building_block = 'pct_sa', 
                 normalization = 'group', num_groups = 8, 
                 activation = 'lrelu', dropout = 0., 
                 folding_times = 0, 
@@ -85,7 +84,8 @@ class PointTransDecoder(PointDecoder):
            logger.debug("redundant parameters:{}".format(kwargs))
         
         if self.folding_times > 0:
-            self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
+            self.BuildingBlock = get_building_block(building_block, 
+                                            time_channel = self.time_channel, 
                                             activation=activation, 
                                             norm = normalization, 
                                             num_groups = 1, 

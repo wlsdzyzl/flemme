@@ -18,6 +18,7 @@ import argparse
 import yaml
 from flemme.block import channel_recover
 import shutil
+from torch_geometric.data import Batch as BatchGraph, Graph
 
 logger = get_logger('utils')
 
@@ -414,21 +415,25 @@ if module_config['point-cloud'] or module_config['graph']:
     ## without edge features
     def load_ply(inputfile, vertex_features = None, with_edges = False):
         plydata = PlyData.read(inputfile)
-        pcd = np.zeros((plydata['vertex'].count, 3 + len(vertex_features) ))
+        vertex_feature_len = 0 if vertex_features is None else len(vertex_features)
+        pcd = np.zeros((plydata['vertex'].count, 3 + vertex_feature_len ))
         pcd[:, 0] = plydata['vertex']['x']
         pcd[:, 1] = plydata['vertex']['y']
         pcd[:, 2] = plydata['vertex']['z']
         if vertex_features is not None:
             for fid, fname in enumerate(vertex_features):
                 pcd[:, fid + 1] = plydata['vertex'][fname]
+        if not with_edges:
+            return pcd
+        edges = None
         if 'edge' in plydata._element_lookup:
             edges = np.zeros((plydata['edge'].count, 2), dtype=np.int64)
             ### read edges
             edges[:, 0] = plydata['edge']['vertex1']
             edges[:, 1] = plydata['edge']['vertex2']
-            return pcd, edges     
         ### currently, reading face is not implemented 
-        return pcd, None
+        return pcd, edges     
+
 
         
     ### save ply file, with points and colors
@@ -662,3 +667,12 @@ if module_config['graph']:
         else:
             logger.warning('unsupported file format.')
             raise NotImplementedError
+    def save_graph(filename, graph_data, vertex_features = None):
+        basename = os.path.basename(filename)
+        suffix = basename.split('.')[-1]
+        assert suffix in ['ply', 'pt'], 'Graph data can only be stored as ply or pt files.'
+        if type(graph_data) == tuple:
+            pos, feature, edge = graph_data
+            graph_data = Graph(x = feature, pos = pos, edge = edge)
+        
+        

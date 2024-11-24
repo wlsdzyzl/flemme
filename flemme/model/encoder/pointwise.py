@@ -12,7 +12,8 @@ logger = get_logger("model.encoder.pointwise")
 ## Therefore it's not suitable to be used to constuct a VAE by itself.
 ### Note that point-wise network can be used on any kinds of data, because it only operate the last channel.
 class PointWiseEncoder(nn.Module):
-    def __init__(self, point_dim=3, time_channel = 0, building_block = 'dense', dense_channels = [256], 
+    def __init__(self, point_dim=3, time_channel = 0, 
+                building_block = 'dense', dense_channels = [256], 
                 normalization = 'group', num_groups = 8, 
                 activation = 'lrelu', dropout = 0., z_count = 1, **kwargs):
         super().__init__()
@@ -22,7 +23,9 @@ class PointWiseEncoder(nn.Module):
         self.activation = activation
         self.z_count = z_count
         self.pointwise = True
-        self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
+        self.time_channel = time_channel
+        self.BuildingBlock = get_building_block(building_block, 
+                                                time_channel = time_channel, 
                                                 activation=activation, 
                                                 norm = normalization, 
                                                 num_groups = num_groups, 

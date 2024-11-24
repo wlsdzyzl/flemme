@@ -293,6 +293,7 @@ def unfreeze(model):
         param.requires_grad = True
 
 def append_results(results, x, y, res, data_form, path = None,  is_supervised = False, is_conditional = False):
+    if not data_form == DataForm.Graph:
         results['input'].append(x.cpu().detach().numpy())
         if y is not None:
             if is_supervised:
@@ -325,20 +326,29 @@ def append_results(results, x, y, res, data_form, path = None,  is_supervised = 
                 results['cluster'].append(res['cluster'].cpu().detach().numpy())
             if 'cluster_centers' in res:
                 results['cluster_centers'] = res['cluster_centers'].cpu().detach().numpy()
-def compact_results(results):
-    results['input'] = np.concatenate(results['input'])
-    if len(results['target']) > 0:
-        results['target'] = np.concatenate(results['target'])
-    if len(results['condition']) > 0:
-        results['condition'] = np.concatenate(results['condition'])        
-    if len(results['latent']) > 0:
-        results['latent'] = np.concatenate(results['latent'])
-    if len(results['recon']) > 0:
-        results['recon'] = np.concatenate(results['recon'])       
-    if len(results['seg']) > 0:
-        results['seg'] = np.concatenate(results['seg'])
-    if len(results['cluster']) > 0:
-        results['cluster'] = np.concatenate(results['cluster'])
+    else:
+        results['input'].append(x)
+        if res:
+            if 'latent' in res:
+                results['latent'].append(res['latent'].cpu().detach().numpy())
+            if 'recon' in res:
+                results['recon'].append(res['recon'])
+            
+def compact_results(results, data_form):
+    if not data_form == DataForm.Graph:
+        results['input'] = np.concatenate(results['input'])
+        if len(results['target']) > 0:
+            results['target'] = np.concatenate(results['target'])
+        if len(results['condition']) > 0:
+            results['condition'] = np.concatenate(results['condition'])        
+        if len(results['latent']) > 0:
+            results['latent'] = np.concatenate(results['latent'])
+        if len(results['recon']) > 0:
+            results['recon'] = np.concatenate(results['recon'])       
+        if len(results['seg']) > 0:
+            results['seg'] = np.concatenate(results['seg'])
+        if len(results['cluster']) > 0:
+            results['cluster'] = np.concatenate(results['cluster'])
     return results
 
 def create_evaluator(eval_configs, data_form):
@@ -369,8 +379,10 @@ def create_batch_evaluators(eval_metrics, data_form):
         evaluators['cluster'] = c_eval
     return evaluators
 
-def evaluate_results(results, evaluators):
+def evaluate_results(results, evaluators, data_form):
     sample_num = len(results['input'])
+    if data_form == DataForm.Graph:
+        sample_num = sum([g.batch_size for g in results['input']])
     eval_res = {}
     for eval_type in evaluators:
         if len(results[eval_type]) == 0:

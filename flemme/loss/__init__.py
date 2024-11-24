@@ -33,5 +33,11 @@ def get_loss(loss_config, data_form = DataForm.IMG):
         return EMDLoss(**loss_config)
     if loss_name == 'Chamfer' or loss_name == 'CD':
         return ChamferLoss(**loss_config)
+    ## graph node error
+    if loss_name == 'GraphNodeLoss' or loss_name == 'GNE':
+        return GraphNodeLoss(**loss_config)
+    ## graph edge error
+    if loss_name == 'GraphEdgeLoss' or loss_name == 'GEE':
+        return GraphEdgeLoss(**loss_config)
     else:
         raise NotImplementedError

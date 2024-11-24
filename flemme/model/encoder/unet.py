@@ -37,22 +37,6 @@ class UNetEncoder(CNNEncoder):
             z_count = 1, dense_channels = [], return_features = True)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
-    def __str__(self):
-        _str = ''
-        # print down sampling
-        _str += 'Down-sampling and convolution layers: '
-        for c in self.down_path[:-1]:
-            _str += '{}->'.format(c)  
-        _str += str(self.down_path[-1])
-        _str += '\n'
-
-        if len(self.middle_path) > 1:
-            _str += 'Middle convolution layers: '
-            for c in self.middle_path[:-1]:
-               _str += '{}->'.format(c)  
-            _str += str(self.middle_path[-1])
-            _str += '\n'
-        return _str 
     
 class UNetDecoder(CNNDecoder):
     def __init__(self, image_size, image_channel = 3, in_channel = 256, time_channel = 0, patch_size = 2,
@@ -84,22 +68,6 @@ class UNetDecoder(CNNDecoder):
                                                         dim=self.dim, in_channel=up_channels[i+1] * 2, 
                                                         out_channel=up_channels[i+1], 
                                                         atten=up_attens[i]) for i in range(len(up_channels) - 1) ])
-    
-    def __str__(self):
-        _str = ''
-        # print up sampling
-        _str += 'Up-sampling and convolution layers: '
-        for c in self.up_path[:-1]:
-            _str += '{}->'.format(c)  
-        _str += str(self.up_path[-1])
-        _str += '\n'
-        if len(self.final_path) > 1:
-            _str += 'Final convolution layer: '
-            for c in self.final_path[:-1]:
-               _str += '{}->'.format(c)  
-            _str += str(self.final_path[-1])
-            _str += '\n'
-        return _str 
     def forward(self, x, t = None):
         x, x_features = x
         x_features = x_features[::-1]

@@ -81,6 +81,7 @@ class CNNEncoder(nn.Module):
         dense_channels = [ middle_channels[-1], ] + dense_channels
         self.dense_path = dense_channels.copy()
         ## middle convolution layer
+        self.middle_path = [down_channels[-1], ] + middle_channels 
         if not self.vector_embedding:
             middle_channels = [mc * self.z_count for mc in middle_channels]
 
@@ -91,7 +92,7 @@ class CNNEncoder(nn.Module):
                                           atten = middle_attens[i]) for i in range(len(middle_channels) - 1)]
         
         self.middle = SequentialT(*module_sequence)
-        self.middle_path = middle_channels
+        
         
         ### fully connected layers
         

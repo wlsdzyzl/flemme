@@ -94,6 +94,7 @@ class SwinEncoder(nn.Module):
         self.down_path = [self.image_channel, ] + down_channels
         dense_channels = [ middle_channels[-1], ] + dense_channels
         self.dense_path = dense_channels.copy()
+        self.middle_path = [down_channels[-1], ] + middle_channels 
         if not self.vector_embedding:
             middle_channels = [mc * self.z_count for mc in middle_channels]
         ### middle transformers
@@ -108,7 +109,6 @@ class SwinEncoder(nn.Module):
                                                                        "drop_path": [self.drop_path[(i + self.d_depth)*self.num_block + ni] 
                                                                                      for ni in range(self.num_block) ] }
                                                         ) for i in range(self.m_depth) ])
-        self.middle_path = middle_channels
 
         ### fully connected layers
         if self.vector_embedding:

@@ -35,7 +35,11 @@ if module_config['point-cloud']:
         from .pointmamba import *
         supported_encoders['PointMamba'] = (PointMambaEncoder, PointMambaDecoder)
 ### graph encoder
-# if module_config['graph']:
+if module_config['graph']:
+    from .gnn import *
+    supported_encoders['GCN'] = (GCNEncoder, GraphDecoder)
+    supported_encoders['Cheb'] = (ChebEncoder, GraphDecoder)
+    supported_encoders['GTrans'] = (TransConvEncoder, GraphDecoder)
 
 
 
@@ -54,7 +58,10 @@ supported_buildingblocks_for_encoder = {'CNN': ['single', 'conv', 'double', 'dou
                         'PointWise': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
                         'PointNet': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
                         'PointTrans': ['pct_sa', 'pct_oa'],
-                        'PointMamba': ['pmamba', 'pmamba2'],}
+                        'PointMamba': ['pmamba', 'pmamba2'],
+                        'GCN': ['gcn'],
+                        'Cheb': ['cheb'],
+                        'GTrans': ['gtrans']}
 
 logger = get_logger('model.encoder.create_encoder')
 
