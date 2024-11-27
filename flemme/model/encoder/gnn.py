@@ -5,18 +5,17 @@ import torch.nn.functional as F
 from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, InnerProductBlock
 from flemme.logger import get_logger
-from flemme.logger import 
 from torch_geometric.utils import scatter
 import copy
 logger = get_logger("model.encoder.graph_neural_network")
 class GraphEncoder(nn.Module):
-    def __init__(self, node_dim=0, pos_dim=3, 
+    def __init__(self, pos_dim=3, node_dim=0, 
                  time_channel = 0,
                  # concatenate position and node features
                  pass_pos = True,
                  pass_feature = True,
                  ### wait to be implemented
-                 node_projection_channel = 64,
+                 projection_channel = 64,
                  message_passing_channels = [64, 64, 128, 256], 
                  dense_channels = [],
                  activation = 'lrelu', dropout = 0.,
@@ -27,7 +26,7 @@ class GraphEncoder(nn.Module):
             logger.debug("redundant parameters: {}".format(kwargs))
         self.node_dim = node_dim 
         self.pos_dim = pos_dim
-        self.node_projection_channel = node_projection_channel
+        self.projection_channel = projection_channel
         self.activation = activation
         self.dropout = dropout
         self.nodewise = nodewise
@@ -43,10 +42,10 @@ class GraphEncoder(nn.Module):
             node_feature_dim += node_dim
         assert len(node_feature_dim) > 0, 'message waited to pass is empty, please check if the graph has used the non-empty features.'
 
-        self.node_proj = nn.Linear(node_feature_dim, node_projection_channel)
+        self.node_proj = nn.Linear(node_feature_dim, projection_channel)
         assert len(message_passing_channels) > 1, 'Graph encoder needs more than one message pasing channels.'
         dense_channels = [message_passing_channels[-1], ] + dense_channels
-        self.mp_path = [node_projection_channel,] + message_passing_channels
+        self.mp_path = [projection_channel,] + message_passing_channels
         if len(dense_channels) > 1:
             if self.nodewise:
                 dense_channels[0] += message_passing_channels[-1]
@@ -127,7 +126,7 @@ class GCNEncoder(GraphEncoder):
                 # concatenate position and node features
                 pass_pos = True,
                 pass_feature = True,
-                node_projection_channel = 64,
+                projection_channel = 64,
                 message_passing_channels = [64, 64, 128, 256], 
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
@@ -162,7 +161,7 @@ class ChebEncoder(GraphEncoder):
                 # concatenate position and node features
                 pass_pos = True,
                 pass_feature = True,
-                node_projection_channel = 64,
+                projection_channel = 64,
                 message_passing_channels = [64, 64, 128, 256], 
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
@@ -197,7 +196,7 @@ class TransConvEncoder(GraphEncoder):
                 # concatenate position and node features
                 pass_pos = True,
                 pass_feature = True,
-                node_projection_channel = 64,
+                projection_channel = 64,
                 message_passing_channels = [64, 64, 128, 256], 
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
@@ -225,7 +224,7 @@ class TransConvEncoder(GraphEncoder):
 
 
 class GraphDecoder(nn.Module):
-    def __init__(self, node_dim=0, pos_dim=3, node_num = 2048, 
+    def __init__(self, pos_dim=3, node_dim=0, node_num = 2048, 
                 in_channel = 256, time_channel = 0, 
                 dense_channels = [], 
                 normalization = 'group', num_groups = 8, 
@@ -246,7 +245,7 @@ class GraphDecoder(nn.Module):
         self.nodewise = nodewise
         dense_channels = [in_channel,] + dense_channels 
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                        time_channel = self.time_channel
+                                        time_channel = self.time_channel,
                                         norm = normalization, num_groups=num_groups, 
                                         activation = activation, dropout=dropout) for i in range(len(dense_channels) - 1)]
         ## fully connected layer

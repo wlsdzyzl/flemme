@@ -9,6 +9,7 @@ logger = get_logger("model.encoder.pointtrans")
 class PointTransEncoder(PointEncoder):
     def __init__(self, point_dim=3, 
                  projection_channel = 64,
+                 time_channel = 0,
                  local_graph_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
                  dense_channels = [256, 256],
@@ -20,6 +21,7 @@ class PointTransEncoder(PointEncoder):
                  z_count = 1, pointwise = False, **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
+                time_channel = time_channel,
                 local_graph_k=local_graph_k, 
                 local_feature_channels = local_feature_channels, 
                 dense_channels = dense_channels,

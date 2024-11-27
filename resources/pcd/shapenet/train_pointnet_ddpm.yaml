@@ -1,7 +1,7 @@
 # train ae or vae
 #### a template for pcd encoder
 mode: train
-pretrained: path/to/checkpoint/SHAPENET/02691156/PointNet_DDPM/ckp_last.pth
+# pretrained: path/to/checkpoint/SHAPENET/02691156/PointNet_DDPM/ckp_last.pth
 model:
   # can be AE, VAE and DDPM
   name: DDPM
@@ -14,7 +14,7 @@ model:
       in_channel: 3
       out_channel: 3
       point_num: 2048
-      building_block: single
+      building_block: dense
       conv_channels: [64, 64, 128, 256, 512]
       dense_channels: [1024]
       decoder_dense_channels: [512, 256]
@@ -28,7 +28,7 @@ loader:
     data_dir: 02691156/points
     data_suffix: .pts
   data_path_list: 
-    - path/to/datasets/shapenetcore_v0  
+    - /media/wlsdzyzl/DATA1/datasets/pcd/shapenetcore_v0  
   batch_size: 64
   num_workers: 8
   shuffle: true

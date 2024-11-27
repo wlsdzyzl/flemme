@@ -131,7 +131,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                         building_block=building_block,
                                         **encoder_config)
         if data_form == DataForm.IMG:
-            logger.debug('Model is constructed for images.')
+            logger.info('Model is constructed for images.')
             image_size = encoder_config.pop('image_size', None)
             assert image_size is not None, "Image size need to be specified."
             if not isinstance(image_size, list):
@@ -167,7 +167,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                         "UNet follows a special structure, the last value of middle channels should be twice of the last value of down channels."
                 
             if len(dense_channels) == 0:
-                logger.debug('Current model doesn\'t contain any fully connected (dense) layers')
+                logger.info('Current model doesn\'t contain any fully connected (dense) layers')
 
             ### convolution based mmodel
             if encoder_name in ['UNet', 'DNet', 'CNN']:
@@ -288,7 +288,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             if return_decoder:
                 decoder.image_size = image_size       
         elif data_form == DataForm.PCD:
-            logger.debug('Model is constructed for point cloud.')
+            logger.info('Model is constructed for point cloud.')
             #### point cloud encoder
             point_num = encoder_config.pop('point_num', 2048)
             if not encoder_name == 'PointWise':
@@ -302,6 +302,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 folding_times = encoder_config.pop('folding_times', 0)
                 base_shape_config = encoder_config.pop('base_shape', {})
                 if return_encoder:
+                    
                     encoder = Encoder(point_dim=in_channel + eai_channel, 
                                                 projection_channel = projection_channel,
                                                 time_channel = time_channel,
@@ -310,6 +311,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                 dense_channels=dense_channels, 
                                                 building_block=building_block,
                                                 **encoder_config)
+                    print('time_channel', time_channel, encoder.time_channel)
                     decoder_in_channel = encoder.out_channel
                 ## Different encoders of point clouds could use the same decoder.
                 if return_decoder:
@@ -325,7 +327,45 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             if return_decoder:
                 decoder.point_num = point_num
         elif data_form == DataForm.VEC:
-            logger.debug('Model is constructed for points.')
+            logger.info('Model is constructed for points.')
+        elif data_form == DataForm.GRAPH:
+            logger.info('Model is constructed for graph.')
+            ## for graph, in_channel and out channel indicates pos_dim by default.
+            feature_in_channel = encoder_config.pop('feature_in_channel', 0)
+            feature_out_channel = encoder_config.pop('feature_out_channel', None) or feature_in_channel
+            message_passing_channels = encoder_config.pop('message_passing_channels', [64, 128, 256])
+            projection_channel = encoder_config.pop('projection_channel', 64)
+            assert isinstance(message_passing_channels, list), 'message_passing_channels should be a list.'
+            pass_pos = encoder_config.pop('pass_pos', True)
+            pass_feature = encoder_config.pop('pass_feature', True)
+            recon_pos = encoder_config.pop('recon_pos', True)
+            recon_feature = encoder_config.pop('recon_feature', False)
+            recon_edge = encoder_config.pop('recon_edge', False)
+            node_num = encoder_config.pop('node_num', 2048)
+            if return_encoder:
+                encoder = Encoder(pos_dim=in_channel + eai_channel, 
+                                    node_dim = feature_in_channel,
+                                    projection_channel = projection_channel,
+                                    time_channel = time_channel,
+                                    message_passing_channels = message_passing_channels,
+                                    dense_channels=dense_channels, 
+                                    building_block=building_block,
+                                    pass_pos = pass_pos,
+                                    pass_feature = pass_feature,
+                                    **encoder_config)
+                decoder_in_channel = encoder.out_channel
+                encoder.node_num = node_num
+            if return_decoder:
+                decoder = Decoder(pos_dim=out_channel, 
+                                    node_dim = feature_out_channel,
+                                    node_num = node_num, 
+                                    time_channel = time_channel, 
+                                    in_channel=decoder_in_channel + dai_channel, 
+                                    dense_channels=de_dense_channels,
+                                    recon_pos = recon_pos,
+                                    recon_feature = recon_feature,
+                                    recon_edge = recon_edge,
+                                    **encoder_config)
         else:
             raise NotImplementedError
         ## set data_form

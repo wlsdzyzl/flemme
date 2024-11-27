@@ -13,7 +13,7 @@ from torch_geometric.data import Batch, Data
 logger = get_logger('graph_dataset')
 class GraphDataset(Dataset):
     def __init__(self, data_path, 
-                  vertex_features = None, data_transform = None, 
+                  data_transform = None, 
                   pre_transform=None, pre_filter=None,
                   mode = 'train', data_dir = '', 
                   data_suffix = '.ply', 
@@ -28,7 +28,6 @@ class GraphDataset(Dataset):
         self.data_suffix = data_suffix
         self.graph_path_list = sorted(glob(os.path.join(root, "*" + self.data_suffix)))
         self.processed_path_list = [os.path.join(processed_dir, f'gdata_{idx}.pt') for idx in range(len(self.graph_path_list))]
-
 
         super().__init__(os.path.join(data_path, data_dir), 
             transform = data_transform, 
@@ -67,23 +66,13 @@ class GraphShapeNetWrapper(ShapeNet):
                   data_transform = None, 
                   pre_transform=None, 
                   pre_filter=None,
-                  mode = 'train', name = '10', 
+                  mode = 'train',
                   **kwargs):
         super().__init__(root = data_path, split = mode, 
           categories = categories,
           include_normals = include_normals,
           transform = data_transform, 
           pre_transform = pre_transform, 
-          pre_filter = pre_filter)
-        self.data_path = data_path
-        self.mode = mode
-class GraphModelNetWrapper(ModelNet):
-    def __init__(self, data_path, data_transform = None, 
-                  pre_transform=None, pre_filter=None,
-                  mode = 'train', name = '10', 
-                  **kwargs):
-        super().__init__(root = data_path, train = (mode == 'train'), 
-          transform = data_transform, pre_transform = pre_transform, 
           pre_filter = pre_filter)
         self.data_path = data_path
         self.mode = mode

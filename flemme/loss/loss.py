@@ -192,7 +192,7 @@ if module_config['graph']:
                 le = le.mean(dim = -1)
                 if self.reduction == 'mean':
                     le = le.mean()
-                elif self.reduction == 'sum'
+                elif self.reduction == 'sum':
                     le = le.sum()
                 return le
             else:

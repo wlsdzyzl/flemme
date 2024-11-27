@@ -293,7 +293,7 @@ def unfreeze(model):
         param.requires_grad = True
 
 def append_results(results, x, y, res, data_form, path = None,  is_supervised = False, is_conditional = False):
-    if not data_form == DataForm.Graph:
+    if not data_form == DataForm.GRAPH:
         results['input'].append(x.cpu().detach().numpy())
         if y is not None:
             if is_supervised:
@@ -335,7 +335,7 @@ def append_results(results, x, y, res, data_form, path = None,  is_supervised = 
                 results['recon'].append(res['recon'])
             
 def compact_results(results, data_form):
-    if not data_form == DataForm.Graph:
+    if not data_form == DataForm.GRAPH:
         results['input'] = np.concatenate(results['input'])
         if len(results['target']) > 0:
             results['target'] = np.concatenate(results['target'])
@@ -381,7 +381,7 @@ def create_batch_evaluators(eval_metrics, data_form):
 
 def evaluate_results(results, evaluators, data_form):
     sample_num = len(results['input'])
-    if data_form == DataForm.Graph:
+    if data_form == DataForm.GRAPH:
         sample_num = sum([g.batch_size for g in results['input']])
     eval_res = {}
     for eval_type in evaluators:

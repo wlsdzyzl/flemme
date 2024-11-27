@@ -258,7 +258,7 @@ class FoldingLayer(nn.Module):
             logger.debug("redundant parameters:{}".format(kwargs))
         
         self.in_channel = in_channel
-        self.out_channel = out_channel
+        hidden_channels = hidden_channels
         module_sequence = []
         for hc in hidden_channels:
             module_sequence.append(BuildingBlock(in_channel = in_channel, 
@@ -281,8 +281,7 @@ class FoldingLayer(nn.Module):
         # concatenate
         x = torch.cat([shapes, codewords], dim=-1)
         x, _ = self.layers(x, t)
-        x = self.final(x)
-        return x
+        return self.final(x)
 
 # class FoldingLayer(nn.Module):
 #     """

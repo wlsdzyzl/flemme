@@ -18,7 +18,7 @@ import argparse
 import yaml
 from flemme.block import channel_recover
 import shutil
-from torch_geometric.data import Batch as BatchGraph, Graph
+from torch_geometric.data import Batch as BatchGraph, Data as Graph
 
 logger = get_logger('utils')
 

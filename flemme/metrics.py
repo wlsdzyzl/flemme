@@ -256,7 +256,7 @@ if module_config['graph']:
             if recon_edge is not None and edge_index is not None:
                 valid_count = len(recon_edge.values())
                 recon_edge = torch.sparse_coo_tensor(indices = recon_edge.indices(), 
-                        values = (recon_edge.values() > 0 ).float() ), size = recon_edge.shape)
+                        values = (recon_edge.values() > 0 ).float(), size = recon_edge.shape)
                 gt_edge = torch.sparse_coo_tensor(indices = gt_edge_index, 
                         values = torch.ones(gt_edge_index.shape[1], dtype=torch.float32, 
                         device = recon_edge.device), size = recon_edge.shape)

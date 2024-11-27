@@ -9,6 +9,7 @@ logger = get_logger("model.encoder.pointmamba")
 class PointMambaEncoder(PointEncoder):
     def __init__(self, point_dim=3, 
                 projection_channel = 64,
+                time_channel = 0,
                 local_graph_k=0, 
                 local_feature_channels = [64, 64, 128, 256], 
                 dense_channels = [256, 256],
@@ -28,6 +29,7 @@ class PointMambaEncoder(PointEncoder):
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
+                time_channel = time_channel,
                 local_graph_k=local_graph_k, 
                 local_feature_channels = local_feature_channels, 
                 dense_channels = dense_channels,
@@ -75,6 +77,7 @@ class PointMambaEncoder(PointEncoder):
 class PointMambaDecoder(PointDecoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 in_channel = 256, dense_channels = [256], 
+                time_channel = 0,
                 building_block = 'pmamba', 
                 normalization = 'group', num_groups = 8, 
                 activation = 'lrelu', dropout = 0., 
@@ -96,6 +99,7 @@ class PointMambaDecoder(PointDecoder):
                 point_num = point_num,
                 in_channel = in_channel,
                 dense_channels = dense_channels,
+                time_channel = time_channel,
                 normalization = normalization,
                 num_groups = num_groups,
                 activation = activation, dropout = dropout, 

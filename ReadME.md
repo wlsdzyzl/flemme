@@ -35,7 +35,7 @@ POT plyfile
 ```
 #### For graph:
 ```
-torch_geometric
+torch_geometric torch-cluster
 ```
 You can modify `flemme/config.py` to disable some components of Flemme so that you don't need to install the corresponding required packages.
 

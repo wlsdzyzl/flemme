@@ -72,9 +72,6 @@ def create_loader(loader_config):
     elif dataset_cls_str == 'GraphDataset':
         dataset_class = GraphDataset
         data_form = DataForm.GRAPH
-    elif dataset_cls_str == 'GraphModelNet':
-        dataset_class = GraphModelNetWrapper
-        data_form = GraphDataset
     elif dataset_cls_str == 'GraphShapeNet':
         dataset_class = GraphShapeNetWrapper
         data_form = DataForm.GRAPH
