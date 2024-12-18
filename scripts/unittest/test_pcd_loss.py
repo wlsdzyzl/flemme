@@ -2,8 +2,8 @@ import glob
 import os
 import torch
 from flemme.utils import load_ply, save_ply
-from flemme.dataset.pcd_transforms import FixedPoints, ToTensor
-from flemme.loss import ChamferLoss, EMDLoss
+from flemme.augment.pcd_transforms import FixedPoints, ToTensor
+from flemme.loss import ChamferLoss, EMDLoss, SinkhornLoss
 from torch import optim
 from flemme.logger import get_logger
 import time
@@ -19,7 +19,7 @@ pcds = [ to_tensor( fixed_points(load_ply(p_path))) for p_path in pcd_paths]
 ### stack will create a new axis
 pcds = torch.stack(pcds, dim = 0).to(device)
 print('input_size: ',pcds.shape)
-losses = [ChamferLoss(),  EMDLoss(iters=50), EMDLoss(sinkhorn=True)]
+losses = [ChamferLoss(),  EMDLoss(iters=50), SinkhornLoss()]
 loss_names = ['chamfer', 'emd', 'sinkhorn']
 init = torch.randn_like(pcds, device = device)
 for loss, loss_name in zip(losses, loss_names):

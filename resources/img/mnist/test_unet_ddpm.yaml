@@ -3,8 +3,9 @@ mode: test
 rand_seed: 2024
 model:
   # can be AE, VAE and DDPM
-  name: DDPM
+  name: DDIM
   num_steps: 1000
+  sample_num_steps: 100
   beta_schedule: consine
   eps_model:
     # encoder config
@@ -19,35 +20,18 @@ model:
       ## allow an asummetrical architecture
       # decode_down_channels: [32, 64]
       ### with time embedding
-      building_block: single
+      building_block: res
       activation: silu
       num_block: 2
       normalization: group
       num_groups: 16
       dropout: 0.1
-model_path: path/to/checkpoint/MNIST/DDPM_single/ckp_last.pth
-# loader:
-#   dataset: 
-#     name: MNIST
-#   data_path_list: 
-#     - path/to/datasets/MNIST
-#   batch_size: 128
-#   num_workers: 8
-#   shuffle: true
-#   data_transforms:
-#     - name: Resize
-#       ## the value must be list
-#       size: [28, 28]
-#     - name: ToTensor
-#     - name: Normalize
-#       mean: [0.5]
-#       std: [0.5]
+model_path: path/to/checkpoint/MNIST/DDPM/ckp_last.pth
 eval_gen:
   gen_dir: path/to/results/gen/mnist/ddpm
   sampler:
     name: NormalSampler
-    rand_seed: 2024
     clipped: true
     clip_range: [-1.0, 1.0]
-    sample_steps: 1000
+    num_sample_steps: 1000
   random_sample_num: 100

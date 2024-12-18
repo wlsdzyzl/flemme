@@ -49,7 +49,6 @@ lr_scheduler:
   name: ReduceLROnPlateau
   patience: 5
 sampler:
-  name: NormalSampler
 max_epoch: 500
 write_after_iters: 20
 save_after_epochs: 10

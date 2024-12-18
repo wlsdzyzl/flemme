@@ -35,12 +35,12 @@ def main(argv):
     opts, _ = getopt.getopt(argv, "h", ['help', 'result_path=', 'sub_dirs=', 'suffix=', 'target_path=',  'target_sub_dirs=', 'target_suffix=', 'input_path=', 'output_dir=', 'input_sub_dirs=', 'input_suffix=', 'conditions=', 'eval=', 'compute_middle_for_3d', 'minimum_ratio='])
     ### move is faster, but with higher risk for losing data.
     if len(opts) == 0:
-        logger.info('unknow options, usage: selected_samples.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=.> --input_path <input_path=None> --output_dir <output_dir=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05>')
+        logger.info('unknow options, usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=.> --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None> --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05>')
         sys.exit()
     for opt, arg in opts:
         # print(arg)
         if opt in ('-h', '--help'):
-            logger.info('usage: selected_samples.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=\'\'>  --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None>  --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05>')
+            logger.info('usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=\'\'>  --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None>  --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05>')
             sys.exit()
         if opt in ('--result_path',):
             result_path = arg

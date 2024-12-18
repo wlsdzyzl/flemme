@@ -41,10 +41,11 @@ model:
   ## 2D ddpm
   eps_loss:
     name: MSE
+# resume: path/to/checkpoint/CIFAR10/CDDPM_CFree_2.0/ckp_last.pth
 loader:
   dataset: 
     name: CIFAR10
-    data_path: path/to/datasets/CIFAR10
+    data_path: /media/wlsdzyzl/DATA1/datasets/img/CIFAR10
   batch_size: 64
   num_workers: 8
   shuffle: true
@@ -58,8 +59,7 @@ loader:
       std: [0.5, 0.5, 0.5]
 check_point_dir: path/to/checkpoint/CIFAR10/CDDPM_CFree_2.0
 sampler:
-  name: NormalSampler
-  sample_steps: 200
+  num_sample_steps: 200
   rand_seed: 2024
   clipped: true
   clip_range: [-1.0, 1.0]

@@ -182,7 +182,7 @@ def main():
                                 save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
                             if save_input:
                                 save_data(raw_img, data_form=model.data_form, output_path=output_path + '_input')
-            cond = y[0]
+            cond = y[0] if is_conditional else (x[0] if is_supervised else None)
         else:
             logger.warning('loader_config is None, reconstruction, segmentation, conditional generation and interpolation will be ignored.')
             cond = None
@@ -191,7 +191,7 @@ def main():
             sampler = None
             sampler_config = eval_gen_config.get('sampler', None)
             if sampler_config is not None:
-                sampler = create_sampler(model=model, device = device, sampler_config = sampler_config)
+                sampler = create_sampler(model=model, sampler_config = sampler_config)
             else:
                 logger.error("Sampler is not specified for generation.")
                 exit(1)
@@ -217,7 +217,7 @@ def main():
                             corner_latents = torch.from_numpy(results['latent'][gid * corner_num: gid * corner_num + corner_num])
                         else:
                             corner_latents = None
-                        if is_conditional:
+                        if is_conditional or is_supervised:
                             x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num, cond = cond)
                         else:
                             x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num)
@@ -237,7 +237,7 @@ def main():
                 if random_sample_num > 0:
                     logger.info('Gererating new samples from random noise ...')
                     ### ddpm
-                    if is_conditional:                        
+                    if is_conditional or is_supervised:                      
                         x_bar = sampler.generate_rand(n=random_sample_num, cond = cond)
                     else:
                         x_bar = sampler.generate_rand(n=random_sample_num)

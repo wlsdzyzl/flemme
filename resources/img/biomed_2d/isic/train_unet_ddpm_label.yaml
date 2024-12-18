@@ -1,0 +1,103 @@
+# train ae or vae
+mode: train
+model:
+  # can be AE, VAE and DDPM
+  name: DDPM
+  num_steps: 1000
+  num_ensemble: 1
+  beta_schedule: consine
+  eps_model:
+    name: Base
+    # encoder config
+    time_channel: 128
+    encoder:
+      name: UNet
+      image_size: [384, 256]
+      in_channel: 1
+      out_channel: 1
+      patch_channel: 32
+      patch_size: 2
+      down_channels: [64, 128, 256]
+      middle_channels: [512, 512]
+      building_block: res
+      activation: silu
+      abs_pos_embedding: false
+      normalization: group
+      num_group: 16
+      num_block: 1
+    #   ## the value can be list or int
+    # condition_embedding:
+    #   combine_condition: cat
+    #   merge_timestep_and_context: false
+    #   encoder:
+    #     name: Identity
+    #     out_channel: 1
+  # some other information related to the model
+  # in ddpm, it can be the time steps and so on.
+loader:
+  dataset: 
+    name: ImgDataset
+    data_dir: mask
+    data_suffix: png
+  data_path_list: 
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold1/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold2/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold3/
+  batch_size: 4
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [384, 256]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.5]
+      std: [0.5]
+val_loader:
+  dataset: 
+    name: ImgDataset
+    data_dir: mask
+    data_suffix: png
+  data_path_list: 
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold4/
+  batch_size: 8
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [384, 256]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.5]
+      std: [0.5]
+    # - name: Normalize
+    #   mean: [0.485, 0.456, 0.406]
+    #   std: [0.229, 0.224, 0.225]
+check_point_dir: path/to/checkpoint/ISIC/DDPM_UNet_RES_Normalized
+sampler:
+  num_sample_steps: 200
+  rand_seed: 2024
+  clipped: true
+  clip_range: [-1.0, 1.0]
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0003
+  weight_decay: 0.00000001
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+evaluation_metrics:
+  recon:
+    - name: SSIM
+      data_range: 2.0
+    - name: PSNR
+      data_range: 2.0
+    - name: MSE
+max_epoch: 500
+warmup_epoch: 2
+write_after_iters: 5
+save_after_epochs: 2

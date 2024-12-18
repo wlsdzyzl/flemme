@@ -63,5 +63,5 @@ eval_gen:
     name: NormalSampler
     clipped: true
     clip_range: [-1.0, 1.0]
-    sample_steps: 1000
+    num_sample_steps: 1000
   random_sample_num: 100

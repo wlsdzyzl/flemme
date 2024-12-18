@@ -1,5 +1,7 @@
 from .common import *
+from .pcd_utils import *
 from mamba_ssm import Mamba, Mamba2
+
 
 ## insight from PCT: https://arxiv.org/pdf/2012.09688
 class OffSetAttentionBlock(nn.Module):
@@ -222,20 +224,27 @@ class LocalGraphLayer(nn.Module):
             self.bb = BuildingBlock(in_channel = 2*in_channel,
                                     out_channel = out_channel) 
         else:
-            self.bb = BuildingBlock(in_channel = 2*in_channel * k,
+            self.bb_local = BuildingBlock(in_channel = 2*in_channel,
+                                    out_channel = in_channel) 
+            self.bb_global = BuildingBlock(in_channel = in_channel * k,
                                     out_channel = out_channel * k) 
     def forward(self, x, t=None):
-        ## x: B*N*D -> B * N * K * 2D
+        ## x: B * N * D -> B * N * K * 2D
         x = get_graph_feature(x, k = self.k)
         if not self.is_seq:
             x = self.bb(x, t)
         ## sequence modeling
         else:
             B, N, K, _ = x.shape
-            # B * N * K * 2D -> B * N * (K*2D)
+            # B * N * K * 2D -> (B * N) * K * 2D
+            x = x.reshape(B * N, K, -1)
+            # (B * N) * K * 2D -> (B * N) * K * D
+            x = self.bb_local(x, t)
+            # (B * N) * K * D -> B * N * (K * D) 
             x = x.reshape(B, N, -1)
-            x = self.bb(x, t)
-            # B * N * (K * 2D) -> B * N * K * D_out
+            # B * N * (K * D) -> B * N * (K * D) 
+            x = self.bb_global(x, t)
+            # B * N * (K * D) -> B * N * K * D
             x = x.reshape(B, N, K, -1)
         ## x: B * N * D
         x, _ = x.max(dim=2)
@@ -282,43 +291,3 @@ class FoldingLayer(nn.Module):
         x = torch.cat([shapes, codewords], dim=-1)
         x, _ = self.layers(x, t)
         return self.final(x)
-
-# class FoldingLayer(nn.Module):
-#     """
-#     The folding operation of FoldingNet
-#     """
-
-#     def __init__(self, in_channel, 
-#                     out_channel, 
-#                 hidden_channels,
-#                 **kwargs):
-#         super(FoldingLayer, self).__init__()
-
-#         layers = []
-#         for oc in hidden_channels:
-#             # # conv = nn.Conv1d(in_channel, oc,1)
-#             # conv = nn.Linear(in_channel, oc)
-#             # # bn = NormBlock(norm = nn.BatchNorm1d(oc), norm_type = Norm.BATCH, _channel_dim = -1)
-#             # bn = NormBlock(norm = nn.GroupNorm(1, oc), norm_type = Norm.GROUP, _channel_dim = -1)
-#             # active = nn.LeakyReLU()
-#             # layers.extend([conv, bn, active])
-            
-#             layers.append(DenseBlock(in_channel, oc, norm='batch', activation='relu'))
-#             in_channel = oc
-#         out_layer = nn.Linear(in_channel, out_channel)
-#         layers.append(out_layer)
-        
-#         self.layers = nn.Sequential(*layers)
-
-#     def forward(self, shapes, codewords, t = None):
-#         """
-#         Parameters
-#         ----------
-#             shapes: reshaped 2D shapes or intermediam reconstructed point clouds
-#         """
-#         # concatenate
-#         # print(shapes.shape, codewords.shape)
-#         x = torch.cat([shapes, codewords], dim=-1)
-#         # shared mlp
-#         x = self.layers(x)
-#         return x

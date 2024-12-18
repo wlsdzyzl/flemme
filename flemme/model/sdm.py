@@ -12,7 +12,13 @@ class SupervisedDiffusionProbabilistic(DDPM):
         self.is_conditional = False
         self.is_supervised = True
         self.num_ensemble = model_config.get('num_ensemble', 10)
-        
+    @torch.no_grad()
+    def sample(self, xt, c, end_step, clipped = None, 
+               clip_range = None, return_processing = False):
+        assert c is not None, 'Sample for Supervised Diffusion Model needs a condition (input).'
+        return super().sample(xt, end_step = end_step, c = c, 
+            clipped = clipped, clip_range = clip_range, 
+            return_processing = return_processing)
     def forward(self, x, end_step = -1, clipped = None, clip_range = None, num_ensemble = None):
         if clipped is None:
             clipped = self.clipped
@@ -33,7 +39,7 @@ class SupervisedDiffusionProbabilistic(DDPM):
         ### return the mean map of samples
         return {'recon': sum(sampled_recons) / len(sampled_recons) }
     
-    def compute_loss(self, x: torch.Tensor, y = None):
+    def compute_loss(self, x, y):
         return super().compute_loss(x0 = y, c = x)
     
 class SupervisedDiffusionImplicit(DDIM):
@@ -44,7 +50,13 @@ class SupervisedDiffusionImplicit(DDIM):
         self.is_conditional = False
         self.is_supervised = True
         self.num_ensemble = model_config.get('num_ensemble', 10)
-
+    @torch.no_grad()
+    def sample(self, xt, c, clipped = None, 
+               clip_range = None, return_processing = False):
+        assert c is not None, 'Sample for Supervised Diffusion Model needs a condition (input).'
+        return super().sample(xt, c = c, 
+            clipped = clipped, clip_range = clip_range, 
+            return_processing = return_processing)
     def forward(self, x, clipped = None, clip_range = None, num_ensemble = None):
         if clipped is None:
             clipped = self.clipped
@@ -62,5 +74,5 @@ class SupervisedDiffusionImplicit(DDIM):
         ### return the mean map of samples
         return {'recon': sum(sampled_recons) / len(sampled_recons) }
     
-    def compute_loss(self, x: torch.Tensor, y = None):
+    def compute_loss(self, x, y):
         return super().compute_loss(x0 = y, c = x)

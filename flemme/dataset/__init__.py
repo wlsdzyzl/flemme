@@ -44,7 +44,7 @@ def create_loader(loader_config):
             "If suffix is provided in loader config, it should be a list and has the equal length to the data_path_list."
     if dataset_cls_str == 'ImgDataset':
         dataset_class = ImgDataset
-    if dataset_cls_str == 'ImgSegDataset' or dataset_cls_str == 'ImgReconDataset':
+    elif dataset_cls_str == 'ImgSegDataset' or dataset_cls_str == 'ImgReconDataset':
         dataset_class = ImgSegDataset
         process_label = True
     elif dataset_cls_str == 'MultiModalityImgSegDataset':

@@ -4,22 +4,25 @@ model:
   name: VAE
   # encoder config
   encoder:
-    name: Swin
+    name: SwinU
     in_channel: 1
     ## the value can be list or int
     image_size: 32
     patch_size: 1
     down_channels: [16, 32]
-    middle_channels: [32, 32]
+    middle_channels: [32, 64]
     # up_channels: [16, 8]
     building_block: swin
     normalization: layer
-    dense_channels: [128]
+    # dense_channels: [128]
     abs_pos_embedding: false
     # decoder_dense_channels: [64, 32]
   ### loss function
   reconstruction_losses: 
-    name: MSE
+    # - name: MSE
+    - name: SSIM
+      image_dim: 2
+      channel: 1
   distribution_loss:
     name: KL
     weight: 1
@@ -29,7 +32,7 @@ loader:
   dataset: 
     name: MNIST
   data_path_list: 
-    - path/to/datasets/MNIST  
+    - /media/wlsdzyzl/DATA1/datasets/img/MNIST  
   batch_size: 128
   num_workers: 8
   shuffle: true
@@ -53,7 +56,6 @@ lr_scheduler:
   start_factor: 1.0
   end_factor: 0.01
 sampler:
-  name: NormalSampler
 max_epoch: 50
 write_after_iters: 50
 save_after_epochs: 5

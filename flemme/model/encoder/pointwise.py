@@ -49,7 +49,6 @@ class PointWiseEncoder(nn.Module):
     # input: Nb * Np * d
     def forward(self, x, t = None):
         # ## x is point cloud
-        # print("?????", x.shape)
         x = [self.dense[i](x, t)[0] for i in range(self.z_count)]
         if self.z_count == 1:
             x = x[0]

@@ -47,8 +47,7 @@ loader:
       std: [0.5]
 check_point_dir: path/to/checkpoint/MNIST/HDDPM
 sampler:
-  name: NormalSampler
-  sample_steps: 200
+  num_sample_steps: 200
   rand_seed: 2024
   clipped: true
   clip_range: [-1.0, 1.0]

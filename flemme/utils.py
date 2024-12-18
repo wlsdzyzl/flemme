@@ -431,11 +431,20 @@ if module_config['point-cloud'] or module_config['graph']:
             ### read edges
             edges[:, 0] = plydata['edge']['vertex1']
             edges[:, 1] = plydata['edge']['vertex2']
+        if 'face' in plydata._element_lookup:
+            logger.warning('Currently, reading face is not implemented.')
         ### currently, reading face is not implemented 
         return pcd, edges     
 
-
-        
+    def load_stl(inputfile, with_edges = False):
+        stl_mesh = mesh.Mesh.from_file(inputfile)
+        points = np.concatenate(np.split(stl_mesh.points, 3, axis=1), axis=0)
+        ### can use inverse = True to get the edge index.
+        u_points = np.unique(points, axis=0)
+        if not with_edges:
+            return u_points
+        logger.warning('Currently, reading face from stl is not implemented.')
+        return u_points, None
     ### save ply file, with points and colors
     ## here, the face information will be ignored
     ## We can use other packages or cpp program for mesh extraction from point cloud
@@ -476,6 +485,7 @@ if module_config['point-cloud'] or module_config['graph']:
         else:
             logger.warning('unsupported file format.')
             raise NotImplementedError
+            
     def save_pcd(filename, x):
         basename = os.path.basename(filename)
         suffix = basename.split('.')[-1]

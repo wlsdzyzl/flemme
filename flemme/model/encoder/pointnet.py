@@ -177,10 +177,10 @@ class PointDecoder(nn.Module):
             assert not self.pointwise, \
                 'point cloud decoder with folding operations shouldn\'t be pointwise.'
             self.fold = None
-            base_shape = base_shape_config.get('type', 'grid')
+            base_shape = base_shape_config.get('type', 'grid2d')
             logger.info(f'using {base_shape} as base shape for folding.')
 
-            if base_shape == 'grid':
+            if base_shape == 'grid2d':
                 grid_len = int(point_num**0.5)
                 self.base_shape_dim = 2
                 # Sample the grids in 2D space
@@ -188,9 +188,22 @@ class PointDecoder(nn.Module):
                 height = base_shape_config.get('height', 1.0)
                 xx = np.linspace(-width / 2, width / 2, grid_len, dtype=np.float32)
                 yy = np.linspace(-height / 2, height / 2, grid_len, dtype=np.float32)
-                np_grid = np.stack(np.meshgrid(xx, yy), axis=-1)   # (45, 45, 2)
+                np_grid = np.stack(np.meshgrid(xx, yy), axis=-1)   # (grid_len, grid_len, 2)
                 self.base_shape = torch.Tensor(np_grid).view(-1, 2)
-
+            elif base_shape == 'grid3d':
+                grid_len = int(point_num**(1 / 3))
+                self.base_shape_dim = 2
+                # Sample the grids in 2D space
+                width = base_shape_config.get('width', 1.0)
+                height = base_shape_config.get('height', 1.0)
+                depth = base_shape_config.get('depth', 1.0)
+                xx = np.linspace(-width / 2, width / 2, grid_len, dtype=np.float32)
+                yy = np.linspace(-height / 2, height / 2, grid_len, dtype=np.float32)
+                zz = np.linspace(-depth / 2, depth / 2, grid_len, dtype=np.float32)
+                np_grid = np.stack(np.meshgrid(xx, yy, zz), axis=-1)   # (grid_len, grid_len, grid_len, 3)
+                self.base_shape = torch.Tensor(np_grid).view(-1, 3)
+            elif base_shape == 'sphere':
+                pass
             elif base_shape == 'cylinder':
                 self.base_shape_dim = 3
                 c_len = int(point_num**0.5) * 2

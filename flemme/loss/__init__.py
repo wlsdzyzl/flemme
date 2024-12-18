@@ -15,6 +15,8 @@ def get_loss(loss_config, data_form = DataForm.IMG):
         return TorchLoss(torch_loss = nn.MSELoss, **loss_config)
     if loss_name == 'L1':
         return TorchLoss(torch_loss = nn.L1Loss, **loss_config)
+    if loss_name == 'SSIM':
+        return SSIMLoss(**loss_config)
     if loss_name == 'BCE':
         return TorchLoss(torch_loss = nn.BCELoss, **loss_config)
     if loss_name == 'BCEL':
@@ -33,6 +35,10 @@ def get_loss(loss_config, data_form = DataForm.IMG):
         return EMDLoss(**loss_config)
     if loss_name == 'Chamfer' or loss_name == 'CD':
         return ChamferLoss(**loss_config)
+    if loss_name == 'Sinkhorn':
+        return SinkhornLoss(**loss_config)
+    if loss_name == 'Sphere':
+        return SphereLoss(**loss_config)
     ## graph node error
     if loss_name == 'GraphNodeLoss' or loss_name == 'GNE':
         return GraphNodeLoss(**loss_config)

@@ -52,7 +52,6 @@ lr_scheduler:
   start_factor: 1.0
   end_factor: 0.01
 sampler:
-  name: NormalSampler
 max_epoch: 50
 write_after_iters: 50
 save_after_epochs: 5

@@ -190,7 +190,9 @@ class BaseModel(nn.Module):
             return [self.out_channel, ] + self.decoder.image_size
         ### vector
         return [self.out_channel]
-
+    @property
+    def device(self):
+        return next(self.parameters()).device
     
 
 class HBaseModel(BaseModel):

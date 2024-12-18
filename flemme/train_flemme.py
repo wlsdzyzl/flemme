@@ -172,7 +172,7 @@ def main():
     sampler = None
     sampler_config = train_config.get('sampler', None)
     if model.is_generative and sampler_config is not None:
-        sampler = create_sampler(model=model, device = device, sampler_config = sampler_config)
+        sampler = create_sampler(model=model, sampler_config = sampler_config)
 
 
     for epoch in range(start_epoch, max_epoch+1):
@@ -222,6 +222,8 @@ def main():
                         if sampler is not None:
                             if is_conditional:
                                 x_rand = sampler.generate_rand(n=x.shape[0], cond = y)   
+                            elif is_supervised:
+                                x_rand = sampler.generate_rand(n=x.shape[0], cond = x)   
                             else:
                                 x_rand = sampler.generate_rand(n=x.shape[0])   
                             res['gen'] = x_rand

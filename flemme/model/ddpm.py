@@ -96,6 +96,10 @@ class DiffusionProbabilistic(nn.Module):
         self.register_buffer('sigma2', beta)
         self.clipped = model_config.get('clipped', True)
         self.clip_range = model_config.get('clip_range', [-1.0, 1.0])
+
+    @property
+    def device(self):
+        return self.eps_model.device
     def add_noise(self, x0, t):
         """
         #### Sample from $q(x_t|x_0)$
