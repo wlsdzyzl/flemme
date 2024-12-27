@@ -10,13 +10,13 @@ model:
     in_channel: 3
     point_num: 1024
     building_block: dense
-    local_graph_k: 20
+    num_neighbors_k: 20
     local_feature_channels: [64, 64, 128, 256, 512]
     dense_channels: [1024]
     decoder_dense_channels: [512, 256]
     activation: lrelu
     normalization: group
-    pointwise: False
+    vector_embedding: True
   reconstruction_losses: 
     - name: EMD
   distribution_loss:

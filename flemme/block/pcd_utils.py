@@ -246,6 +246,7 @@ class BallQuery(Function):
     @staticmethod
     def backward(ctx, grad_out):
         return ()
+    
 
 
 ball_query = BallQuery.apply
@@ -300,9 +301,7 @@ class QueryAndGroup(nn.Module):
             else:
                 new_features = grouped_features
         else:
-            assert (
-                self.use_xyz
-            ), "Cannot have not features and not use xyz as a feature!"
+            assert self.use_xyz, "Cannot have not features and not use xyz as a feature!"
             new_features = grouped_xyz
 
         return new_features

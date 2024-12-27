@@ -1,4 +1,4 @@
-### mamba-encoder: window and patch based vision SSM
+### vision transformer
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -8,32 +8,22 @@ from flemme.block import PatchConstructionBlock, PatchRecoveryBlock,\
     SequentialT, get_building_block, MultipleBuildingBlocks, DenseBlock
 from flemme.logger import get_logger
 import copy
-logger = get_logger("model.encoder.vmamba")
+logger = get_logger("encoder.image.vit")
 
-class VMambaEncoder(nn.Module):
+class ViTEncoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
-                patch_size = 2, patch_channel = 32,
-                time_channel = 0,
-                down_channels = [128, 256], middle_channels = [256, 256], 
-                mlp_hidden_ratio=[4., ], state_channel=None, 
-                building_block = 'vmamba', dense_channels = [256], 
-                conv_kernel_size=3,
-                inner_factor = 2.0,
-                dt_rank=None, dt_min=0.001, 
-                dt_max=0.1, dt_init="random", dt_scale=1.0, 
-                dt_init_floor=1e-4, 
-                conv_bias=True, bias=False,             
-                dropout=0., drop_path=0.1, 
-                normalization = 'group', num_groups = 8, 
-                num_block = 2, activation = 'silu', 
-                scan_mode = 'single',
-                flip_scan = True,
-                head_channel = 64, 
-                learnable_init_states = True, 
-                chunk_size=256,
-                abs_pos_embedding = False,
-                return_features = False,
-                z_count = 1, **kwargs):
+                 patch_size = 2, patch_channel = 32,
+                 building_block = 'vit', dense_channels = [256], 
+                 time_channel = 0,
+                 mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
+                 down_channels = [128, 256], middle_channels = [256, 256], 
+                 down_num_heads = [3, 3], middle_num_heads = [3, 3],
+                 dropout=0., atten_dropout=0., drop_path=0.1, 
+                 normalization = 'group', num_groups = 8, 
+                 num_block = 2, activation = 'silu', 
+                 abs_pos_embedding = False,
+                 return_feature_list = False,
+                 z_count = 1, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -44,39 +34,30 @@ class VMambaEncoder(nn.Module):
         self.d_depth = len(down_channels)
         self.m_depth = len(middle_channels)
         self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
-
         self.activation = activation
         self.dropout = dropout
+        self.atten_dropout = atten_dropout
         self.num_block = num_block
         # stochastic depth decay rule
         self.drop_path = [x.item() for x in torch.linspace(0, drop_path,
                                                 (self.d_depth + self.m_depth) * self.num_block)]
         self.mlp_hidden_ratio = mlp_hidden_ratio
+        self.qkv_bias = qkv_bias
+        self.qk_scale = qk_scale
         self.patch_size = patch_size
         self.patch_channel = patch_channel
-
-        assert 'vmamba' in building_block, 'VMambaEncoder only support mamba-related building blocks.'
-        ### building block: mamba SSM block
-        self.BuildingBlock = get_building_block(building_block, dim = self.dim,
+        assert 'vit' in building_block, 'ViTEncoder only support transformer-related building blocks.'
+        ### building block: vision transformer block
+        self.BuildingBlock = get_building_block(building_block, 
+                                dim = self.dim,
                                 time_channel = time_channel,
                                 mlp_hidden_ratio = mlp_hidden_ratio,
-                                inner_factor = inner_factor, 
-                                conv_kernel_size = conv_kernel_size,
-                                dt_min = dt_min, dt_max = dt_max,
-                                dt_init_floor = dt_init_floor,
-                                dt_rank = dt_rank,
-                                dt_scale = dt_scale,
-                                dt_init = dt_init,
-                                conv_bias = conv_bias, bias = bias,
+                                qkv_bias = qkv_bias,
+                                qk_scale = qk_scale,
                                 dropout = dropout,
+                                atten_dropout = atten_dropout,
                                 norm = normalization, num_groups = num_groups,
-                                state_channel = state_channel,
-                                head_channel = head_channel, 
-                                learnable_init_states = learnable_init_states, 
-                                chunk_size=chunk_size,
-                                activation = activation, 
-                                scan_mode = scan_mode,
-                                flip_scan = flip_scan)
+                                activation = activation)
         ### construct patch
         self.patch_emb = PatchConstructionBlock(dim = self.dim, 
                                                 patch_size = self.patch_size,
@@ -90,29 +71,30 @@ class VMambaEncoder(nn.Module):
             nn.init.trunc_normal_(self.absolute_pos_embed, std=.02)
         ### use patch merging block for down sampling
         down_channels = [self.patch_channel, ] + down_channels
+
         ### building block
-        self.d_ssm = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.d_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+                                                        num_heads = down_num_heads[i],
                                                         in_channel = down_channels[i],
                                                         out_channel = down_channels[i+1],
-                                                        kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] 
-                                                                                     for ni in range(self.num_block) ] }
+                                                        kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
                                                         ) for i in range(self.d_depth) ])
         self.down = nn.ModuleList([PatchMergingBlock(dim = self.dim,
                                                      in_channel = down_channels[i+1],
                                                      out_channel = down_channels[i+1],
                                                      norm = normalization, 
                                                      num_groups = num_groups)  for i in range(self.d_depth)])
-        self.down_path = [self.image_channel, ] + down_channels        
-        
-        ## middle layer
+        self.down_path = [self.image_channel, ] + down_channels
+
         dense_channels = [ middle_channels[-1], ] + dense_channels
         self.dense_path = dense_channels.copy()
         self.middle_path = [down_channels[-1], ] + middle_channels 
         if not self.vector_embedding:
             middle_channels = [mc * self.z_count for mc in middle_channels]
-        ### middle SSM
+        ### middle transformers
         middle_channels = [down_channels[-1], ] + middle_channels
         self.middle = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+                                                        num_heads = middle_num_heads[i],
                                                         in_channel = middle_channels[i],
                                                         out_channel = middle_channels[i+1],
                                                         kwargs_list = {"drop_path": [self.drop_path[(i + self.d_depth)*self.num_block + ni] 
@@ -122,7 +104,7 @@ class VMambaEncoder(nn.Module):
         ### fully connected layers
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *dense_channels[0])
-            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],
+            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
                                                 norm = normalization, num_groups=num_groups, 
                                                 activation = self.activation) for i in range(len(dense_channels) - 2)]
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
@@ -130,14 +112,14 @@ class VMambaEncoder(nn.Module):
 
         ## set out_channel
         self.out_channel = dense_channels[-1]
-        self.return_features = return_features
+        self.return_feature_list = return_feature_list
     def forward(self, x, t = None):
         x = self.patch_emb(x)
         res = []
         if self.absolute_pos_embed is not None:
             x = x + self.absolute_pos_embed
-        for d_ssm, down in zip(self.d_ssm, self.down):
-            x = d_ssm(x, t)
+        for d_trans, down in zip(self.d_trans, self.down):
+            x = d_trans(x, t)
             res = res + [x,]
             x = down(x)
         x, _ = self.middle(x, t)
@@ -149,21 +131,20 @@ class VMambaEncoder(nn.Module):
             x = torch.chunk(x, self.z_count, dim = -1)
         if self.z_count == 1:
             x = x[0]
-        if self.return_features:
+        if self.return_feature_list:
             return x, res
         return x
-
     def __str__(self):
         _str = ''
         # print down sampling
-        _str += 'Patch merging and mamba SSM layers: '
+        _str += 'Patch merging and vision transformer layers: '
         for c in self.down_path[:-1]:
             _str += '{}->'.format(c)  
         _str += str(self.down_path[-1])
         _str += '\n'
 
         if len(self.middle_path) > 1:
-            _str += 'Middle mamba SSM layers: '
+            _str += 'Middle vit tranformer layers: '
             for c in self.middle_path[:-1]:
                _str += '{}->'.format(c)  
             _str += str(self.middle_path[-1])
@@ -176,30 +157,19 @@ class VMambaEncoder(nn.Module):
             _str += str(self.dense_path[-1])
             _str += '\n'
         return _str 
-    
-class VMambaDecoder(nn.Module):
-    def __init__(self, image_size, image_channel = 3, 
-                patch_size = 2, in_channel = 64,
-                mlp_hidden_ratio=[4., ], dense_channels = [32], 
-                up_channels = [128, 64], final_channels = [64, 64], 
-                time_channel = 0,
-                building_block = 'vmamba',
-                state_channel=None, 
-                conv_kernel_size=3,
-                inner_factor = 2.0, 
-                dt_rank=None, dt_min=0.001, 
-                dt_max=0.1, dt_init="random", dt_scale=1.0, 
-                dt_init_floor=1e-4, 
-                conv_bias=True, bias=False,
-                head_channel = 64, 
-                learnable_init_states = True, 
-                chunk_size=256,             
-                dropout=0., drop_path=0.1, 
-                normalization = 'group', num_groups = 8, 
-                num_block = 2, activation = 'silu', 
-                scan_mode = 'single', flip_scan = True, 
-                return_features = False,
-                **kwargs):
+
+class ViTDecoder(nn.Module):
+    def __init__(self, image_size, image_channel = 3, in_channel = 64,
+                 patch_size = 2, dense_channels = [32], 
+                 building_block = 'vit',
+                 time_channel = 0,
+                 mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
+                 up_channels = [128, 64], final_channels = [64, 64], 
+                 up_num_heads = [3, 3], final_num_heads = [3, 3],
+                 dropout=0., atten_dropout=0., drop_path=0.1, 
+                 normalization = 'group', num_groups = 8, 
+                 num_block = 2, activation = 'silu', 
+                 return_feature_list = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -210,37 +180,29 @@ class VMambaDecoder(nn.Module):
         self.f_depth = len(final_channels)
         self.activation = activation
         self.dropout = dropout
+        self.atten_dropout = atten_dropout
+        self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
         self.num_block = num_block
         # stochastic depth decay rule
         self.drop_path = [x.item() for x in torch.linspace(0, drop_path,
-                                                (self.u_depth + self.f_depth) * self.num_block)]
+                                                (self.u_depth + self.f_depth) * self.num_block)][::-1]
         self.mlp_hidden_ratio = mlp_hidden_ratio
+        self.qkv_bias = qkv_bias
+        self.qk_scale = qk_scale
         self.patch_size = patch_size
         self.in_channel = in_channel
-        self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
-
-        ### building block: mamba SSM block
-        assert 'vmamba' in building_block, 'VMambaDecoder only support mamba-related building blocks.'
-        self.BuildingBlock = get_building_block(building_block, dim = self.dim,
+        ### building block: vision transformer block
+        assert 'vit' in building_block, 'ViTDecoder only support transformer-related building blocks.'
+        self.BuildingBlock = get_building_block(building_block, 
                                 mlp_hidden_ratio = mlp_hidden_ratio,
+                                dim = self.dim,
                                 time_channel = time_channel,
-                                inner_factor = inner_factor, 
-                                conv_kernel_size = conv_kernel_size,
-                                dt_rank = dt_rank,
-                                dt_min = dt_min, dt_max = dt_max,
-                                dt_init = dt_init,
-                                dt_scale = dt_scale,
-                                dt_init_floor = dt_init_floor,
-                                head_channel = head_channel, 
-                                learnable_init_states = learnable_init_states, 
-                                chunk_size=chunk_size,
-                                conv_bias = conv_bias, bias = bias,
+                                qkv_bias = qkv_bias,
+                                qk_scale = qk_scale,
                                 dropout = dropout,
+                                atten_dropout = atten_dropout,
                                 norm = normalization, num_groups = num_groups,
-                                state_channel = state_channel,
-                                activation = activation,
-                                scan_mode = scan_mode, flip_scan = flip_scan)
-        ### use patch expansion block for up sampling
+                                activation = activation)
         ## fully connected layer
         dense_channels = [in_channel, ] + dense_channels 
         if not sum([im_size % (self.patch_size * (2** self.u_depth)) for im_size in self.image_size ]) == 0:
@@ -248,39 +210,41 @@ class VMambaDecoder(nn.Module):
             exit(1)
         if self.vector_embedding:
             # used for view (reshape)
-            self.view_shape = [-1, ] +[int(im_size // (self.patch_size * (2** self.u_depth))) for im_size in self.image_size ]  + [int( dense_channels[-1]),]
+            self.view_shape = [-1, ] + [int(im_size // (self.patch_size * (2** self.u_depth))) for im_size in self.image_size ] + [int( dense_channels[-1]),]
             module_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                norm = normalization, num_groups=num_groups,
+                                                norm = normalization, num_groups=num_groups, 
                                                 activation = self.activation) for i in range(len(dense_channels) - 2)]
             # to construct image shape
             # if there is not fc layer, then we also don't need this step
             module_sequence.append(DenseBlock(dense_channels[-2],  
-                                                       int( dense_channels[-1] * math.prod(self.image_size) / ((2**self.u_depth * self.patch_size)**self.dim  )), 
-                                                        norm = normalization, num_groups=num_groups, 
-                                                        activation = self.activation))
+                                                int( dense_channels[-1] * math.prod(self.image_size) / ((2**self.u_depth * self.patch_size)**self.dim  )), 
+                                                norm = normalization, num_groups=num_groups,  
+                                                activation = self.activation))
             self.dense = nn.Sequential(*module_sequence)  
         self.dense_path = dense_channels
         ### use patch expansion block for up sampling
         up_channels = [dense_channels[-1], ] + up_channels
-
         self.up = nn.ModuleList([PatchExpansionBlock(dim = self.dim,
                                                      in_channel = up_channels[i],
                                                      out_channel = up_channels[i],
                                                      norm = normalization, 
                                                      num_groups = num_groups) for i in range(self.u_depth)])
         ### building block
-        self.u_ssm = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.u_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+                                                        num_heads = up_num_heads[i],
                                                         in_channel = up_channels[i],
                                                         out_channel = up_channels[i+1],
-                                                        kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                        kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] 
+                                                                                     for ni in range(self.num_block) ] }
                                                         ) for i in range(self.u_depth) ])
         self.up_path = up_channels
 
         final_channels = [up_channels[-1]] + final_channels
         self.final = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+                                                        num_heads = final_num_heads[i],
                                                         in_channel = final_channels[i],
                                                         out_channel = final_channels[i+1],
-                                                        kwargs_list = {"drop_path": [self.drop_path[(i + self.u_depth)*self.num_block + ni] 
+                                                        kwargs_list = {"drop_path": [self.drop_path[(i + self._depth)*self.num_block + ni] 
                                                                                      for ni in range(self.num_block) ] }
                                                         ) for i in range(self.f_depth) ])
         ### from patch to image: up_sample
@@ -290,7 +254,7 @@ class VMambaDecoder(nn.Module):
                                                 out_channel = self.image_channel,
                                                 norm = None)
         self.final_path = final_channels + [self.image_channel]
-        self.return_features = return_features
+        self.return_feature_list = return_feature_list
     def __str__(self):
         _str = ''
         if self.vector_embedding:
@@ -300,13 +264,13 @@ class VMambaDecoder(nn.Module):
             _str += str(self.dense_path[-1])
             _str += '\n'
         if len(self.up_path) > 1:
-            _str += 'Patch expansion and mamba SSM layers: '
+            _str += 'Patch expansion and vision transformer layers: '
             for c in self.up_path[:-1]:
                _str += '{}->'.format(c)  
             _str += str(self.up_path[-1])
             _str += '\n'
         if len(self.final_path) > 1:
-            _str += 'Final mamba SSM layers: '
+            _str += 'Final vision transformer layers: '
             for c in self.final_path[:-1]:
                _str += '{}->'.format(c)  
             _str += str(self.final_path[-1])
@@ -319,11 +283,13 @@ class VMambaDecoder(nn.Module):
             x = self.dense(x)
             x = x.reshape(*self.view_shape)
         res = []
-        for up, u_ssm in zip(self.up, self.u_ssm):
-            x = u_ssm(up(x), t)
+        for up, u_trans in zip(self.up, self.u_trans):
+            x = u_trans(up(x), t)
             res = res + [x,]
         x, _ = self.final(x, t)
         x = self.patch_recov(x)
-        if self.return_features:
+        if self.return_feature_list:
             return x, res
         return x
+    
+

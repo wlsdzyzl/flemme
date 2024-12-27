@@ -7,7 +7,7 @@ from flemme.block import DenseBlock, DownSamplingBlock, UpSamplingBlock, Sequent
     get_building_block, MultipleBuildingBlocks
 from flemme.logger import get_logger
 import copy
-logger = get_logger("model.encoder.cnn")
+logger = get_logger("encoder.image.cnn")
 
 # add fc layer to embed the image into a latent vector
 class CNNEncoder(nn.Module):
@@ -30,7 +30,7 @@ class CNNEncoder(nn.Module):
                  normalization = 'group', num_groups = 8, cn_order = 'cn', num_block = 2,
                  activation = 'relu', z_count = 1, dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 abs_pos_embedding = False, return_features = False,
+                 abs_pos_embedding = False, return_feature_list = False,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -106,7 +106,7 @@ class CNNEncoder(nn.Module):
 
         ## set out_channel
         self.out_channel = dense_channels[-1]
-        self.return_features = return_features
+        self.return_feature_list = return_feature_list
     def __str__(self):
         _str = ''
         if len(self.down_path) > 1:
@@ -151,7 +151,7 @@ class CNNEncoder(nn.Module):
             x = torch.chunk(x, self.z_count, dim=1)
         if self.z_count == 1:
             x = x[0]
-        if self.return_features:
+        if self.return_feature_list:
             return x, res
         return x
 
@@ -175,7 +175,7 @@ class CNNDecoder(nn.Module):
                  normalization = 'group', num_groups = 8, cn_order = 'cn', 
                  num_block = 2, activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 return_features = False, **kwargs):
+                 return_feature_list = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -240,7 +240,7 @@ class CNNDecoder(nn.Module):
         self.image_back_proj = UpSamplingBlock(dim = self.dim, scale_factor=patch_size, in_channel=final_channels[-1], 
                                                        out_channel=self.image_channel, func=usample_function)
         self.final_path = final_channels + [self.image_channel]
-        self.return_features = return_features
+        self.return_feature_list = return_feature_list
     def __str__(self):
         _str = ''
         if self.vector_embedding:
@@ -279,7 +279,7 @@ class CNNDecoder(nn.Module):
                 res = res + [x,]
         x, t = self.final(x, t)
         x = self.image_back_proj(x)
-        if self.return_features:
+        if self.return_feature_list:
             return x, res
         return x
     

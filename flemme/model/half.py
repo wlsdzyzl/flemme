@@ -4,7 +4,7 @@ from flemme.utils import DataForm
 from flemme.logger import get_logger
 from flemme.model.embedding import get_embedding, add_embedding, concat_embedding
 from flemme.utils import DataForm
-from .encoder import create_encoder
+from flemme.encoder import create_encoder
 logger = get_logger('model.base')
 ### some times we may want to construct a model with only encoder or decoder with conditional embedding.
 ### this might be useful, for a classification model
@@ -74,7 +74,7 @@ class OnlyEncoder(nn.Module):
         return [self.in_channel]
         
     def get_output_shape(self):
-        if self.data_form == DataForm.PCD and self.encoder.pointwise:
+        if self.data_form == DataForm.PCD and not self.encoder.vector_embedding:
             return [self.decoder.point_num, ] + [self.out_channel,]      
         if self.data_form == DataForm.IMG and not self.encoder.vector_embedding:
             return [self.out_channel, ] + self.decoder.image_size
@@ -146,7 +146,7 @@ class OnlyDecoder(nn.Module):
     
     #### should never be called
     # def get_input_shape(self):
-    #     if self.data_form == DataForm.PCD and self.decoder.pointwise:
+    #     if self.data_form == DataForm.PCD and not self.decoder.vector_embedding:
     #         return [self.decoder.point_num, ] + [self.in_channel,]      
     #     if self.data_form == DataForm.IMG and not self.decoder.vector_embedding:
     #         return [self.in_channel, ] + self.decoder.image_size

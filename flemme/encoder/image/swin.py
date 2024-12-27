@@ -8,7 +8,7 @@ from flemme.block import PatchConstructionBlock, PatchRecoveryBlock,\
     SequentialT, get_building_block, MultipleBuildingBlocks, DenseBlock
 from flemme.logger import get_logger
 import copy
-logger = get_logger("model.encoder.swin")
+logger = get_logger("encoder.image.swin")
 
 class SwinEncoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
@@ -22,7 +22,7 @@ class SwinEncoder(nn.Module):
                  normalization = 'group', num_groups = 8, 
                  num_block = 2, activation = 'silu', 
                  abs_pos_embedding = False,
-                 return_features = False,
+                 return_feature_list = False,
                  z_count = 1, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -121,7 +121,7 @@ class SwinEncoder(nn.Module):
 
         ## set out_channel
         self.out_channel = dense_channels[-1]
-        self.return_features = return_features
+        self.return_feature_list = return_feature_list
     def forward(self, x, t = None):
         x = self.patch_emb(x)
         res = []
@@ -140,7 +140,7 @@ class SwinEncoder(nn.Module):
             x = torch.chunk(x, self.z_count, dim = -1)
         if self.z_count == 1:
             x = x[0]
-        if self.return_features:
+        if self.return_feature_list:
             return x, res
         return x
     def __str__(self):
@@ -177,7 +177,7 @@ class SwinDecoder(nn.Module):
                  dropout=0., atten_dropout=0., drop_path=0.1, 
                  normalization = 'group', num_groups = 8, 
                  num_block = 2, activation = 'silu', 
-                 return_features = False, **kwargs):
+                 return_feature_list = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -271,7 +271,7 @@ class SwinDecoder(nn.Module):
                                                 out_channel = self.image_channel,
                                                 norm = None)
         self.final_path = final_channels + [self.image_channel]
-        self.return_features = return_features
+        self.return_feature_list = return_feature_list
     def __str__(self):
         _str = ''
         if self.vector_embedding:
@@ -305,7 +305,7 @@ class SwinDecoder(nn.Module):
             res = res + [x,]
         x, _ = self.final(x, t)
         x = self.patch_recov(x)
-        if self.return_features:
+        if self.return_feature_list:
             return x, res
         return x
     

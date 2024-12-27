@@ -1,47 +1,16 @@
 from flemme.config import module_config
 
-from .cnn import *
-from .unet import *
-from .dnet import *
-from .pointwise import *
+from .fcn import *
+from .image import *
+from .point import *
+from .graph import *
 from flemme.utils import DataForm
 from flemme.logger import get_logger
 
-supported_encoders = {'CNN':(CNNEncoder, CNNDecoder), 
-                      'UNet':(UNetEncoder, UNetDecoder), 
-                      'DNet': (DNetEncoder, DNetDecoder),
-                      'PointWise':(PointWiseEncoder, PointWiseDecoder)}
-if module_config['transformer']:
-    from .vit import *
-    from .swin import *
-    supported_encoders['ViT'] = (ViTEncoder, ViTDecoder)
-    supported_encoders['Swin'] = (SwinEncoder, SwinDecoder)
-    supported_encoders['ViTU'] = (ViTUNetEncoder, ViTUNetDecoder)
-    supported_encoders['SwinU'] = (SwinUNetEncoder, SwinUNetDecoder)
-    supported_encoders['ViTD'] = (ViTDNetEncoder, ViTDNetDecoder)
-    supported_encoders['SwinD'] = (SwinDNetEncoder, SwinDNetDecoder)
-if module_config['mamba']:
-    from .vmamba import *
-    supported_encoders['VMamba'] = (VMambaEncoder, VMambaDecoder)
-    supported_encoders['VMambaU'] = (VMambaUNetEncoder, VMambaUNetDecoder)
-    supported_encoders['VMambaD'] = (VMambaDNetEncoder, VMambaDNetDecoder)
-if module_config['point-cloud']:
-    from .pointnet import *
-    from .pointtrans import *
-    supported_encoders['PointNet'] = (PointNetEncoder, PointNetDecoder)
-    supported_encoders['PointTrans'] = (PointTransEncoder, PointTransDecoder)
-
-    if module_config['mamba']:
-        from .pointmamba import *
-        supported_encoders['PointMamba'] = (PointMambaEncoder, PointMambaDecoder)
-### graph encoder
-if module_config['graph']:
-    from .gnn import *
-    supported_encoders['GCN'] = (GCNEncoder, GraphDecoder)
-    supported_encoders['Cheb'] = (ChebEncoder, GraphDecoder)
-    supported_encoders['GTrans'] = (TransConvEncoder, GraphDecoder)
-
-
+supported_encoders = {'FCN':(FCNEncoder, FCNDecoder)}
+supported_encoders.update(supported_image_encoders)
+supported_encoders.update(supported_point_encoders)
+supported_encoders.update(supported_graph_encoders)
 
 supported_buildingblocks_for_encoder = {'CNN': ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv'],
                         'UNet': ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv'],
@@ -55,7 +24,7 @@ supported_buildingblocks_for_encoder = {'CNN': ['single', 'conv', 'double', 'dou
                         'VMamba': ['vmamba', 'double_vmamba', 'res_vmamba', 'vmamba2', 'double_vmamba2', 'res_vmamba2'],
                         'VMambaU': ['vmamba', 'double_vmamba', 'res_vmamba', 'vmamba2', 'double_vmamba2', 'res_vmamba2'],
                         'VMambaD': ['vmamba', 'double_vmamba', 'res_vmamba', 'vmamba2', 'double_vmamba2', 'res_vmamba2'],
-                        'PointWise': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
+                        'FCN': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
                         'PointNet': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
                         'PointTrans': ['pct_sa', 'pct_oa'],
                         'PointMamba': ['pmamba', 'pmamba2'],
@@ -63,7 +32,7 @@ supported_buildingblocks_for_encoder = {'CNN': ['single', 'conv', 'double', 'dou
                         'Cheb': ['cheb'],
                         'GTrans': ['gtrans']}
 
-logger = get_logger('model.encoder.create_encoder')
+logger = get_logger('encoder.create_encoder')
 
 def create_encoder(encoder_config, return_encoder = True, return_decoder = True):
         encoder_name = encoder_config.pop('name')
@@ -83,7 +52,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         elif encoder_name in ('PointNet', 'PointTrans', 'PointMamba'):
             data_form = DataForm.PCD
         ### point-wise encoder can be applied on various data forms.
-        elif encoder_name in ('PointWise', ):
+        elif encoder_name in ('FCN', ):
             data_form = encoder_config.pop('data_form', 'PCD')
             if data_form == 'PCD':
                 data_form = DataForm.PCD
@@ -115,7 +84,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             decoder_in_channel = encoder_config.pop('decoder_in_channel', None)
             assert decoder_in_channel is not None, "Need in channel for decoder."
 
-        if encoder_name == 'PointWise':
+        if encoder_name == 'FCN':
             if return_encoder:
                 encoder = Encoder(point_dim=in_channel + eai_channel, 
                                             time_channel=time_channel, 
@@ -297,7 +266,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 local_feature_channels = encoder_config.pop('local_feature_channels', [64, 128, 256])  
                 assert isinstance(local_feature_channels, list), 'feature channels should be a list.'
                 ## 0: without using local graph
-                local_graph_k = encoder_config.pop('local_graph_k', 0)
+                num_neighbors_k = encoder_config.pop('num_neighbors_k', 0)
                 # decoder
                 folding_times = encoder_config.pop('folding_times', 0)
                 base_shape_config = encoder_config.pop('base_shape', {})
@@ -306,7 +275,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     encoder = Encoder(point_dim=in_channel + eai_channel, 
                                                 projection_channel = projection_channel,
                                                 time_channel = time_channel,
-                                                local_graph_k = local_graph_k,
+                                                num_neighbors_k = num_neighbors_k,
                                                 local_feature_channels=local_feature_channels, 
                                                 dense_channels=dense_channels, 
                                                 building_block=building_block,

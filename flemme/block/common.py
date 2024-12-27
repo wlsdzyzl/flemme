@@ -21,21 +21,21 @@ def channel_transfer(x):
     if x.ndim == 2:
         return x
     if x.ndim == 3:
-        return x.transpose(1, 2)
+        return x.transpose(1, 2).contiguous()
     if x.ndim == 4:
-        return x.permute(0, 2, 3, 1)
+        return x.permute(0, 2, 3, 1).contiguous()
     if x.ndim == 5:
-        return x.permute(0, 2, 3, 4, 1)
+        return x.permute(0, 2, 3, 4, 1).contiguous()
 ### transfer channel to the second dim
 def channel_recover(x):
     if x.ndim == 2:
         return x
     if x.ndim == 3:
-        return x.transpose(1, 2)
+        return x.transpose(1, 2).contiguous()
     if x.ndim == 4:
-        return x.permute(0, 3, 1, 2)
+        return x.permute(0, 3, 1, 2).contiguous()
     if x.ndim == 5:
-        return x.permute(0, 4, 1, 2, 3)
+        return x.permute(0, 4, 1, 2, 3).contiguous()
 ## expand tensor ignoring batch_size and feature.
 def expand_as(x, as_y, channel_dim):
     if x.ndim == as_y.ndim: return x
@@ -331,6 +331,9 @@ class DenseBlock(NormBlock):
         if len(size) > 1:
             x = x.reshape(*((x.shape[0], ) + size + (x.shape[-1], )))
         return x
+    @staticmethod
+    def is_sequence_modeling():
+        return False
 ## Multi Layer Perception block
 class MultiLayerPerceptionBlock(nn.Module):
     def __init__(self, in_channel, out_channel, hidden_channels, 

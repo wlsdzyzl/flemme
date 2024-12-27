@@ -19,7 +19,7 @@ model:
       dense_channels: [1024]
       decoder_dense_channels: [512, 256]
       activation: lrelu
-      pointwise: True
+      vector_embedding: False
   eps_loss:
     name: MSE
 loader:

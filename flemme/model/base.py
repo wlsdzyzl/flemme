@@ -7,7 +7,7 @@ from flemme.model.embedding import get_embedding, add_embedding, concat_embeddin
 from flemme.block import CombineLayer, ResConvBlock, ConvBlock, \
     channel_recover, TimeEmbeddingBlock, VMambaBlock
 from flemme.utils import DataForm
-from .encoder import create_encoder
+from flemme.encoder import create_encoder
 logger = get_logger('model.base')
 
 class BaseModel(nn.Module):
@@ -170,7 +170,7 @@ class BaseModel(nn.Module):
         if self.data_form == DataForm.IMG and not self.encoder.vector_embedding:
             return [self.encoder.out_channel, ] + \
                         [int(im_size / (2** len(self.encoder.down_channels))) for im_size in self.encoder.image_size ]
-        if self.data_form == DataForm.PCD and self.encoder.pointwise == True:
+        if self.data_form == DataForm.PCD and not self.encoder.vector_embedding:
                 return [self.encoder.point_num, ] + [self.encoder.out_channel,]        
         ### latent embedding is a vector
         return [self.encoder.out_channel]
@@ -198,7 +198,7 @@ class BaseModel(nn.Module):
 class HBaseModel(BaseModel):
     def __init__(self, model_config):
         encoder_config = model_config['encoder']
-        encoder_config['return_features'] = True
+        encoder_config['return_feature_list'] = True
         super().__init__(model_config)
         assert self.data_form == DataForm.IMG, "Currently, HSeM only support image data."
 
@@ -284,7 +284,7 @@ class HBaseModel(BaseModel):
 # class HBaseModel(BaseModel):
 #     def __init__(self, model_config):
 #         encoder_config = model_config['encoder']
-#         encoder_config['return_features'] = True
+#         encoder_config['return_feature_list'] = True
 #         activation = encoder_config.get('activation', 'relu')
 #         normalization = encoder_config.get('normalization', 'group')
 #         num_groups = encoder_config.get('num_groups', 8)

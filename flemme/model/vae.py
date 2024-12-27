@@ -33,7 +33,7 @@ class VariationalAutoEncoder(AutoEncoder):
         return _str
     def encode(self, x, c=None):
         en_features = None
-        if self.data_form == DataForm.IMG and self.encoder.return_features:
+        if self.data_form == DataForm.IMG and self.encoder.return_feature_list:
             (mean, logvar), en_features = super().encode(x, c = c)
         else:
             mean, logvar = super().encode(x, c = c)

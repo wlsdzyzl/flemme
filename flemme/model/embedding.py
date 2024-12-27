@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .encoder import create_encoder, supported_encoders
+from flemme.encoder import create_encoder, supported_encoders
 from flemme.block import OneHotEmbeddingBlock, TimeEmbeddingBlock, expand_as
 from flemme.logger import get_logger
 logger = get_logger('model.embedding')

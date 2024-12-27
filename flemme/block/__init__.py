@@ -13,16 +13,25 @@ from flemme.logger import get_logger
 logger = get_logger('flemme.block')
 
 class MultipleBuildingBlocks(nn.Module):
-    def __init__(self, n, BlockClass, in_channel, out_channel = None, kwargs_list = {}, **kwargs):
+    def __init__(self, BuildingBlock, in_channel, 
+            out_channel = None, 
+            n = 1, 
+            hidden_channels = None,
+            kwargs_list = {}, **kwargs):
         super().__init__()
-        assert n >= 1, "Number of convolution blocks is zero"
+        assert n is not None and n >= 1 or type(hidden_channels) == list, "Number of layers is not specified."
         out_channel = out_channel or in_channel
-        channels = [in_channel,] + [out_channel,] * n
+        if type(hidden_channels) == list:
+            channels = [in_channel,] + hidden_channels + [out_channel, ]
+        else:
+            channels = [in_channel,] + [out_channel,] * n
+        
+            
         building_blocks = []
-        for i in range(n):
+        for i in range(len(channels) - 1):
             for k, v in kwargs_list.items():
                 kwargs[k] = v[i]
-            building_blocks.append(BlockClass(in_channel = channels[i], 
+            building_blocks.append(BuildingBlock(in_channel = channels[i], 
                                               out_channel = channels[i+1],
                                               **kwargs))
         self.building_blocks = SequentialT(*building_blocks)

@@ -13,7 +13,7 @@ model:
     time_channel: 128
     encoder:
       ## name is fixed: PointWise
-      name: PointWise
+      name: FCN
       in_channel: 2
       dense_channels: [128, 256]
       building_block: res_fc
@@ -41,6 +41,6 @@ lr_scheduler:
   start_factor: 1.0
   end_factor: 0.01
 max_epoch: 10000
-write_after_iters: 1
-save_after_epochs: 1
+write_after_iters: 10
+save_after_epochs: 10
 write_sample_num: 1024

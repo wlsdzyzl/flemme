@@ -28,6 +28,7 @@ class DataForm(Enum):
     PCD = auto()
     GRAPH = auto()
 
+
 def get_random_state():
     return np.random.get_state(), torch.get_rng_state()
 def get_class(class_name, module):

@@ -6,26 +6,26 @@ from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, FoldingLayer, LocalGraphLayer
 from flemme.logger import get_logger
 import copy
-logger = get_logger("model.encoder.pointnet")
+logger = get_logger("encoder.point.pointnet")
 class PointEncoder(nn.Module):
     def __init__(self, point_dim,
                  projection_channel,
                  time_channel,
-                 local_graph_k, 
+                 num_neighbors_k, 
                  local_feature_channels, 
                  dense_channels,
                  activation, dropout,
                  normalization, num_groups,  
-                 z_count, pointwise, **kwargs):
+                 z_count, vector_embedding, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.point_dim = point_dim
         self.z_count = z_count
         self.activation = activation
-        self.local_graph_k = local_graph_k
+        self.num_neighbors_k = num_neighbors_k
         self.dropout = dropout
-        self.pointwise = pointwise
+        self.vector_embedding = vector_embedding
         self.normalization = normalization
         self.num_groups = num_groups
         self.point_proj = nn.Linear(point_dim, projection_channel)
@@ -36,8 +36,9 @@ class PointEncoder(nn.Module):
         # compute embedding from global feature
         assert len(local_feature_channels) > 1, "Point encoder need more than one local feature channel to extract local feature!"
         assert len(dense_channels) > 0, "Point encoder need to have fully connected layers!"
-        dense_channels = [local_feature_channels[-1] * 2, ] + dense_channels
-        if self.pointwise:
+        global_feature_channel = local_feature_channels[-1] * 2
+        dense_channels = [global_feature_channel, ] + dense_channels
+        if not self.vector_embedding:
             dense_channels[0] += local_feature_channels[-1]
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
                                             time_channel = self.time_channel,
@@ -70,7 +71,7 @@ class PointEncoder(nn.Module):
         x1 = F.adaptive_max_pool1d(pf.transpose(1, 2), 1).transpose(1, 2)
         x2 = F.adaptive_avg_pool1d(pf.transpose(1, 2), 1).transpose(1, 2)
         x = torch.concat((x1, x2), dim = -1)
-        if self.pointwise:
+        if not self.vector_embedding:
             # B * D -> B * N * D
             # local feature plus global feature
             x = x.repeat(1, N, 1)
@@ -102,23 +103,23 @@ class PointNetEncoder(PointEncoder):
     def __init__(self, point_dim=3, 
                  projection_channel = 64,
                  time_channel = 0,
-                 local_graph_k=0, 
+                 num_neighbors_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
                  dense_channels = [256, 256],
                  building_block = 'dense', 
                  normalization = 'group', num_groups = 8, 
                  activation = 'lrelu', dropout = 0., 
-                 z_count = 1, pointwise = False, **kwargs):
+                 z_count = 1, vector_embedding = True, **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
                 time_channel = time_channel,
-                local_graph_k=local_graph_k, 
+                num_neighbors_k=num_neighbors_k, 
                 local_feature_channels = local_feature_channels, 
                 dense_channels = dense_channels,
                 normalization = normalization,
                 num_groups = num_groups,
                 activation = activation, dropout = dropout, 
-                z_count = z_count, pointwise = pointwise)
+                z_count = z_count, vector_embedding = vector_embedding)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 
@@ -130,8 +131,8 @@ class PointNetEncoder(PointEncoder):
                                         dropout = dropout)
         # compute point features
         ## local graph feature
-        if self.local_graph_k > 0:
-            lf_sequence = [LocalGraphLayer(k = self.local_graph_k, 
+        if self.num_neighbors_k > 0:
+            lf_sequence = [LocalGraphLayer(k = self.num_neighbors_k, 
                                             in_channel = self.lf_path[i],
                                             out_channel = self.lf_path[i+1], 
                                             BuildingBlock = self.BuildingBlock,
@@ -154,7 +155,7 @@ class PointDecoder(nn.Module):
                 activation = 'lrelu', dropout = 0., 
                 folding_times = 0, 
                 base_shape_config = {}, 
-                pointwise = False, 
+                vector_embedding = True, 
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -162,7 +163,7 @@ class PointDecoder(nn.Module):
         self.point_num = point_num
         self.point_dim = point_dim
         self.activation = activation
-        self.pointwise = pointwise
+        self.vector_embedding = vector_embedding
         self.time_channel = time_channel
         self.folding_times = folding_times
         ## fully connected layer
@@ -174,8 +175,8 @@ class PointDecoder(nn.Module):
         self.dense = SequentialT(*dense_sequence) 
         self.dense_path = dense_channels
         if self.folding_times > 0:
-            assert not self.pointwise, \
-                'point cloud decoder with folding operations shouldn\'t be pointwise.'
+            assert self.vector_embedding, \
+                'point cloud decoder with folding operations should have vector embeddings.'
             self.fold = None
             base_shape = base_shape_config.get('type', 'grid2d')
             logger.info(f'using {base_shape} as base shape for folding.')
@@ -234,7 +235,7 @@ class PointDecoder(nn.Module):
                 logger.error('Unsupported base shape.')
                 exit(1)
         else:
-            final_out_channel = point_dim * point_num if not pointwise else self.point_dim
+            final_out_channel = point_dim * point_num if self.vector_embedding else self.point_dim
             self.final = nn.Linear(dense_channels[-1], final_out_channel)
 
     def __str__(self):
@@ -263,7 +264,7 @@ class PointDecoder(nn.Module):
             # x = self.final(x)
         else:
             x = self.final(x)
-            if not self.pointwise:
+            if self.vector_embedding:
                 x = x.reshape(-1, self.point_num, self.point_dim)
         return x
 
@@ -278,7 +279,7 @@ class PointNetDecoder(PointDecoder):
                 folding_times = 0, 
                 base_shape_config = {},
                 folding_hidden_channels = [512, 512],
-                pointwise = False, **kwargs):
+                vector_embedding = True, **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
                 in_channel = in_channel,
@@ -289,7 +290,7 @@ class PointNetDecoder(PointDecoder):
                 activation = activation, dropout = dropout, 
                 folding_times = folding_times,
                 base_shape_config = base_shape_config,
-                pointwise = pointwise)
+                vector_embedding = vector_embedding)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
         
