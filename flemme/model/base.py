@@ -18,15 +18,7 @@ class BaseModel(nn.Module):
     def __init__(self, model_config):
         super().__init__()
         encoder_config = model_config.get('encoder', None)
-        decoder_config = encoder_config.copy()
-        specified_decoder_config = model_config.get('decoder', None)
-        if specified_decoder_config is not None:
-            for k in specified_decoder_config:
-                decoder_config[k] = specified_decoder_config[k]
-
         assert encoder_config is not None, 'There is no encoder configuration.'
-        self.encoder_name = encoder_config.get('name')
-        self.decoder_name = decoder_config.get('name')
 
         self.in_channel = encoder_config.get('in_channel')
         self.out_channel = encoder_config.get('out_channel', self.in_channel)
@@ -42,7 +34,10 @@ class BaseModel(nn.Module):
 
         ### condition_embedding
         en_emb_config, de_emb_config = None, None
+        self.condition_for_encoder = False 
+        self.condition_for_decoder = False
         cemb_config = model_config.get('condition_embedding', None)
+        
         if cemb_config is not None:
             en_emb_config = cemb_config.get('encoder', None)
             de_emb_config = cemb_config.get('decoder', None)
@@ -52,6 +47,7 @@ class BaseModel(nn.Module):
         if en_emb_config is not None:
             logger.info("Create conditional embedding for encoder.")
             self.en_cemb = get_embedding(en_emb_config)
+            self.condition_for_encoder = True
             if self.combine_condition == 'cat':
                 if not self.merge_ct:
                     ### should we use a convolution to project the catted feature to the encoder input space ?
@@ -59,50 +55,72 @@ class BaseModel(nn.Module):
                         encoder_config.get('encoder_additional_in_channel', 0) + self.en_cemb.out_channel
                 else:
                     self.final_time_channel += self.en_cemb.out_channel
-            else:
-                if self.merge_ct:
-                    assert self.final_time_channel == self.en_cemb.out_channel,\
-                        "condition embedding of encoder and time step embedding should have the same shape for addition."
-                else:
-                    assert self.in_channel == self.en_cemb.out_channel, \
-                        "condition embedding of encoder and input data should have the same shape for addition."
         ### create encoder
         encoder_config['time_channel'] = self.final_time_channel
-        self.encoder = create_encoder(encoder_config=encoder_config, return_decoder=False)[0]
 
         if de_emb_config is not None:
             logger.info("Create conditional embedding for decoder.")
             ### like an auto-regressive model
             if de_emb_config == 'same_as_encoder':
                 logger.info('Using encoder\'s condition embedding to compute condition embedding for decoder.')
-                if not hasattr(self, 'en_cemb'):
+                if not self.condition_for_encoder:
                     logger.error('This is no condition embedding for encoder.')
                     exit(1)
                 self.de_cemb = self.en_cemb
             else:
                 self.de_cemb = get_embedding(de_emb_config)
-
+            self.condition_for_decoder = True
             if self.merge_ct:
                 logger.error('Merging condition with time-step embedding and decoder condition embedding are specified at the same time, which can lead to conflicts. ')
                 exit(1)
             elif self.combine_condition == 'cat':
-                decoder_config['decoder_additional_in_channel'] = \
-                     decoder_config.get('decoder_additional_in_channel', 0) + self.de_cemb.out_channel
-            else:
-                assert self.encoder.out_channel == self.de_cemb.out_channel, \
-                    "condition embedding of decoder and the output of encoder should have the same shape for addition."
+                encoder_config['decoder_additional_in_channel'] = \
+                     encoder_config.get('decoder_additional_in_channel', 0) + self.de_cemb.out_channel
+            # else:
+            #     assert self.encoder.out_channel == self.de_cemb.out_channel, \
+            #         "condition embedding of decoder and the output of encoder should have the same shape for addition."
+        
+        #### check if there is a specified decoder configuration
+        decoder_config = None
+        specified_decoder_config = model_config.get('decoder', None)
+        if specified_decoder_config is not None:
+            decoder_config = encoder_config.copy()
+            for k in specified_decoder_config:
+                decoder_config[k] = specified_decoder_config[k]
+
+        self.encoder_name = encoder_config.get('name')
+        self.decoder_name = decoder_config.get('name') if decoder_config is not None else self.encoder_name
+
+        self.encoder, self.decoder = create_encoder(encoder_config=encoder_config, return_decoder=(decoder_config is None))
+
         ### create decoder
-        decoder_config['time_channel'] = self.final_time_channel
-        decoder_config['decoder_in_channel'] = self.encoder.out_channel
-        self.decoder = create_encoder(encoder_config=decoder_config, return_encoder=False)[1]
+        if decoder_config is not None:
+            decoder_config['decoder_in_channel'] = self.encoder.out_channel
+            if hasattr(self.encoder, 'out_channels'):
+                decoder_config['decoder_in_channels'] = self.encoder.out_channels
+            self.decoder = create_encoder(encoder_config=decoder_config, return_encoder=False)[1]
 
         if self.final_time_channel > 0:
             logger.info(f'original time channel / concated time channel: {self.time_channel} / {self.final_time_channel - self.time_channel}.')
         
-
         self.is_generative = False
-        self.is_conditional = hasattr(self, 'en_cemb') or hasattr(self, 'de_cemb')
+        self.is_conditional = self.condition_for_encoder or self.condition_for_decoder
         self.is_supervised = False
+
+        ## conditional embedding addition check.
+        if self.is_conditional and self.combine_condition == 'add':
+            if self.condition_for_encoder:
+                if self.merge_ct:
+                    assert self.final_time_channel == self.en_cemb.out_channel,\
+                        "condition embedding of encoder and time step embedding should have the same shape for addition."
+                else:
+                    assert self.in_channel == self.en_cemb.out_channel, \
+                        "condition embedding of encoder and input data should have the same shape for addition."
+            if self.condition_for_decoder:
+                assert self.encoder.out_channel == self.de_cemb.out_channel, \
+                    "condition embedding of decoder and the output of encoder should have the same shape for addition."
+
+
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         self.data_form = self.encoder.data_form
         self.channel_dim = -1 if self.data_form == DataForm.PCD else 1
@@ -111,7 +129,7 @@ class BaseModel(nn.Module):
         _str = '********************* BaseModel ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def encode(self, x, t = None, c = None):
-        if hasattr(self, 'en_cemb'):
+        if self.condition_for_encoder:
             if c is not None:
                 c = self.en_cemb(c)
                 if self.merge_ct:
@@ -131,7 +149,7 @@ class BaseModel(nn.Module):
         return res
     ### usually t-embedding should be the same for encoder and decoder
     def decode(self, z, t = None, c = None):
-        if hasattr(self, 'de_cemb'):
+        if self.condition_for_decoder:
             if c is not None:
                 c = self.de_cemb(c)
                 if type(c) == list:
@@ -227,7 +245,7 @@ class HBaseModel(BaseModel):
                                     in_channel=upc, 
                                     out_channel=upc,
                                     normalization='group',
-                                    num_groups=16,
+                                    num_norm_groups=16,
                                     activation='relu',
                                     time_channel=self.final_time_channel) 
                                     for upc in self.decoder.up_path])
@@ -287,7 +305,7 @@ class HBaseModel(BaseModel):
 #         encoder_config['return_feature_list'] = True
 #         activation = encoder_config.get('activation', 'relu')
 #         normalization = encoder_config.get('normalization', 'group')
-#         num_groups = encoder_config.get('num_groups', 8)
+#         num_norm_groups = encoder_config.get('num_norm_groups', 8)
 #         super().__init__(model_config)
 #         assert self.data_form == DataForm.IMG, "Currently, HSeM only support image data."
 
@@ -308,7 +326,7 @@ class HBaseModel(BaseModel):
 #                                     out_channel=upc, 
 #                                     activation=activation, 
 #                                     norm=normalization,
-#                                     num_groups=num_groups) for upc in self.decoder.up_path])
+#                                     num_norm_groups=num_norm_groups) for upc in self.decoder.up_path])
 #             self.final_convs = nn.ModuleList([ConvBlock(dim = self.encoder.dim, 
 #                                     in_channel=upc, 
 #                                     out_channel=self.decoder.image_channel, 
@@ -321,7 +339,7 @@ class HBaseModel(BaseModel):
 #                                     time_channel=self.final_time_channel,
 #                                     activation=activation, 
 #                                     norm=normalization,
-#                                     num_groups=num_groups) for upc in self.decoder.up_path])
+#                                     num_norm_groups=num_norm_groups) for upc in self.decoder.up_path])
 #             self.final_convs = nn.ModuleList([ConvTBlock(dim = self.encoder.dim, 
 #                                     in_channel=upc, 
 #                                     out_channel=self.decoder.image_channel, 

@@ -14,9 +14,9 @@ for model_config in model_configs:
     model = create_model(model_config)
     model.to(device)
     num_layers = (len(model.encoder.down_path) + len(model.encoder.middle_path) + \
-                len(model.encoder.dense_path) - 3) * model.encoder.num_block + \
+                len(model.encoder.dense_path) - 3) * model.encoder.num_blocks + \
                 (len(model.decoder.dense_path) + len(model.decoder.up_path) +\
-                 len(model.decoder.final_path) - 3) * model.decoder.num_block
+                 len(model.decoder.final_path) - 3) * model.decoder.num_blocks
     if 'res' in building_block or 'double' in building_block:
         num_layers *= 2
     x = torch.randn( (batch_size, ) + tuple(model.get_input_shape()) )

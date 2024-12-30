@@ -12,21 +12,24 @@ class PointTransEncoder(PointEncoder):
                  time_channel = 0,
                  num_neighbors_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
+                 num_blocks = 1,
                  dense_channels = [256, 256],
                  building_block = 'pct_sa', 
-                 normalization = 'group', num_groups = 8, 
+                 normalization = 'group', num_norm_groups = 8, 
                  activation = 'lrelu', dropout = 0., num_heads = 4, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  residual_attention = False, skip_connection = True,
-                 z_count = 1, vector_embedding = True, **kwargs):
+                 z_count = 1, vector_embedding = True, 
+                 use_local = True, use_global = True, **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
                 time_channel = time_channel,
                 num_neighbors_k=num_neighbors_k, 
                 local_feature_channels = local_feature_channels, 
+                num_blocks = num_blocks,            
                 dense_channels = dense_channels,
                 normalization = normalization,
-                num_groups = num_groups,
+                num_norm_groups = num_norm_groups,
                 activation = activation, dropout = dropout, 
                 z_count = z_count, vector_embedding = vector_embedding)
         if len(kwargs) > 0:
@@ -34,7 +37,7 @@ class PointTransEncoder(PointEncoder):
 
         self.BuildingBlock = get_building_block(building_block, time_channel = self.time_channel, 
                                         activation=activation, 
-                                        norm = normalization, num_groups = num_groups, 
+                                        norm = normalization, num_norm_groups = num_norm_groups, 
                                         dropout = dropout,
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
@@ -49,10 +52,14 @@ class PointTransEncoder(PointEncoder):
                                             in_channel = self.lf_path[i],
                                             out_channel = self.lf_path[i+1], 
                                             BuildingBlock = self.BuildingBlock,
-                                            is_seq = True) for i in range(len(self.lf_path) - 2) ]
+                                            use_local = use_local,
+                                            use_global = use_global,                                            
+                                            num_blocks = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
         else:    
-            trans_sequence = [self.BuildingBlock(in_channel=self.lf_path[i], 
-                                            out_channel=self.lf_path[i+1]) for i in range(len(self.lf_path) - 2) ]
+            trans_sequence = [MultipleBuildingBlocks(in_channel=self.lf_path[i], 
+                                            out_channel=self.lf_path[i+1], 
+                                            BuildingBlock = self.BuildingBlock,
+                                            num_blocks = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
             
         trans_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
                                         out_channel=self.lf_path[-1]))
@@ -63,11 +70,11 @@ class PointTransDecoder(PointDecoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 in_channel = 256, dense_channels = [256], 
                 building_block = 'pct_sa', 
-                normalization = 'group', num_groups = 8, 
+                normalization = 'group', num_norm_groups = 8, 
                 activation = 'lrelu', dropout = 0., 
                 folding_times = 0, 
                 base_shape_config = {},
-                folding_hidden_channels = [512, 512],
+                folding_num_blocks = 2,
                 num_heads = 4, d_k = None, 
                 qkv_bias = True, qk_scale = None, atten_dropout = None, 
                 residual_attention = False, skip_connection = True,
@@ -77,7 +84,7 @@ class PointTransDecoder(PointDecoder):
                 in_channel = in_channel,
                 dense_channels = dense_channels,
                 normalization = normalization,
-                num_groups = num_groups,
+                num_norm_groups = num_norm_groups,
                 activation = activation, dropout = dropout, 
                 folding_times = folding_times,
                 base_shape_config = base_shape_config,
@@ -90,7 +97,7 @@ class PointTransDecoder(PointDecoder):
                                             time_channel = self.time_channel, 
                                             activation=activation, 
                                             norm = normalization, 
-                                            num_groups = 1, 
+                                            num_norm_groups = 1, 
                                             dropout = dropout,
                                             num_heads = num_heads, d_k = d_k, 
                                             qkv_bias = qkv_bias, qk_scale = qk_scale, 
@@ -102,5 +109,5 @@ class PointTransDecoder(PointDecoder):
             folding_channels = [dense_channels[-1] + 2, ] + [ dense_channels[-1] + point_dim] * (folding_times - 1)
             folding_sequence = [FoldingLayer(BuildingBlock = self.BuildingBlock,
                                 in_channel = fc, out_channel = point_dim,
-                                hidden_channels = folding_hidden_channels) for fc in folding_channels]
+                                num_blocks = folding_num_blocks) for fc in folding_channels]
             self.fold = SequentialT(*folding_sequence)

@@ -1,0 +1,74 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: train
+model:
+  # can be AE, VAE and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: PointMamba2
+    in_channel: 3
+    out_channel: 4
+    point_num: 1024
+    building_block: pmamba
+    num_neighbors_k: 16
+    num_fps_points: [512, 256]
+    neighbor_radius: [0.2, 0.4]
+    use_local: true
+    use_global: false
+    fps_feature_channels: [256, 512]
+    dense_channels: [1024]
+    activation: relu
+    normalization: batch
+    vector_embedding: True
+  ### loss function
+  # loss_reduction: sum
+  segmentation_losses:
+    - name: Dice
+      normalization: softmax
+    - name: CE
+loader:
+  dataset: 
+    name: PCDSegDataset
+    data_dir: points
+    label_dir: points_label
+    data_suffix: .pts
+    label_suffix: .seg
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0/03001627
+  batch_size: 2
+  num_workers: 8
+  shuffle: true
+  drop_last: true
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 1024
+    - name: ToTensor
+      dtype: float
+  label_transforms:
+    - name: FixedPoints
+      num: 1024
+    - name: ToOneHot
+      num_classes: 5
+      ignore_background: true
+    - name: ToTensor
+      dtype: float
+check_point_dir: path/to/checkpoint/SHAPENET/03001627/PointNet2_Seg
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0001
+  weight_decay: 0.00000001
+### scheduler for learning rate
+lr_scheduler: 
+  name: ReduceLROnPlateau
+  patience: 50
+evaluation_metrics:
+  seg:
+    - name: Dice
+    - name: ACC
+    - name: mIoU
+max_epoch: 1000
+write_after_iters: 20
+save_after_epochs: 5

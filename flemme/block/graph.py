@@ -4,12 +4,12 @@ from .common import *
 # import torch.nn as nn
 from torch_geometric.nn import GCNConv, ChebConv, TransformerConv, norm as gnorm, conv as gconv
 from functools import partial
-def get_graph_norm(norm_name, norm_channel, num_groups = 0):
+def get_graph_norm(norm_name, norm_channel, num_norm_groups = 0):
         ### normalization layer
         if norm_name == 'batch':
             return gnorm.BatchNorm(in_channels = norm_channel), Norm.BATCH
-        elif norm_name == 'group' and num_groups > 0:
-            return gnorm.DiffGroupNorm(in_channels = norm_channel, groups = num_groups), Norm.GROUP
+        elif norm_name == 'group' and num_norm_groups > 0:
+            return gnorm.DiffGroupNorm(in_channels = norm_channel, groups = num_norm_groups), Norm.GROUP
         elif norm_name == 'layer':
             return gnorm.LayerNorm(in_channels = norm_channel), Norm.LAYER
         elif norm_name == 'instance':
@@ -30,7 +30,7 @@ class GraphConvBlock(nn.Module):
                 time_channel = 0,
                 activation = 'relu', 
                 norm = 'batch', 
-                num_groups = 0, 
+                num_norm_groups = 0, 
                 order = 'cn',
                 graph_normalize = True,
                 improved = False,
@@ -48,7 +48,7 @@ class GraphConvBlock(nn.Module):
         if order.index('n') < order.index('c'):
             norm_channel = in_channel
         self.norm, self.norm_type = get_graph_norm(norm, 
-                        norm_channel = norm_channel, num_groups = num_groups)
+                        norm_channel = norm_channel, num_norm_groups = num_norm_groups)
 
         # activation function
         self.act = get_act(activation)
@@ -79,14 +79,14 @@ class ChebConvBlock(GraphConvBlock):
                 time_channel = 0,
                 activation = 'relu', 
                 norm = 'batch', 
-                num_groups = 0, 
+                num_norm_groups = 0, 
                 order = 'cn',
                 filter_size = 5,
                 graph_normalization = 'sym', 
                 bias = True):
         super().__init__(time_channel = time_channel,
           activation = activation, norm = norm,
-          num_groups = num_groups, order = order)
+          num_norm_groups = num_norm_groups, order = order)
         # convolution layer
         self.conv = ChebConv(in_channels = in_channel, 
           out_channels = out_channel,
@@ -101,7 +101,7 @@ class TransConvBlock(GraphConvBlock):
                 time_channel = 0,
                 activation = 'relu', 
                 norm = 'batch', 
-                num_groups = 0, 
+                num_norm_groups = 0, 
                 order = 'cn',
                 num_heads = 1,
                 concat = True,
@@ -110,7 +110,7 @@ class TransConvBlock(GraphConvBlock):
                 bias = True):
         super().__init__(time_channel = time_channel,
           activation = activation, norm = norm,
-          num_groups = num_groups, order = order)
+          num_norm_groups = num_norm_groups, order = order)
         # convolution layer
         self.conv = TransformerConv(in_channels = in_channel, 
           out_channels = out_channel,

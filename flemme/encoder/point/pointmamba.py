@@ -1,7 +1,8 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import SequentialT, get_building_block, FoldingLayer, LocalGraphLayer
+from flemme.block import SequentialT, get_building_block, \
+    FoldingLayer, LocalGraphLayer, MultipleBuildingBlocks
 from .pointnet import PointEncoder, PointDecoder
 from flemme.logger import get_logger
 logger = get_logger("encoder.point.pointmamba")
@@ -12,9 +13,10 @@ class PointMambaEncoder(PointEncoder):
                 time_channel = 0,
                 num_neighbors_k=0, 
                 local_feature_channels = [64, 64, 128, 256], 
+                num_blocks = 1,
                 dense_channels = [256, 256],
                 building_block = 'pmamba', 
-                normalization = 'group', num_groups = 8, 
+                normalization = 'group', num_norm_groups = 8, 
                 activation = 'lrelu', dropout = 0.,
                 state_channel = 64, 
                 conv_kernel_size = 4, inner_factor = 2.0,  
@@ -26,15 +28,18 @@ class PointMambaEncoder(PointEncoder):
                 dt_rank = None, dt_scale = 1.0,
                 z_count = 1, vector_embedding = True, 
                 skip_connection = True,
+                use_local = True,
+                use_global = True,
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
                 time_channel = time_channel,
                 num_neighbors_k=num_neighbors_k, 
                 local_feature_channels = local_feature_channels, 
+                num_blocks = num_blocks,
                 dense_channels = dense_channels,
                 normalization = normalization,
-                num_groups = num_groups,
+                num_norm_groups = num_norm_groups,
                 activation = activation, dropout = dropout, 
                 z_count = z_count, vector_embedding = vector_embedding)
         if len(kwargs) > 0:
@@ -42,7 +47,7 @@ class PointMambaEncoder(PointEncoder):
 
         self.BuildingBlock = get_building_block(building_block, time_channel = self.time_channel, 
                                         activation=activation, 
-                                        norm = normalization, num_groups = num_groups, 
+                                        norm = normalization, num_norm_groups = num_norm_groups, 
                                         dropout = dropout,
                                         state_channel = state_channel, 
                                         conv_kernel_size = conv_kernel_size, 
@@ -60,31 +65,34 @@ class PointMambaEncoder(PointEncoder):
         # compute point features
         ## local graph feature
         if self.num_neighbors_k > 0:
-            trans_sequence = [LocalGraphLayer(k = self.num_neighbors_k, 
+            mamba_sequence = [LocalGraphLayer(k = self.num_neighbors_k, 
                                             in_channel = self.lf_path[i],
                                             out_channel = self.lf_path[i+1], 
                                             BuildingBlock = self.BuildingBlock,
-                                            is_seq = True) for i in range(len(self.lf_path) - 2) ]
+                                            use_local = use_local,
+                                            use_global = use_global,
+                                            num_blocks = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
         else:    
-            trans_sequence = [self.BuildingBlock(in_channel=self.lf_path[i], 
-                                            out_channel=self.lf_path[i+1]) for i in range(len(self.lf_path) - 2) ]
+            mamba_sequence = [MultipleBuildingBlocks(in_channel=self.lf_path[i], 
+                                            out_channel=self.lf_path[i+1], 
+                                            BuildingBlock = self.BuildingBlock,
+                                            num_blocks = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
             
-        trans_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
+        mamba_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
                                         out_channel=self.lf_path[-1]))
 
-        self.lf = nn.ModuleList(trans_sequence)
+        self.lf = nn.ModuleList(mamba_sequence)
 
 class PointMambaDecoder(PointDecoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 in_channel = 256, dense_channels = [256], 
                 time_channel = 0,
                 building_block = 'pmamba', 
-                normalization = 'group', num_groups = 8, 
+                normalization = 'group', num_norm_groups = 8, 
                 activation = 'lrelu', dropout = 0., 
                 folding_times = 0, 
                 base_shape_config = {},
-                folding_hidden_channels = [512, 512],
-                residual_attention = False,
+                folding_num_blocks = 2,
                 state_channel = 64, 
                 conv_kernel_size = 4, inner_factor = 2.0,  
                 head_channel = 64,
@@ -101,7 +109,7 @@ class PointMambaDecoder(PointDecoder):
                 dense_channels = dense_channels,
                 time_channel = time_channel,
                 normalization = normalization,
-                num_groups = num_groups,
+                num_norm_groups = num_norm_groups,
                 activation = activation, dropout = dropout, 
                 folding_times = folding_times,
                 base_shape_config = base_shape_config,
@@ -114,7 +122,7 @@ class PointMambaDecoder(PointDecoder):
                                             time_channel = self.time_channel, 
                                             activation=activation, 
                                             norm = normalization, 
-                                            num_groups = 1, 
+                                            num_norm_groups = 1, 
                                             dropout = dropout,
                                             state_channel = state_channel, 
                                             conv_kernel_size = conv_kernel_size, 
@@ -132,5 +140,5 @@ class PointMambaDecoder(PointDecoder):
             folding_channels = [dense_channels[-1] + 2, ] + [ dense_channels[-1] + point_dim] * (folding_times - 1)
             folding_sequence = [FoldingLayer(BuildingBlock = self.BuildingBlock,
                                 in_channel = fc, out_channel = point_dim,
-                                hidden_channels = folding_hidden_channels) for fc in folding_channels]
+                                num_blocks = folding_num_blocks) for fc in folding_channels]
             self.fold = SequentialT(*folding_sequence)

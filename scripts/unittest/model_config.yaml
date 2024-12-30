@@ -67,7 +67,7 @@ models:
       middle_channels: [256, 256]
       building_block: single
       normalization: batch
-      num_block: 4
+      num_blocks: 4
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -85,7 +85,7 @@ models:
       middle_channels: [256, 256]
       building_block: swin
     normalization: layer
-      num_block: 4
+      num_blocks: 4
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -106,7 +106,7 @@ models:
     normalization: layer
       scan_mode: single
       flip_scan: false
-      num_block: 4
+      num_blocks: 4
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -181,7 +181,7 @@ models:
       middle_channels: [256, 256]
       building_block: single
       normalization: batch
-      num_block: 4
+      num_blocks: 4
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -195,7 +195,7 @@ models:
       out_channel: 1
       patch_channel: 32
       patch_size: 2
-      num_block: 4
+      num_blocks: 4
       down_channels: [64, 128]
       middle_channels: [256, 256]
       building_block: swin
@@ -214,7 +214,7 @@ models:
       out_channel: 1
       patch_channel: 32
       patch_size: 2
-      num_block: 4
+      num_blocks: 4
       down_channels: [64, 128]
       middle_channels: [256, 256]
       building_block: vmamba
@@ -297,7 +297,7 @@ models:
       middle_channels: [256, 256]
       building_block: single
       normalization: batch
-      num_block: 4
+      num_blocks: 4
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -315,7 +315,7 @@ models:
       middle_channels: [256, 256]
       building_block: swin
     normalization: layer
-      num_block: 4
+      num_blocks: 4
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -336,7 +336,7 @@ models:
     normalization: layer
       scan_mode: single
       flip_scan: false
-      num_block: 4
+      num_blocks: 4
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -411,7 +411,7 @@ models:
       middle_channels: [256, 256]
       building_block: single
       normalization: batch
-      num_block: 4
+      num_blocks: 4
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -429,7 +429,7 @@ models:
       middle_channels: [256, 256]
       building_block: swin
     normalization: layer
-      num_block: 4
+      num_blocks: 4
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -449,7 +449,7 @@ models:
     normalization: layer
       scan_mode: single
       flip_scan: false
-      num_block: 4
+      num_blocks: 4
     ### loss function
     segmentation_losses: 
       - name: Dice

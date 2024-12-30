@@ -2,8 +2,8 @@ from .common import *
 from .pcd_utils import *
 from mamba_ssm import Mamba, Mamba2
 from functools import partial
-
 ## insight from PCT: https://arxiv.org/pdf/2012.09688
+
 class OffSetAttentionBlock(nn.Module):
     """
     ### Attention block
@@ -82,7 +82,7 @@ class PointTransformerBlock(NormBlock):
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
         dropout = None, residual_attention = False, 
         skip_connection = True, attention = 'SA', 
-        activation = 'relu', norm='batch', num_groups = -1, **kwargs):
+        activation = 'relu', norm='batch', num_norm_groups = -1, **kwargs):
         
         super().__init__(_channel_dim = -1)
         self.in_channel = in_channel
@@ -96,7 +96,7 @@ class PointTransformerBlock(NormBlock):
             qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
             dropout = dropout, skip_connection = residual_attention)
 
-        self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_groups)
+        self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
         self.act = get_act(activation)
         self.time_channel = time_channel
         self.skip_connection = skip_connection
@@ -132,7 +132,7 @@ class PointMambaBlock(NormBlock):
         dt_max=0.1, dt_init_floor=1e-4, 
         dt_rank = None, dt_scale = 1.0,
         dropout = None, skip_connection = True, mamba = 'Mamba', 
-        activation = 'relu', norm='batch', num_groups = -1, **kwargs):
+        activation = 'relu', norm='batch', num_norm_groups = -1, **kwargs):
         
         super().__init__(_channel_dim = -1)
         self.in_channel = in_channel
@@ -154,7 +154,7 @@ class PointMambaBlock(NormBlock):
                         dt_init_floor = dt_init_floor,
                         A_init_range = A_init_range)
 
-        self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_groups)
+        self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
         self.act = get_act(activation)
         self.time_channel = time_channel
         self.skip_connection = skip_connection
@@ -216,6 +216,7 @@ def get_graph_feature(x, k=20, idx=None):
 class GroupSeqModelingLayer(nn.Module):
     def __init__(self, in_channel, out_channel, k,
         BuildingBlock, use_local = True, use_global = True):
+        super().__init__()
         assert use_local or use_global, 'At least one of []'
         self.bb_local = None
         self.bb_global = None
@@ -229,7 +230,7 @@ class GroupSeqModelingLayer(nn.Module):
     ## input: grouped points (B, N, K, C)
     def forward(self, x, t):
         B, N, K, _ = x.shape
-        assert K = self.k, f'Unmatched group size: {K} and {self.k}'
+        assert K == self.k, f'Unmatched group size: {K} and {self.k}'
         if self.bb_local:
             # B * N * K * 2D -> (B * N) * K * 2D
             x = x.reshape(B * N, K, -1)
@@ -251,21 +252,31 @@ class LocalGraphLayer(nn.Module):
                 in_channel, 
                 out_channel, 
                 BuildingBlock, 
+                num_blocks = 1,
+                hidden_channels = None,
                 use_local = True,
                 use_global = True,
                 **kwargs):
         super().__init__()
         self.k = k
-        is_seq = BuildingBlock.is_sequence_modeling()
+        is_seq = BuildingBlock.func.is_sequence_modeling()
         if not is_seq:
-            self.bb = BuildingBlock(in_channel = 2*in_channel,
-                                    out_channel = out_channel) 
-        else:
-            self.bb = GroupSeqModelingLayer(in_channel = 2*in_channel,
+            self.bb = MultipleBuildingBlocks(n = num_blocks, 
+                                    hidden_channels = hidden_channels,
+                                    in_channel = 2*in_channel,
                                     out_channel = out_channel,
-                                    k = self.k,
-                                    use_local = use_local, 
-                                    use_global = use_global)
+                                    BuildingBlock = BuildingBlock)
+        else:
+            self.bb = MultipleBuildingBlocks(in_channel = 2*in_channel,
+                                    out_channel = out_channel,
+                                    n = num_blocks, 
+                                    hidden_channels = hidden_channels,
+                                    BuildingBlock = partial(
+                                        GroupSeqModelingLayer,
+                                        k = self.k,
+                                        BuildingBlock = BuildingBlock,
+                                        use_local = use_local, 
+                                        use_global = use_global))
     def forward(self, x, t=None):
         ## x: B * N * D -> B * N * K * 2D
         x = get_graph_feature(x, k = self.k)
@@ -282,9 +293,9 @@ class FoldingLayer(nn.Module):
 
     def __init__(self, in_channel, 
                 out_channel, 
-                hidden_channels, 
-                num_block,
                 BuildingBlock,
+                hidden_channels = None, 
+                num_blocks = 2,
                 **kwargs):
                 
         super().__init__()
@@ -292,7 +303,7 @@ class FoldingLayer(nn.Module):
             logger.debug("redundant parameters:{}".format(kwargs))
         
         self.in_channel = in_channel
-        self.layers = MultipleBuildingBlocks(n = num_block, in_channel = in_channel, 
+        self.layers = MultipleBuildingBlocks(n = num_blocks, in_channel = in_channel, 
                     out_channel = out_channel, hidden_channels = hidden_channels,
                     BuildingBlock = BuildingBlock)        
         self.final = nn.Linear(out_channel, out_channel)
@@ -308,7 +319,7 @@ class FoldingLayer(nn.Module):
             f"channel of grid + channel of codewords should be equal to the channel of input, we get: {shapes.shape[-1]} {codewords.shape[-1]} and {self.in_channel}."
         # concatenate
         x = torch.cat([shapes, codewords], dim=-1)
-        x, _ = self.layers(x, t)
+        x = self.layers(x, t)
         return self.final(x)
 
         
@@ -321,7 +332,7 @@ class SamplingAndGroupingBlock(nn.Module):
     # out_channel: out_channel of output featuress
     def __init__(self, in_channel, out_channels, 
             num_fps_points, k, radius, 
-            BuildingBlock, num_block = 1, 
+            BuildingBlock, num_blocks = 1, 
             hidden_channels = None, use_xyz = True, 
             use_local = True, use_global = True):
         super().__init__()
@@ -337,8 +348,8 @@ class SamplingAndGroupingBlock(nn.Module):
             self.k = [self.k, ] * len(self.out_channels)
         if not isinstance(self.radius, list):
             self.radius = [self.radius, ]* len(self.out_channels)
-        if not isinstance(num_block, list):
-            num_block = [num_block, ]* len(self.out_channels)
+        if not isinstance(num_blocks, list):
+            num_blocks = [num_blocks, ]* len(self.out_channels)
         if not (isinstance(hidden_channels, list) and \
             len(hidden_channels) > 0 and  \
             isinstance(hidden_channels[0], list)):
@@ -346,43 +357,41 @@ class SamplingAndGroupingBlock(nn.Module):
 
         assert len(self.out_channels) == len(self.k) and \
             len(self.out_channels) == len(self.radius) and \
-            len(self.out_channels) == len(num_block) and \
+            len(self.out_channels) == len(num_blocks) and \
             len(self.out_channels) == len(hidden_channels), 'The numbers of scales inferred from different parameters are not identical.'
         
         if use_xyz:
             self.in_channel += 3
         ### real out_channel
         self.out_channel = sum(self.out_channels)
-        is_seq = BuildingBlock.is_sequence_modeling()        
+        is_seq = BuildingBlock.func.is_sequence_modeling()        
         
         self.groupers = []
 
         self.bb = nn.ModuleList()
         for sid in range(len(self.out_channels)):
-            self.groupers.append(pointnet2_utils.QueryAndGroup(self.radius[sid], 
+            self.groupers.append(QueryAndGroup(self.radius[sid], 
                         self.k[sid], use_xyz=use_xyz) if self.num_fps_points > 0 
-                        else pointnet2_utils.GroupAll(use_xyz))
+                        else GroupAll(use_xyz))
             if not is_seq:
                 self.bb.append(MultipleBuildingBlocks(in_channel = self.in_channel, 
-                        hidden_channels = hidden_channels[sid],
-                        n = num_block[sid],
                         out_channel = self.out_channels[sid], 
+                        hidden_channels = hidden_channels[sid],
+                        n = num_blocks[sid],
                         BuildingBlock = BuildingBlock))
             else:
                 self.bb.append(MultipleBuildingBlocks(in_channel = self.in_channel,
                         out_channel = self.out_channels[sid],
-                        n = num_block[sid],
-                        out_channel = self.out_channels[sid], 
+                        n = num_blocks[sid],
+                        hidden_channels = hidden_channels[sid],
                         BuildingBlock = partial(
-                            GroupSeqModelingLayer(
+                            GroupSeqModelingLayer,
                                 k = self.k[sid], 
                                 BuildingBlock = BuildingBlock,
                                 use_local = use_local, 
-                                use_global = use_global)
-                                )
-                                ))
+                                use_global = use_global)))
 
-    def forward(self, xyz, features = None, t = None)::
+    def forward(self, xyz, features = None, t = None):
         r"""
         Parameters
         ----------
@@ -398,14 +407,13 @@ class SamplingAndGroupingBlock(nn.Module):
         centers = None
         if self.num_fps_points > 0:
             xyz_trans = channel_recover(xyz)
-            centers = 
-                channel_transfer(pointnet2_utils.gather_operation(
-                    xyz_trans, pointnet2_utils.furthest_point_sample(xyz, self.num_fps_points)
+            centers = channel_transfer(gather_operation(
+                    xyz_trans, furthest_point_sample(xyz, self.num_fps_points)
                 ))
             
         ## None center indicates we will group all the points.
-        features_trans = channel_recover(feature) if features is not None else None
-        center_features_list = []
+        features_trans = channel_recover(features) if features is not None else None
+        center_feature_list = []
         for gid in range(len(self.groupers)):
             ## (B, N, 3), (B, M, 3), (B, N, C_in) -> (B, C_in (+3), M, k) 
             grouped_features_trans = self.groupers[gid](
@@ -416,8 +424,8 @@ class SamplingAndGroupingBlock(nn.Module):
             ## (B, M, k, C (+3)) -> (B, M, k, C_out)
             center_features = self.bb[gid](grouped_features, t)  
             # (B, M, out_channel)
-            center_features_list.append(center_features.max(dim=2)[0])
-        return centers, torch.cat(center_features_list, dim = -1)
+            center_feature_list.append(center_features.max(dim=2)[0])
+        return centers, torch.cat(center_feature_list, dim = -1)
 
 
 ### Propagates the features of one set to another
@@ -427,16 +435,16 @@ class FeaturePropogatingBlock(nn.Module):
 
     """
     def __init__(self, in_channel_known, in_channel_unknown, 
-        out_channel, num_block, hidden_channels, BuildingBlock):
+        out_channel, BuildingBlock, num_blocks = 1, hidden_channels = None):
         # type: (PointnetFPModule, List[int], bool) -> None
         super().__init__()
         self.bb = MultipleBuildingBlocks(in_channel = in_channel_known + in_channel_unknown, 
                 out_channel = out_channel, 
-                n = num_block,
+                n = num_blocks,
                 hidden_channels = hidden_channels,
                 BuildingBlock = BuildingBlock)
 
-    def forward(self, unknown, known, unknow_feats, known_feats, t = None):
+    def forward(self, unknown, known, unknown_feats, known_feats, t = None):
         r"""
         Parameters
         ----------
@@ -444,7 +452,7 @@ class FeaturePropogatingBlock(nn.Module):
             (B, n, 3) tensor of the xyz positions of the unknown features
         known : torch.Tensor
             (B, m, 3) tensor of the xyz positions of the known features
-        unknow_feats : torch.Tensor
+        unknown_feats : torch.Tensor
             (B, n, c1) tensor of the features to be propagated to
         known_feats : torch.Tensor
             (B, m, c2) tensor of features to be propagated
@@ -458,11 +466,11 @@ class FeaturePropogatingBlock(nn.Module):
         
         if known is not None:
             known_feats_trans = channel_recover(known_feats)
-            dist, idx = pointnet2_utils.three_nn(unknown, known)
+            dist, idx = three_nn(unknown, known)
             dist_recip = 1.0 / (dist + 1e-8)
             norm = torch.sum(dist_recip, dim=2, keepdim=True)
             weight = dist_recip / norm
-            interpolated_feats = channel_transfer(pointnet2_utils.three_interpolate(
+            interpolated_feats = channel_transfer(three_interpolate(
                 known_feats_trans, idx, weight
             ))
         else:
@@ -472,13 +480,13 @@ class FeaturePropogatingBlock(nn.Module):
                 *(known_feats.shape[0], unknown.shape[1], known_feats.shape[-1])
             )   
 
-        if unknow_feats is not None:
+        if unknown_feats is not None:
             new_features = torch.cat(
-                [interpolated_feats, unknow_feats], dim=-1
+                [interpolated_feats, unknown_feats], dim=-1
             )  # (B, n, C1 + C2)
         else:
             new_features = interpolated_feats
-
+        # print(new_features.shape, unknown_feats.shape, known_feats.shape)
         new_features = self.bb(new_features, t)
 
         return new_features

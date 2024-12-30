@@ -15,8 +15,8 @@ logger = get_logger('encoder.image.dnet')
 class DNetEncoder(CNNEncoder):
     def __init__(self, image_size, image_channel = 3,  patch_channel = 32, patch_size = 2, down_channels = [64, 128], 
                  down_attens = [None, None], shape_scaling = [2, 2], middle_channels = [256, 256], middle_attens = [None, None],
-                 kernel_size = 3, depthwise = False, time_channel = 0, dsample_function = 'conv', num_block = 2,
-                 building_block='res_t', normalization = 'group', num_groups = 8, cn_order = 'cn',
+                 kernel_size = 3, depthwise = False, time_channel = 0, dsample_function = 'conv', num_blocks = 2,
+                 building_block='res_t', normalization = 'group', num_norm_groups = 8, cn_order = 'cn',
                  activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  abs_pos_embedding = False, **kwargs):
@@ -30,8 +30,8 @@ class DNetEncoder(CNNEncoder):
             down_channels = down_channels, down_attens = down_attens, 
             shape_scaling=shape_scaling, middle_channels = middle_channels,
             middle_attens = middle_attens, depthwise = depthwise, dsample_function = dsample_function,
-            num_block = num_block, building_block = building_block, normalization = normalization,
-            num_groups = num_groups, cn_order = cn_order, activation = activation, dropout = dropout,
+            num_blocks = num_blocks, building_block = building_block, normalization = normalization,
+            num_norm_groups = num_norm_groups, cn_order = cn_order, activation = activation, dropout = dropout,
             num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
             abs_pos_embedding=abs_pos_embedding, atten_dropout = atten_dropout,
             z_count = 1, dense_channels = [], return_feature_list = True)
@@ -39,13 +39,13 @@ class DNetEncoder(CNNEncoder):
            logger.debug("redundant parameters:{}".format(kwargs))
         down_channels = [self.image_patch_channel, ] + down_channels
 
-        self.d_conv = nn.ModuleList( [MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.d_conv = nn.ModuleList( [MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         dim=self.dim, in_channel=down_channels[i] if i < 2 else sum(down_channels[1:i+1]), 
                                                         out_channel=down_channels[i+1], 
                                                         atten=down_attens[i]) for i in range(len(down_channels) - 1) ])
 
         middle_channels = [sum(down_channels[1:]) if len(down_channels) >= 2 else down_channels[-1], ] + middle_channels 
-        module_sequence = [MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        module_sequence = [MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                           dim=self.dim, in_channel=middle_channels[i], 
                                           out_channel=middle_channels[i+1], 
                                           atten = middle_attens[i]) for i in range(len(middle_channels) - 1)]
@@ -80,7 +80,7 @@ class DNetEncoder(CNNEncoder):
         
         concat_feature = [dd(r) for r, dd in zip(res[:-1], self.down_for_dense[-1])]
         x = torch.cat(concat_feature + [x], dim=1)
-        x, _ = self.middle(x, t)
+        x = self.middle(x, t)
         
         if self.return_feature_list:
             return x, res
@@ -92,8 +92,8 @@ class DNetDecoder(CNNDecoder):
                  final_channels = [], final_attens = [], depthwise = False, 
                  usample_function = 'conv', dsample_function = 'conv',
                  kernel_size = 3, building_block='res_t', normalization = 'group',
-                 num_groups = 8, cn_order = 'cn',
-                 num_block = 2,
+                 num_norm_groups = 8, cn_order = 'cn',
+                 num_blocks = 2,
                  activation = 'relu', dropout = 0., 
                  num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
@@ -103,8 +103,8 @@ class DNetDecoder(CNNDecoder):
             up_channels = up_channels, up_attens = up_attens, 
             shape_scaling=shape_scaling, final_channels = final_channels, kernel_size = kernel_size, 
             final_attens = final_attens, depthwise = depthwise, usample_function = usample_function,
-            num_block = num_block, building_block = building_block, normalization = normalization,
-            num_groups = num_groups, cn_order = cn_order, activation = activation, dropout = dropout,
+            num_blocks = num_blocks, building_block = building_block, normalization = normalization,
+            num_norm_groups = num_norm_groups, cn_order = cn_order, activation = activation, dropout = dropout,
             num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
             return_feature_list = return_feature_list,
             atten_dropout = atten_dropout, dense_channels = [])
@@ -116,7 +116,7 @@ class DNetDecoder(CNNDecoder):
         up_channels = [in_channel, ] + up_channels
         self.up = nn.ModuleList([UpSamplingBlock(dim=self.dim, in_channel=up_channels[i], out_channel=up_channels[i + 1], 
                                                 func=usample_function, scale_factor=shape_scaling[i]) for i in range(len(up_channels)-1)])
-        self.u_conv = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.u_conv = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         dim=self.dim, in_channel=(len(down_channels) + i + 1) * up_channels[i+1]  , 
                                                         out_channel=up_channels[i+1], 
                                                         atten=up_attens[i]) for i in range(len(up_channels) - 1) ])
@@ -161,7 +161,7 @@ class DNetDecoder(CNNDecoder):
             existing_features = existing_features + [x,]
             x = u_conv(torch.cat(concat_features, dim = 1), t)
             res = res + [x,]
-        x, _ = self.final(x, t)
+        x = self.final(x, t)
         x = self.image_back_proj(x)
         if self.return_feature_list:
             return x, res
@@ -180,8 +180,8 @@ if module_config['transformer']:
                     down_channels = [128, 256], middle_channels = [256, 256], 
                     down_num_heads = [3, 3], middle_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'group', num_groups = 8, 
-                    num_block = 2, activation = 'silu', 
+                    normalization = 'group', num_norm_groups = 8, 
+                    num_blocks = 2, activation = 'silu', 
                     abs_pos_embedding = False,
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
@@ -190,29 +190,29 @@ if module_config['transformer']:
                 qk_scale = qk_scale, down_channels = down_channels, middle_channels = middle_channels,
                 down_num_heads = down_num_heads, middle_num_heads = middle_num_heads,
                 dropout = dropout, atten_dropout = atten_dropout, drop_path = drop_path,
-                normalization = normalization, num_groups = num_groups, 
-                num_block = num_block, activation = activation, 
+                normalization = normalization, num_norm_groups = num_norm_groups, 
+                num_blocks = num_blocks, activation = activation, 
                 abs_pos_embedding = abs_pos_embedding, 
                 z_count = 1, dense_channels = [], return_feature_list = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
             down_channels = [self.patch_channel, ] + down_channels
-            self.d_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+            self.d_trans = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                             num_heads = down_num_heads[i],
                                                             in_channel=down_channels[i] if i < 2 else sum(down_channels[1:i+1]), 
                                                             out_channel = down_channels[i+1],
-                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                             ) for i in range(self.d_depth) ])
 
 
             middle_channels = [sum(down_channels[1:]) if len(down_channels) >= 2 else down_channels[-1], ] + middle_channels 
-            self.middle = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+            self.middle = SequentialT(*[MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                             num_heads = middle_num_heads[i],
                                                             in_channel = middle_channels[i],
                                                             out_channel = middle_channels[i+1],
-                                                            kwargs_list = {"drop_path": [self.drop_path[(i + self.d_depth)*self.num_block + ni] 
-                                                                                        for ni in range(self.num_block) ] }
+                                                            kwargs_list = {"drop_path": [self.drop_path[(i + self.d_depth)*self.num_blocks + ni] 
+                                                                                        for ni in range(self.num_blocks) ] }
                                                             ) for i in range(self.m_depth) ])
                 
 
@@ -222,7 +222,7 @@ if module_config['transformer']:
                                     in_channel=down_channels[j],
                                     out_channel=down_channels[j],
                                     norm = normalization,
-                                    num_groups = num_groups,
+                                    num_norm_groups = num_norm_groups,
                                     factor=2 ** (i - j + 1) ) for j in range(1, i)])
             for i in range(2, len(down_channels) - 1) ] )
             ### for middle layers
@@ -231,7 +231,7 @@ if module_config['transformer']:
                                     in_channel=down_channels[i],
                                     out_channel=down_channels[i],
                                     norm = normalization,
-                                    num_groups = num_groups,
+                                    num_norm_groups = num_norm_groups,
                                     factor=2 ** (self.d_depth - i + 1) ) for i in range(1, len(down_channels) - 1)]))
 
         def forward(self, x, t = None):
@@ -251,7 +251,7 @@ if module_config['transformer']:
                 x = down(x)
             concat_feature = [dd(r) for r, dd in zip(res[:-1], self.down_for_dense[-1])]
             x = torch.cat(concat_feature + [x], dim=-1)
-            x, _ = self.middle(x, t)
+            x = self.middle(x, t)
 
             if self.return_feature_list:
                 return x, res
@@ -266,8 +266,8 @@ if module_config['transformer']:
                     up_channels = [128, 64], final_channels = [64, 64], 
                     up_num_heads = [3, 3], final_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'group', num_groups = 8, 
-                    num_block = 2, activation = 'silu', 
+                    normalization = 'group', num_norm_groups = 8, 
+                    num_blocks = 2, activation = 'silu', 
                     return_feature_list = False, **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 patch_size = patch_size, in_channel = in_channel, time_channel = time_channel,
@@ -275,8 +275,8 @@ if module_config['transformer']:
                 qk_scale = qk_scale, up_channels = up_channels, final_channels = final_channels,
                 up_num_heads = up_num_heads, final_num_heads = final_num_heads,
                 dropout = dropout, atten_dropout = atten_dropout, drop_path = drop_path,
-                normalization = normalization, num_groups = num_groups, 
-                num_block = num_block, activation = activation, dense_channels = [],
+                normalization = normalization, num_norm_groups = num_norm_groups, 
+                num_blocks = num_blocks, activation = activation, dense_channels = [],
                 return_feature_list = return_feature_list)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
@@ -287,13 +287,13 @@ if module_config['transformer']:
                                                         in_channel = up_channels[i],
                                                         out_channel = up_channels[i + 1], 
                                                         norm = normalization, 
-                                                        num_groups = num_groups) for i in range(self.u_depth)])
+                                                        num_norm_groups = num_norm_groups) for i in range(self.u_depth)])
                 
-            self.u_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+            self.u_trans = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                             num_heads = up_num_heads[i],
                                                             in_channel=(len(down_channels) + i + 1) * up_channels[i+1], 
                                                             out_channel=up_channels[i+1], 
-                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                             ) for i in range(self.u_depth) ])
 
             ## down / up sample layers for dense connections
@@ -308,14 +308,14 @@ if module_config['transformer']:
                                     in_channel=down_channels[j],
                                     out_channel=up_channels[i + 1],
                                     norm = normalization,
-                                    num_groups = num_groups,
+                                    num_norm_groups = num_norm_groups,
                                     factor=2**(-up_times)))
                     else:
                         tmp_module.append(PatchExpansionBlock(dim = self.dim,
                                             in_channel=down_channels[j],
                                             out_channel=up_channels[i + 1], 
                                             norm = normalization, 
-                                            num_groups = num_groups,
+                                            num_norm_groups = num_norm_groups,
                                             factor=2**up_times))
                 ## features from decoder
                 for j in range(0, i):
@@ -323,7 +323,7 @@ if module_config['transformer']:
                                             in_channel=up_channels[j],
                                             out_channel=up_channels[i + 1], 
                                             norm = normalization, 
-                                            num_groups = num_groups,
+                                            num_norm_groups = num_norm_groups,
                                             factor=2**(i+1-j)))
                 self.sample_for_dense.append(nn.ModuleList(tmp_module))
 
@@ -340,7 +340,7 @@ if module_config['transformer']:
                 existing_features = existing_features + [x,]
                 x = u_trans(torch.cat(concat_features, dim = -1), t)
                 res = res + [x,]
-            x, _ = self.final(x, t)
+            x = self.final(x, t)
             x = self.patch_recov(x)
             if self.return_feature_list:
                 return x, res
@@ -355,8 +355,8 @@ if module_config['transformer']:
                     down_channels = [128, 256], middle_channels = [256, 256], 
                     down_num_heads = [3, 3], middle_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'group', num_groups = 8, 
-                    num_block = 2, activation = 'silu', 
+                    normalization = 'group', num_norm_groups = 8, 
+                    num_blocks = 2, activation = 'silu', 
                     abs_pos_embedding = False,
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
@@ -366,31 +366,31 @@ if module_config['transformer']:
                 qk_scale = qk_scale, down_channels = down_channels, middle_channels = middle_channels,
                 down_num_heads = down_num_heads, middle_num_heads = middle_num_heads,
                 dropout = dropout, atten_dropout = atten_dropout, drop_path = drop_path,
-                normalization = normalization, num_groups = num_groups, 
-                num_block = num_block, activation = activation, 
+                normalization = normalization, num_norm_groups = num_norm_groups, 
+                num_blocks = num_blocks, activation = activation, 
                 abs_pos_embedding = abs_pos_embedding, 
                 z_count = 1, dense_channels = [], return_feature_list = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
             down_channels = [self.patch_channel, ] + down_channels
-            self.d_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+            self.d_trans = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                             num_heads = down_num_heads[i],
                                                             in_channel=down_channels[i] if i < 2 else sum(down_channels[1:i+1]), 
                                                             out_channel = down_channels[i+1],
                                                             patch_image_size = self.patch_image_pyramid[i],
-                                                            kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_block) ],
-                                                                        "drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_blocks) ],
+                                                                        "drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                             ) for i in range(self.d_depth) ])
 
 
             middle_channels = [sum(down_channels[1:]) if len(down_channels) >= 2 else down_channels[-1], ] + middle_channels 
-            self.middle = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+            self.middle = SequentialT(*[MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                             num_heads = middle_num_heads[i],
                                                             in_channel = middle_channels[i],
                                                             out_channel = middle_channels[i+1],
                                                             patch_image_size = self.patch_image_pyramid[-1],
-                                                            kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_block) ],
-                                                                        "drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_blocks) ],
+                                                                        "drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                             ) for i in range(self.m_depth) ])
                 
 
@@ -400,7 +400,7 @@ if module_config['transformer']:
                                     in_channel=down_channels[j],
                                     out_channel=down_channels[j],
                                     norm = normalization,
-                                    num_groups = num_groups,
+                                    num_norm_groups = num_norm_groups,
                                     factor=2 ** (i - j + 1) ) for j in range(1, i)])
             for i in range(2, len(down_channels) - 1) ] )
             ### for middle layers
@@ -409,7 +409,7 @@ if module_config['transformer']:
                                     in_channel=down_channels[i],
                                     out_channel=down_channels[i],
                                     norm = normalization,
-                                    num_groups = num_groups,
+                                    num_norm_groups = num_norm_groups,
                                     factor=2 ** (self.d_depth - i + 1) ) for i in range(1, len(down_channels) - 1)]))
 
         def forward(self, x, t = None):
@@ -429,7 +429,7 @@ if module_config['transformer']:
                 x = down(x)
             concat_feature = [dd(r) for r, dd in zip(res[:-1], self.down_for_dense[-1])]
             x = torch.cat(concat_feature + [x], dim=-1)
-            x, _ = self.middle(x, t)
+            x = self.middle(x, t)
 
             if self.return_feature_list:
                 return x, res
@@ -443,8 +443,8 @@ if module_config['transformer']:
                     up_channels = [128, 64], final_channels = [64, 64], 
                     up_num_heads = [3, 3], final_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
-                    normalization = 'group', num_groups = 8, 
-                    num_block = 2, activation = 'silu', 
+                    normalization = 'group', num_norm_groups = 8, 
+                    num_blocks = 2, activation = 'silu', 
                     return_feature_list = False, **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 window_size = window_size, time_channel = time_channel,
@@ -453,8 +453,8 @@ if module_config['transformer']:
                 qk_scale = qk_scale, up_channels = up_channels, final_channels = final_channels,
                 up_num_heads = up_num_heads, final_num_heads = final_num_heads,
                 dropout = dropout, atten_dropout = atten_dropout, drop_path = drop_path,
-                normalization = normalization, num_groups = num_groups, 
-                num_block = num_block, activation = activation, dense_channels = [],
+                normalization = normalization, num_norm_groups = num_norm_groups, 
+                num_blocks = num_blocks, activation = activation, dense_channels = [],
                 return_feature_list = return_feature_list)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
@@ -465,15 +465,15 @@ if module_config['transformer']:
                                                         in_channel = up_channels[i],
                                                         out_channel = up_channels[i + 1], 
                                                         norm = normalization, 
-                                                        num_groups = num_groups) for i in range(self.u_depth)])
+                                                        num_norm_groups = num_norm_groups) for i in range(self.u_depth)])
                 
-            self.u_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+            self.u_trans = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                             num_heads = up_num_heads[i],
                                                             in_channel=(len(down_channels) + i + 1) * up_channels[i+1], 
                                                             out_channel=up_channels[i+1], 
                                                             patch_image_size = self.patch_image_pyramid[i+1],
-                                                            kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_block) ],
-                                                                        "drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_blocks) ],
+                                                                        "drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                             ) for i in range(self.u_depth) ])
 
             ## down / up sample layers for dense connections
@@ -488,14 +488,14 @@ if module_config['transformer']:
                                     in_channel=down_channels[j],
                                     out_channel=up_channels[i + 1],
                                     norm = normalization,
-                                    num_groups = num_groups,
+                                    num_norm_groups = num_norm_groups,
                                     factor=2**(-up_times)))
                     else:
                         tmp_module.append(PatchExpansionBlock(dim = self.dim,
                                             in_channel=down_channels[j],
                                             out_channel=up_channels[i + 1], 
                                             norm = normalization, 
-                                            num_groups = num_groups,
+                                            num_norm_groups = num_norm_groups,
                                             factor=2**up_times))
                 ## features from decoder
                 for j in range(0, i):
@@ -503,7 +503,7 @@ if module_config['transformer']:
                                             in_channel=up_channels[j],
                                             out_channel=up_channels[i + 1], 
                                             norm = normalization, 
-                                            num_groups = num_groups,
+                                            num_norm_groups = num_norm_groups,
                                             factor=2**(i+1-j)))
                 self.sample_for_dense.append(nn.ModuleList(tmp_module))
 
@@ -520,7 +520,7 @@ if module_config['transformer']:
                 existing_features = existing_features + [x,]
                 x = u_trans(torch.cat(concat_features, dim = -1), t)
                 res = res + [x,]
-            x, _ = self.final(x, t)
+            x = self.final(x, t)
             x = self.patch_recov(x)
             if self.return_feature_list:
                 return x, res
@@ -542,8 +542,8 @@ if module_config['mamba']:
                     dt_init_floor=1e-4, 
                     conv_bias=True, bias=False,             
                     dropout=0., drop_path=0.1, 
-                    normalization = 'group', num_groups = 8, 
-                    num_block = 2, activation = 'silu', 
+                    normalization = 'group', num_norm_groups = 8, 
+                    num_blocks = 2, activation = 'silu', 
                     scan_mode = 'single', flip_scan = True,
                     abs_pos_embedding = False,
                     head_channel = 64, 
@@ -566,8 +566,8 @@ if module_config['mamba']:
                     head_channel = head_channel, 
                     learnable_init_states = learnable_init_states, 
                     chunk_size=chunk_size,
-                    normalization = normalization, num_groups = num_groups, 
-                    num_block = num_block, activation = activation, 
+                    normalization = normalization, num_norm_groups = num_norm_groups, 
+                    num_blocks = num_blocks, activation = activation, 
                     scan_mode = scan_mode, flip_scan=flip_scan, 
                     abs_pos_embedding = abs_pos_embedding,
                     z_count = 1, dense_channels = [],
@@ -576,18 +576,18 @@ if module_config['mamba']:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
             down_channels = [self.patch_channel, ] + down_channels
-            self.d_ssm = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+            self.d_ssm = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                             in_channel=down_channels[i] if i < 2 else sum(down_channels[1:i+1]), 
                                                             out_channel = down_channels[i+1],
-                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                             ) for i in range(self.d_depth) ])
 
 
             middle_channels = [sum(down_channels[1:]) if len(down_channels) >= 2 else down_channels[-1], ] + middle_channels 
-            self.middle = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+            self.middle = SequentialT(*[MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                             in_channel = middle_channels[i],
                                                             out_channel = middle_channels[i+1],
-                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                             ) for i in range(self.m_depth) ])
                 
 
@@ -597,7 +597,7 @@ if module_config['mamba']:
                                     in_channel=down_channels[j],
                                     out_channel=down_channels[j],
                                     norm = normalization,
-                                    num_groups = num_groups,
+                                    num_norm_groups = num_norm_groups,
                                     factor=2 ** (i - j + 1) ) for j in range(1, i)])
             for i in range(2, len(down_channels) - 1) ] )
             ### for middle layers
@@ -606,7 +606,7 @@ if module_config['mamba']:
                                     in_channel=down_channels[i],
                                     out_channel=down_channels[i],
                                     norm = normalization,
-                                    num_groups = num_groups,
+                                    num_norm_groups = num_norm_groups,
                                     factor=2 ** (self.d_depth - i + 1) ) for i in range(1, len(down_channels) - 1)]))
 
         def forward(self, x, t = None):
@@ -626,7 +626,7 @@ if module_config['mamba']:
                 x = down(x)
             concat_feature = [dd(r) for r, dd in zip(res[:-1], self.down_for_dense[-1])]
             x = torch.cat(concat_feature + [x], dim=-1)
-            x, _ = self.middle(x, t)
+            x = self.middle(x, t)
 
             if self.return_feature_list:
                 return x, res
@@ -650,8 +650,8 @@ if module_config['mamba']:
                     head_channel = 64, 
                     learnable_init_states = True, 
                     chunk_size=256,
-                    normalization = 'group', num_groups = 8, 
-                    num_block = 2, activation = 'silu', 
+                    normalization = 'group', num_norm_groups = 8, 
+                    num_blocks = 2, activation = 'silu', 
                     scan_mode = 'single', flip_scan = True, 
                     return_feature_list = False, **kwargs):
             super().__init__(image_size, image_channel = image_channel, 
@@ -670,8 +670,8 @@ if module_config['mamba']:
                     head_channel = head_channel, 
                     learnable_init_states = learnable_init_states, 
                     chunk_size=chunk_size,
-                    normalization = normalization, num_groups = num_groups, 
-                    num_block = num_block, activation = activation, 
+                    normalization = normalization, num_norm_groups = num_norm_groups, 
+                    num_blocks = num_blocks, activation = activation, 
                     scan_mode = scan_mode, flip_scan=flip_scan, 
                     dense_channels = [], return_feature_list = return_feature_list)
             if len(kwargs) > 0:
@@ -683,12 +683,12 @@ if module_config['mamba']:
                                                         in_channel = up_channels[i],
                                                         out_channel = up_channels[i + 1], 
                                                         norm = normalization, 
-                                                        num_groups = num_groups) for i in range(self.u_depth)])
+                                                        num_norm_groups = num_norm_groups) for i in range(self.u_depth)])
 
-            self.u_ssm = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+            self.u_ssm = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                             in_channel=(len(down_channels) + i + 1) * up_channels[i+1], 
                                                             out_channel=up_channels[i+1], 
-                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                            kwargs_list = {"drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                             ) for i in range(self.u_depth) ])
 
             ## down / up sample layers for dense connections
@@ -703,14 +703,14 @@ if module_config['mamba']:
                                     in_channel=down_channels[j],
                                     out_channel=up_channels[i + 1],
                                     norm = normalization,
-                                    num_groups = num_groups,
+                                    num_norm_groups = num_norm_groups,
                                     factor=2**(-up_times)))
                     else:
                         tmp_module.append(PatchExpansionBlock(dim = self.dim,
                                             in_channel=down_channels[j],
                                             out_channel=up_channels[i + 1], 
                                             norm = normalization, 
-                                            num_groups = num_groups,
+                                            num_norm_groups = num_norm_groups,
                                             factor=2**up_times))
                 ## features from decoderup
                 for j in range(0, i):
@@ -718,7 +718,7 @@ if module_config['mamba']:
                                             in_channel=up_channels[j],
                                             out_channel=up_channels[i + 1], 
                                             norm = normalization, 
-                                            num_groups = num_groups,
+                                            num_norm_groups = num_norm_groups,
                                             factor=2**(i+1-j)))
                 self.sample_for_dense.append(nn.ModuleList(tmp_module))
 
@@ -735,7 +735,7 @@ if module_config['mamba']:
                 existing_features = existing_features + [x,]
                 x = u_ssm(torch.cat(concat_features, dim = -1), t)
                 res = res + [x,]
-            x, _ = self.final(x, t)
+            x = self.final(x, t)
             x = self.patch_recov(x)
             if self.return_feature_list:
                 return x, res

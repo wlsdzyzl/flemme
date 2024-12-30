@@ -19,7 +19,7 @@ class GraphEncoder(nn.Module):
                  message_passing_channels = [64, 64, 128, 256], 
                  dense_channels = [],
                  activation = 'lrelu', dropout = 0.,
-                 normalization = 'group', num_groups = 8,  
+                 normalization = 'group', num_norm_groups = 8,  
                  z_count = 1, nodewise = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -31,7 +31,7 @@ class GraphEncoder(nn.Module):
         self.dropout = dropout
         self.nodewise = nodewise
         self.normalization = normalization
-        self.num_groups = num_groups
+        self.num_norm_groups = num_norm_groups
         self.pass_pos = pass_pos
         self.pass_feature = pass_feature
         self.time_channel = time_channel
@@ -52,7 +52,7 @@ class GraphEncoder(nn.Module):
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
                                                 time_channel = self.time_channel,
                                                 activation = self.activation, dropout=self.dropout, 
-                                                norm = normalization, num_groups=num_groups) for i in range(len(dense_channels) - 2)]
+                                                norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 2)]
             # the last layer is a linear layer, without batch normalization
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], activation = None, norm = None), ]
             self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
@@ -93,7 +93,7 @@ class GraphEncoder(nn.Module):
                 x = torch.concat([x, nf], dim=-1)
 
             ## compute embedding vectors
-            x = [self.dense[i](x, t)[0] for i in range(self.z_count)]
+            x = [self.dense[i](x, t) for i in range(self.z_count)]
         else:
             ## split nf to 
             x = torch.chunk(x, self.z_count, dim = -1)
@@ -130,7 +130,7 @@ class GCNEncoder(GraphEncoder):
                 message_passing_channels = [64, 64, 128, 256], 
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
-                normalization = 'group', num_groups = 8,  
+                normalization = 'group', num_norm_groups = 8,  
                 z_count = 1, nodewise = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -139,7 +139,7 @@ class GCNEncoder(GraphEncoder):
                                         time_channel = self.time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
-                                        num_groups = num_groups, 
+                                        num_norm_groups = num_norm_groups, 
                                         graph_normalize = graph_normalize,
                                         improved = improved,
                                         cached = cached,
@@ -165,7 +165,7 @@ class ChebEncoder(GraphEncoder):
                 message_passing_channels = [64, 64, 128, 256], 
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
-                normalization = 'group', num_groups = 8,  
+                normalization = 'group', num_norm_groups = 8,  
                 z_count = 1, nodewise = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -174,7 +174,7 @@ class ChebEncoder(GraphEncoder):
                                         time_channel = self.time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
-                                        num_groups = num_groups, 
+                                        num_norm_groups = num_norm_groups, 
                                         filter_size = filter_size,
                                         graph_normalization = graph_normalization,
                                         bias = bias)
@@ -200,7 +200,7 @@ class TransConvEncoder(GraphEncoder):
                 message_passing_channels = [64, 64, 128, 256], 
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
-                normalization = 'group', num_groups = 8,  
+                normalization = 'group', num_norm_groups = 8,  
                 z_count = 1, nodewise = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -227,7 +227,7 @@ class GraphDecoder(nn.Module):
     def __init__(self, pos_dim=3, node_dim=0, node_num = 2048, 
                 in_channel = 256, time_channel = 0, 
                 dense_channels = [], 
-                normalization = 'group', num_groups = 8, 
+                normalization = 'group', num_norm_groups = 8, 
                 activation = 'lrelu', dropout = 0., 
                 recon_pos = True,
                 recon_feature = False,
@@ -246,7 +246,7 @@ class GraphDecoder(nn.Module):
         dense_channels = [in_channel,] + dense_channels 
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
                                         time_channel = self.time_channel,
-                                        norm = normalization, num_groups=num_groups, 
+                                        norm = normalization, num_norm_groups=num_norm_groups, 
                                         activation = activation, dropout=dropout) for i in range(len(dense_channels) - 1)]
         ## fully connected layer
         if recon_pos and pos_dim > 0:
@@ -303,17 +303,17 @@ class GraphDecoder(nn.Module):
     def forward(self, x, t = None):
         pos, feature, edge = None, None, None
         if hasattr(self, 'de_pos'):
-            pos, _ = self.de_pos(x, t)
+            pos = self.de_pos(x, t)
             if not self.nodewise:
                 pos = pos.reshape(-1, self.pos_dim)
 
         if hasattr(self, 'de_feature'):
-            feature, _ = self.de_feature(x, t)
+            feature = self.de_feature(x, t)
             if not self.nodewise:
                 feature = feature.reshape(-1, self.node_dim)
 
         if hasattr(self, 'de_edge'):
-            z, _ = self.de_edge(x, t)
+            z = self.de_edge(x, t)
             batch_size = x.shape[0] // self.node_num
             ## 2, B * (node_num^2)
             edge_index = torch.concat([self.edge_index + bid * self.node_num for bid in batch_size], dim = -1).to(x.device)

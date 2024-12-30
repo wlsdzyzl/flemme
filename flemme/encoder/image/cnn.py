@@ -27,7 +27,7 @@ class CNNEncoder(nn.Module):
                  shape_scaling = [2, 2],  middle_channels = [256, 256], 
                  middle_attens = [None, None], depthwise = False, kernel_size = 3, 
                  dense_channels = [256], dsample_function = 'conv', building_block='single', 
-                 normalization = 'group', num_groups = 8, cn_order = 'cn', num_block = 2,
+                 normalization = 'group', num_norm_groups = 8, cn_order = 'cn', num_blocks = 2,
                  activation = 'relu', z_count = 1, dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  abs_pos_embedding = False, return_feature_list = False,
@@ -47,6 +47,7 @@ class CNNEncoder(nn.Module):
         self.activation = activation
         self.shape_scaling = shape_scaling
         self.patch_size = patch_size
+        self.num_blocks = num_blocks
         if not sum([im_size % (patch_size * math.prod(shape_scaling)) for im_size in self.image_size ]) == 0:
             logger.error('Please check your image size, patch size and downsample depth to make sure the image size can be divisible.')
             exit(1)
@@ -54,7 +55,7 @@ class CNNEncoder(nn.Module):
         self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
                                         activation = activation, depthwise = depthwise,
                                         kernel_size = kernel_size, padding = (kernel_size - 1) // 2,
-                                        norm = normalization, num_groups = num_groups, 
+                                        norm = normalization, num_norm_groups = num_norm_groups, 
                                         order = cn_order, dropout = dropout,  
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
@@ -71,7 +72,7 @@ class CNNEncoder(nn.Module):
         down_channels = [self.image_patch_channel, ] + down_channels
         self.down = nn.ModuleList([DownSamplingBlock(dim=self.dim, in_channel=down_channels[i], 
                                                         func=dsample_function, scale_factor=shape_scaling[i-1]) for i in range(1, len(down_channels))])    
-        self.d_conv = nn.ModuleList( [MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.d_conv = nn.ModuleList( [MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         dim=self.dim, in_channel=down_channels[i], 
                                                         out_channel=down_channels[i+1], 
                                                         atten=down_attens[i]) for i in range(len(down_channels) - 1) ])
@@ -86,7 +87,7 @@ class CNNEncoder(nn.Module):
             middle_channels = [mc * self.z_count for mc in middle_channels]
 
         middle_channels = [down_channels[-1], ] + middle_channels 
-        module_sequence = [MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        module_sequence = [MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                           dim=self.dim, in_channel=middle_channels[i], 
                                           out_channel=middle_channels[i+1], 
                                           atten = middle_attens[i]) for i in range(len(middle_channels) - 1)]
@@ -99,7 +100,7 @@ class CNNEncoder(nn.Module):
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)  *dense_channels[0])
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                            norm = normalization, num_groups=num_groups, 
+                                            norm = normalization, num_norm_groups=num_norm_groups, 
                                             activation = self.activation) for i in range(len(dense_channels) - 2)]
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
             self.dense = nn.ModuleList([nn.Sequential(*(copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
@@ -142,7 +143,7 @@ class CNNEncoder(nn.Module):
                 res = res + [x,]
                 x = down(x)
         
-        x, _ = self.middle(x, t)
+        x = self.middle(x, t)
 
         if self.vector_embedding:
             x = x.reshape(x.shape[0], -1)
@@ -172,8 +173,8 @@ class CNNDecoder(nn.Module):
                  shape_scaling = [2, 2], final_channels = [], 
                  final_attens = [], depthwise = False, kernel_size = 3, 
                  usample_function = 'conv', building_block='single', 
-                 normalization = 'group', num_groups = 8, cn_order = 'cn', 
-                 num_block = 2, activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
+                 normalization = 'group', num_norm_groups = 8, cn_order = 'cn', 
+                 num_blocks = 2, activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  return_feature_list = False, **kwargs):
         super().__init__()
@@ -190,11 +191,12 @@ class CNNDecoder(nn.Module):
         self.activation = activation
         self.patch_size = patch_size
         self.shape_scaling = shape_scaling
+        self.num_blocks = num_blocks
         ### use a 'AaaBbb' style for class name
         self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
                                         depthwise = depthwise, activation=activation, 
                                         kernel_size = kernel_size, padding = (kernel_size - 1) // 2,
-                                        norm = normalization, num_groups = num_groups, 
+                                        norm = normalization, num_norm_groups = num_norm_groups, 
                                         order = cn_order, dropout = dropout,
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
@@ -208,13 +210,13 @@ class CNNDecoder(nn.Module):
             # used for view (reshape)
             self.view_shape = [-1, int( dense_channels[-1]),] +[int(im_size // (self.patch_size * math.prod(shape_scaling) )) for im_size in self.image_size ]
             module_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                    norm = normalization, num_groups=num_groups, 
+                                                    norm = normalization, num_norm_groups=num_norm_groups, 
                                                     activation = self.activation) for i in range(len(dense_channels) - 2)]
             # to construct image shape
             # if there is not fc layer, then we also don't need this step
             module_sequence.append(DenseBlock(dense_channels[-2],  
                                                        int( dense_channels[-1] * math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)), 
-                                                       norm = normalization, num_groups=num_groups,  
+                                                       norm = normalization, num_norm_groups=num_norm_groups,  
                                                        activation = self.activation))
             self.dense = nn.Sequential(*module_sequence)  
         self.dense_path = dense_channels
@@ -223,7 +225,7 @@ class CNNDecoder(nn.Module):
         up_channels = [dense_channels[-1], ] + up_channels
         self.up = nn.ModuleList([UpSamplingBlock(dim=self.dim, in_channel=up_channels[i], 
                                                  func=usample_function, scale_factor=shape_scaling[i]) for i in range(len(up_channels) - 1)])
-        self.u_conv = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.u_conv = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         dim=self.dim, in_channel=up_channels[i], 
                                                         out_channel=up_channels[i+1], 
                                                         atten=up_attens[i]) for i in range(len(up_channels) - 1) ])
@@ -232,7 +234,7 @@ class CNNDecoder(nn.Module):
 
         ## final convolution layer
         final_channels = [up_channels[-1],] + final_channels
-        module_sequence = [MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        module_sequence = [MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                           dim=self.dim, in_channel=final_channels[i], 
                                           out_channel=final_channels[i+1], 
                                           atten = final_attens[i]) for i in range(len(final_channels) - 1) ]
@@ -277,7 +279,7 @@ class CNNDecoder(nn.Module):
             for up, u_conv in zip(self.up, self.u_conv):
                 x = u_conv(up(x), t)
                 res = res + [x,]
-        x, t = self.final(x, t)
+        x = self.final(x, t)
         x = self.image_back_proj(x)
         if self.return_feature_list:
             return x, res

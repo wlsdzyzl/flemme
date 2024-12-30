@@ -20,9 +20,9 @@ model:
       ### with time embedding
       building_block: res
       activation: silu
-      num_block: 2
+      num_blocks: 2
       normalization: group
-      num_groups: 16
+      num_norm_groups: 16
       dropout: 0.1
       ## the value can be list or int
     condition_embedding:
@@ -45,7 +45,7 @@ model:
 loader:
   dataset: 
     name: CIFAR10
-    data_path: /media/wlsdzyzl/DATA1/datasets/img/CIFAR10
+    data_path: /media/wlsdzyzl/DATA/datasets/img/CIFAR10
   batch_size: 64
   num_workers: 8
   shuffle: true

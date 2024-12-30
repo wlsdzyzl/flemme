@@ -4,7 +4,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import DenseBlock, SequentialT, get_building_block, FoldingLayer, LocalGraphLayer
+from flemme.block import DenseBlock, SequentialT, get_building_block, \
+    SamplingAndGroupingBlock as MSGBlock, FeaturePropogatingBlock as FPBlock 
 from flemme.logger import get_logger
 import copy
 logger = get_logger("encoder.point.pointnet2")
@@ -16,16 +17,17 @@ def get_scale_channel(out_channel, num_scales):
     res = []
     sum_channel = 0
     for i in range(num_scales - 1):
-        c = last_channel / 2
+        c = int(last_channel // 2)
         res = res + [c,]
         last_channel = c
         sum_channel += c
     res = res + [out_channel - sum_channel, ]
     return res[::-1]
 def get_scale_parameter(max_p, num_scales):
+    t = type(max_p)
     if num_scales == 1: 
         return max_p
-    res = [ max_p / (2 ** i) for i in range(num_scales)]
+    res = [t(max_p / (2 ** i)) for i in range(num_scales)]
     return res[::-1]
 
 class Point2Encoder(nn.Module):
@@ -36,13 +38,12 @@ class Point2Encoder(nn.Module):
                  num_neighbors_k,
                  neighbor_radius, 
                  fps_feature_channels, 
-                 num_block,
+                 num_blocks,
                  num_scales,
                  use_xyz,
-                 hidden_channels,
                  dense_channels,
                  activation, dropout,
-                 normalization, num_groups,  
+                 normalization, num_norm_groups,  
                  z_count, vector_embedding, 
                  return_feature_list,
                  **kwargs):
@@ -57,44 +58,36 @@ class Point2Encoder(nn.Module):
         self.num_scales = num_scales
         self.dropout = dropout
         self.normalization = normalization
-        self.num_groups = num_groups
+        self.num_norm_groups = num_norm_groups
         self.point_proj = nn.Linear(point_dim, projection_channel)
         self.projection_channel = projection_channel
         self.time_channel = time_channel
         self.num_fps_points = num_fps_points
+        self.num_blocks = num_blocks
         # fps_depth
         self.fps_depth = len(fps_feature_channels)
         self.return_feature_list = return_feature_list
-        if not type(self.num_fps_points, list):
+        self.use_xyz = use_xyz
+        if not type(self.num_fps_points) == list:
             self.num_fps_points = [self.num_fps_points,] * len(fps_feature_channels)
 
-        if not type(self.num_neighbors_k, list): 
+        if not type(self.num_neighbors_k) == list: 
             self.num_neighbors_k = [self.num_neighbors_k, ] * len(fps_feature_channels)
 
-        if not type(self.neighbor_radius, list):
+        if not type(self.neighbor_radius) == list:
             self.neighbor_radius = [self.neighbor_radius, ] * len(fps_feature_channels)
         
-        if not type(self.num_scales, list):
+        if not type(self.num_scales) == list:
             self.num_scales = [self.num_scales, ] * len(fps_feature_channels)
         
-        if not type(num_block) == list:
-            num_block = [num_block, ] * len(fps_feature_channels)
-
-        ### using hidden_channels is not reconmmended
-        if not (isinstance(hidden_channels, list) and \
-            len(hidden_channels) > 0 and  \
-            isinstance(hidden_channels[0], list)):
-            hidden_channels = [hidden_channels, ] * len(fps_feature_channels)
 
         assert len(fps_feature_channels) == len(self.num_fps_points) and \
           len(fps_feature_channels) == len(self.num_neighbors_k) and \
           len(fps_feature_channels) == len(self.neighbor_radius) and \
-          len(fps_feature_channels) == len(self.num_scales) and \
-          len(fps_feature_channels) == len(num_block) and \
-          len(fps_feature_channels) == len(hidden_channels), 'The numbers of layers inferred from different parameters are not identical.'
+          len(fps_feature_channels) == len(self.num_scales) 
         self.sub_out_channels = []
         for did in range(self.fps_depth):
-            self.sub_out_channels.append(get_scale_channel(fps_feature_channels[did]), self.num_scales[did])
+            self.sub_out_channels.append(get_scale_channel(fps_feature_channels[did], self.num_scales[did]))
             if not type(self.num_neighbors_k[did]) == list:
                 self.num_neighbors_k[did] = get_scale_parameter(self.num_neighbors_k[did], self.num_scales[did])
             if not type(self.neighbor_radius[did]) == list:
@@ -114,7 +107,7 @@ class Point2Encoder(nn.Module):
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
                                             time_channel = self.time_channel,
                                             activation = self.activation, dropout=self.dropout, 
-                                            norm = normalization, num_groups=num_groups) for i in range(len(dense_channels) - 2)]
+                                            norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 2)]
         # the last layer is a linear layer, without batch normalization
         dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], 
                                     time_channel = self.time_channel,
@@ -122,47 +115,49 @@ class Point2Encoder(nn.Module):
         self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
+        self.out_channels = self.msg_path + [self.out_channel, ]
     def forward(self, xyz, t = None):
         if self.msg is None:
             raise NotImplementedError
-        B, N, _ = xyz.shape
+        B, _, _ = xyz.shape
         ## N * Np * d
         res = []
-        feature = self.point_proj(xyz)
+        features = self.point_proj(xyz)
         xyz = xyz[...,0:3]
-        xyz_list, feature_list = [xyz], [feature]
+        xyz_list, feature_list = [xyz], [features]
         for msg in self.msg:
-            xyz, feature = msg(xyz, feature = feature, t = t)
+            xyz, features = msg(xyz, features = features, t = t)
             xyz_list.append(xyz)
-            feature_list.append(feature)
+            feature_list.append(features)
 
         ## max and average pooling to get global feature
-        f_max = F.adaptive_max_pool1d(feature.transpose(1, 2), 1).transpose(1, 2)
-        f_avg = F.adaptive_avg_pool1d(feature.transpose(1, 2), 1).transpose(1, 2)
-        feature_global = torch.concat((x1, x2), dim = -1)
+        f_max = F.adaptive_max_pool1d(features.transpose(1, 2), 1).transpose(1, 2)
+        f_avg = F.adaptive_avg_pool1d(features.transpose(1, 2), 1).transpose(1, 2)
+        global_features = torch.concat((f_max, f_avg), dim = -1)
 
         ## pointwise 
         if not self.vector_embedding:
             # B * D -> B * N * D
             # local feature plus global feature
-            feature_global = feature_global.repeat(1, N, 1)
-            feature = torch.concat([feature_global, feature], dim=-1)
+            global_features = global_features.repeat(1, self.num_fps_points[-1], 1)
+            # print(global_features.shape, features.shape)
+            features = torch.concat([global_features, features], dim=-1)
         else:
             xyz = None
-            feature = feature_global.reshape(B, -1)
+            features = global_features.reshape(B, -1)
         
         ## compute latent embeddings
-        feature = [self.dense[i](feature, t)[0] for i in range(self.z_count)]
+        features = [self.dense[i](features, t) for i in range(self.z_count)]
         if self.z_count == 1:
-            feature = feature[0]
+            features = features[0]
 
         ### for pointnet2 decoder
         if self.return_feature_list:
             xyz_list.append(xyz)
-            feature_list.append(feature)
+            feature_list.append(features)
             return feature_list, xyz_list
 
-        return feature, xyz
+        return features, xyz
 
     def __str__(self):
         _str = f'projection layer: {self.point_dim}->{self.projection_channel}\n'
@@ -183,11 +178,10 @@ class Point2Decoder(nn.Module):
     def __init__(self, point_dim, point_num, 
                 ### provide by encoder
                 in_channels, time_channel,
-                num_block,
-                hidden_channels,
+                num_blocks,
                 fp_channels, 
                 dense_channels, normalization, 
-                num_groups, activation, dropout, 
+                num_norm_groups, activation, dropout, 
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -196,29 +190,35 @@ class Point2Decoder(nn.Module):
         self.point_dim = point_dim
         self.activation = activation
         self.time_channel = time_channel
-        self.vector_embedding = False
-        self.fp_channels = fp_channels
+        # self.vector_embedding = False
+        self.fp_depth = len(fp_channels)
+        self.fp_path = [in_channels[-1], ] + fp_channels
+        self.num_blocks = num_blocks
+
         ## fully connected layer
         dense_channels = [fp_channels[-1],] + dense_channels 
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
                                         time_channel = self.time_channel,
-                                        norm = normalization, num_groups=num_groups, 
+                                        norm = normalization, num_norm_groups=num_norm_groups, 
                                         activation = activation, dropout=dropout) for i in range(len(dense_channels) - 1)]
         self.dense = SequentialT(*dense_sequence) 
         self.dense_path = dense_channels
         self.final = nn.Linear(dense_channels[-1], point_dim)
         self.fp = None
+        # print(in_channels, fp_channels)
         assert len(in_channels) == len(fp_channels) + 1, 'The number of feature propagation layers is ambiguous .'
-        self.unknow_feature_channels = in_channels[1:]
-        self.known_feature_channels = [in_channels[0],] + fp_channels[:-1]
-    def forward(self, feature_list, xyz_list, t = None):
+        self.unknow_feature_channels = in_channels[-2:-len(in_channels) - 1:-1]
+        self.known_feature_channels = [in_channels[-1],] + fp_channels[:-1]
+    def forward(self, features_xyz, t = None):
+        feature_list, xyz_list = features_xyz
         if self.fp is None:
             raise NotImplementedError
         assert self.point_num == xyz_list[0].shape[1], 'Unmatched point cloud size.'
-        
-        for i in range(len(feature_list) - 2, -1, -1):
-            feature_list[i] = self.fp[i]( xyz_list[i], xyz_list[i+1], feature_list[i], feature_list[i+1], t = t)
-        feature, _ = self.dense(feature_list[0], t)
+        feature_list = feature_list[::-1]
+        xyz_list = xyz_list[::-1]
+        for i in range(1, len(feature_list)):
+            feature_list[i] = self.fp[i-1]( xyz_list[i], xyz_list[i-1], feature_list[i], feature_list[i-1], t = t)
+        feature = self.dense(feature_list[-1], t)
         return self.final(feature)
     def __str__(self):
         _str = ''
@@ -233,6 +233,94 @@ class Point2Decoder(nn.Module):
         _str += f'{self.point_dim}'
         return _str 
 
-def PointNet2Encoder():
+class PointNet2Encoder(Point2Encoder):
+    def __init__(self, point_dim = 3,
+                 projection_channel = 64,
+                 time_channel = 0,
+                 num_fps_points = [1024, 512, 256, 64],
+                 num_neighbors_k = 32,
+                 neighbor_radius = [0.1, 0.2, 0.4, 0.8], 
+                 fps_feature_channels = [128, 256, 512, 1024], 
+                 num_blocks = 1,
+                 num_scales = 2,
+                 use_xyz = True,
+                 dense_channels = [1024],
+                 building_block = 'dense', 
+                 normalization = 'group', num_norm_groups = 8, 
+                 activation = 'lrelu', dropout = 0., 
+                 vector_embedding = True, 
+                 return_feature_list = True,
+                 z_count = 1, 
+                 **kwargs):
+        super().__init__(point_dim=point_dim, 
+                projection_channel = projection_channel,
+                time_channel = time_channel,
+                num_fps_points = num_fps_points,
+                num_neighbors_k=num_neighbors_k,
+                neighbor_radius = neighbor_radius,
+                fps_feature_channels = fps_feature_channels,
+                num_blocks = num_blocks,
+                num_scales = num_scales,
+                use_xyz = use_xyz,
+                dense_channels = dense_channels,
+                activation = activation, 
+                dropout = dropout,
+                normalization = normalization, 
+                num_norm_groups = num_norm_groups,  
+                z_count = z_count, 
+                vector_embedding = vector_embedding, 
+                return_feature_list = return_feature_list)
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters: {}".format(kwargs))
+        self.BuildingBlock = get_building_block(building_block, 
+                                        time_channel = self.time_channel, 
+                                        activation=activation, 
+                                        norm = normalization, 
+                                        num_norm_groups = num_norm_groups, 
+                                        dropout = dropout)
+        msg_sequence = [MSGBlock(in_channel = self.msg_path[fid], 
+            out_channels = self.sub_out_channels[fid],
+            num_fps_points = self.num_fps_points[fid],
+            k = self.num_neighbors_k[fid],
+            radius = self.neighbor_radius[fid],
+            num_blocks = self.num_blocks,
+            use_xyz = self.use_xyz,
+            BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
+        self.msg = nn.ModuleList(msg_sequence)
 
-def PointNet2Decoder():
+class PointNet2Decoder(Point2Decoder):
+    def __init__(self, point_dim=3, point_num = 2048, 
+                ### provide by encoder
+                in_channels= [1024, 1024, 512, 256, 128], 
+                time_channel = 0,
+                num_blocks = 1,
+                fp_channels = [512, 512, 256, 128], 
+                dense_channels = [],
+                building_block = 'dense',  
+                normalization = 'group', num_norm_groups = 8, 
+                activation = 'lrelu', dropout = 0., 
+                **kwargs):
+        super().__init__(point_dim=point_dim, 
+                point_num = point_num,
+                in_channels = in_channels,
+                time_channel = time_channel,
+                num_blocks = num_blocks,
+                fp_channels = fp_channels, 
+                dense_channels = dense_channels, 
+                normalization = normalization, 
+                num_norm_groups = num_norm_groups, 
+                activation = activation, 
+                dropout = dropout)
+        self.BuildingBlock = get_building_block(building_block, 
+                                        time_channel = self.time_channel, 
+                                        activation=activation, 
+                                        norm = normalization, 
+                                        num_norm_groups = num_norm_groups,
+                                        dropout = dropout)
+        fp_sequence = [  FPBlock( in_channel_known = self.known_feature_channels[fid],
+                                in_channel_unknown = self.unknow_feature_channels[fid],
+                                out_channel = self.fp_path[fid + 1],
+                                num_blocks = self.num_blocks,
+                                BuildingBlock = self.BuildingBlock)
+                            for fid in range(self.fp_depth)]
+        self.fp = nn.ModuleList(fp_sequence)

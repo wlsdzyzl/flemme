@@ -14,7 +14,7 @@ logger = get_logger("model.encoder.fcn")
 class FCNEncoder(nn.Module):
     def __init__(self, point_dim=3, time_channel = 0, 
                 building_block = 'dense', dense_channels = [256], 
-                normalization = 'group', num_groups = 8, 
+                normalization = 'group', num_norm_groups = 8, 
                 activation = 'lrelu', dropout = 0., z_count = 1, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -28,7 +28,7 @@ class FCNEncoder(nn.Module):
                                                 time_channel = time_channel, 
                                                 activation=activation, 
                                                 norm = normalization, 
-                                                num_groups = num_groups, 
+                                                num_norm_groups = num_norm_groups, 
                                                 dropout = dropout)
         dense_channels = [point_dim,] + dense_channels
         dense_sequence = [self.BuildingBlock(in_channel=dense_channels[i], out_channel=dense_channels[i+1]) 
@@ -49,7 +49,7 @@ class FCNEncoder(nn.Module):
     # input: Nb * Np * d
     def forward(self, x, t = None):
         # ## x is point cloud
-        x = [self.dense[i](x, t)[0] for i in range(self.z_count)]
+        x = [self.dense[i](x, t) for i in range(self.z_count)]
         if self.z_count == 1:
             x = x[0]
         return x
@@ -59,7 +59,7 @@ class FCNEncoder(nn.Module):
 class FCNDecoder(nn.Module):
     def __init__(self, point_dim=3, in_channel = 256, time_channel = 0, 
                 building_block = 'fc', dense_channels = [256], 
-                normalization = 'group', num_groups = 8, 
+                normalization = 'group', num_norm_groups = 8, 
                 activation = 'lrelu', dropout = 0., **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -67,7 +67,7 @@ class FCNDecoder(nn.Module):
         self.point_dim = point_dim
         self.activation = activation
         self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
-                                                num_groups = num_groups)
+                                                num_norm_groups = num_norm_groups)
         dense_channels = [in_channel,] + dense_channels
         dense_sequence = [self.BuildingBlock(in_channel=dense_channels[i], out_channel=dense_channels[i+1], 
                                               activation=activation, 
@@ -93,5 +93,5 @@ class FCNDecoder(nn.Module):
     # input: Nb * Np * d
     def forward(self, x, t = None):
         ## x is point cloud
-        x, _ = self.dense(x, t)
+        x = self.dense(x, t)
         return x

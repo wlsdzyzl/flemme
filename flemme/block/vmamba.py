@@ -63,7 +63,7 @@ class MBaseBlock(nn.Module):
         self, dim, in_channel, out_channel = None, state_channel=None, 
         conv_kernel_size=3, inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_groups = 0, scan_mode = 'single', flip_scan = False):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False):
         super().__init__()
         self.in_channel = in_channel
         ### out channel should be equal to in channel
@@ -107,8 +107,8 @@ class MBaseBlock(nn.Module):
             self.K *= 2
         self.act = get_act(activation)
 
-        self.norm1 = NormBlock(*(get_norm(norm, in_channel, self.dim, num_groups) + (-1,)))
-        self.norm2 = NormBlock(*(get_norm(norm, self.inner_channel, self.dim, num_groups) + (-1,)))
+        self.norm1 = NormBlock(*(get_norm(norm, in_channel, self.dim, num_norm_groups) + (-1,)))
+        self.norm2 = NormBlock(*(get_norm(norm, self.inner_channel, self.dim, num_norm_groups) + (-1,)))
         self.out_proj = nn.Linear(self.inner_channel, self.in_channel, bias=bias)
 
         if dropout is None or dropout <= 0:
@@ -214,7 +214,7 @@ class VMambaBlock(MBaseBlock):
         inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], dt_rank=None, dt_min=0.001, 
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
         super().__init__(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -222,7 +222,7 @@ class VMambaBlock(MBaseBlock):
             dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_groups = num_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.dt_rank = dt_rank or math.ceil(self.in_channel / 16)        
@@ -342,7 +342,7 @@ class DoubleVMambaBlock(nn.Module):
         inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], dt_rank=None, dt_min=0.001, 
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -354,7 +354,7 @@ class DoubleVMambaBlock(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_groups = num_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.mamba2 = VMambaBlock(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -363,7 +363,7 @@ class DoubleVMambaBlock(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_groups = num_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.time_channel = time_channel
         if self.time_channel > 0:
             self.time_emb = nn.Linear(time_channel, out_channel)
@@ -384,7 +384,7 @@ class ResVMambaBlock(nn.Module):
         inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], dt_rank=None, dt_min=0.001, 
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -396,7 +396,7 @@ class ResVMambaBlock(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_groups = num_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.mamba2 = VMambaBlock(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -405,7 +405,7 @@ class ResVMambaBlock(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = None, norm = norm, 
-            num_groups = num_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.act = get_act(activation)  
         self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
         self.time_channel = time_channel
@@ -431,7 +431,7 @@ class VMamba2Block(MBaseBlock):
         dt_min=0.001, A_init_range=(1, 16),
         dt_max=0.1, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
 
         super().__init__(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
@@ -440,7 +440,7 @@ class VMamba2Block(MBaseBlock):
             dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_groups = num_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.head_channel = head_channel
@@ -555,7 +555,7 @@ class DoubleVMamba2Block(nn.Module):
         dt_min=0.001, A_init_range=(1, 16),
         dt_max=0.1, dt_init="random", dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -569,7 +569,7 @@ class DoubleVMamba2Block(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_groups = num_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.mamba2 = VMamba2Block(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -580,7 +580,7 @@ class DoubleVMamba2Block(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_groups = num_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.time_channel = time_channel
         if self.time_channel > 0:
             self.time_emb = nn.Linear(time_channel, out_channel)
@@ -603,7 +603,7 @@ class ResVMamba2Block(nn.Module):
         dt_min=0.001, A_init_range=(1, 16),
         dt_max=0.1, dt_init="random", dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -617,7 +617,7 @@ class ResVMamba2Block(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_groups = num_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.mamba2 = VMamba2Block(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -628,7 +628,7 @@ class ResVMamba2Block(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = None, norm = norm, 
-            num_groups = num_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.act = get_act(activation)  
         self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
         self.time_channel = time_channel

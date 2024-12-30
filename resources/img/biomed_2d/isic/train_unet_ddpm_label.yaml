@@ -24,7 +24,7 @@ model:
       abs_pos_embedding: false
       normalization: group
       num_group: 16
-      num_block: 1
+      num_blocks: 1
     #   ## the value can be list or int
     # condition_embedding:
     #   combine_condition: cat
@@ -40,9 +40,9 @@ loader:
     data_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold1/
-    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold2/
-    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold3/
+    - /media/wlsdzyzl/DATA/datasets/img/ISIC/fold1/
+    - /media/wlsdzyzl/DATA/datasets/img/ISIC/fold2/
+    - /media/wlsdzyzl/DATA/datasets/img/ISIC/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
@@ -60,7 +60,7 @@ val_loader:
     data_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold4/
+    - /media/wlsdzyzl/DATA/datasets/img/ISIC/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false

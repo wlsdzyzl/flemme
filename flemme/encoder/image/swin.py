@@ -19,8 +19,8 @@ class SwinEncoder(nn.Module):
                  down_channels = [128, 256], middle_channels = [256, 256], 
                  down_num_heads = [3, 3], middle_num_heads = [3, 3],
                  dropout=0., atten_dropout=0., drop_path=0.1, 
-                 normalization = 'group', num_groups = 8, 
-                 num_block = 2, activation = 'silu', 
+                 normalization = 'group', num_norm_groups = 8, 
+                 num_blocks = 2, activation = 'silu', 
                  abs_pos_embedding = False,
                  return_feature_list = False,
                  z_count = 1, **kwargs):
@@ -37,10 +37,10 @@ class SwinEncoder(nn.Module):
         self.activation = activation
         self.dropout = dropout
         self.atten_dropout = atten_dropout
-        self.num_block = num_block
+        self.num_blocks = num_blocks
         # stochastic depth decay rule
         self.drop_path = [x.item() for x in torch.linspace(0, drop_path,
-                                                (self.d_depth + self.m_depth) * self.num_block)]
+                                                (self.d_depth + self.m_depth) * self.num_blocks)]
         self.window_size = window_size
         if not isinstance(window_size, tuple) and not isinstance(window_size, list):
             self.window_size = [self.window_size for _ in range(self.dim)]
@@ -61,7 +61,7 @@ class SwinEncoder(nn.Module):
                                 qk_scale = qk_scale,
                                 dropout = dropout,
                                 atten_dropout = atten_dropout,
-                                norm = normalization, num_groups = num_groups,
+                                norm = normalization, num_norm_groups = num_norm_groups,
                                 activation = activation)
         ### construct patch
         self.patch_emb = PatchConstructionBlock(dim = self.dim, 
@@ -78,19 +78,19 @@ class SwinEncoder(nn.Module):
         down_channels = [self.patch_channel, ] + down_channels
 
         ### building block
-        self.d_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.d_trans = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         num_heads = down_num_heads[i],
                                                         in_channel = down_channels[i],
                                                         out_channel = down_channels[i+1],
                                                         patch_image_size = self.patch_image_pyramid[i],
-                                                        kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_block) ],
-                                                                       "drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                        kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_blocks) ],
+                                                                       "drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.d_depth) ])
         self.down = nn.ModuleList([PatchMergingBlock(dim = self.dim,
                                                      in_channel = down_channels[i+1],
                                                      out_channel = down_channels[i+1],
                                                      norm = normalization, 
-                                                     num_groups = num_groups)  for i in range(self.d_depth)])
+                                                     num_norm_groups = num_norm_groups)  for i in range(self.d_depth)])
         self.down_path = [self.image_channel, ] + down_channels
         dense_channels = [ middle_channels[-1], ] + dense_channels
         self.dense_path = dense_channels.copy()
@@ -99,22 +99,22 @@ class SwinEncoder(nn.Module):
             middle_channels = [mc * self.z_count for mc in middle_channels]
         ### middle transformers
         middle_channels = [down_channels[-1], ] + middle_channels
-        self.middle = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.middle = SequentialT(*[MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         num_heads = middle_num_heads[i],
                                                         in_channel = middle_channels[i],
                                                         out_channel = middle_channels[i+1],
                                                         patch_image_size = self.patch_image_pyramid[-1],
                                                         kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2)
-                                                                                       for ni in range(self.num_block) ],
-                                                                       "drop_path": [self.drop_path[(i + self.d_depth)*self.num_block + ni] 
-                                                                                     for ni in range(self.num_block) ] }
+                                                                                       for ni in range(self.num_blocks) ],
+                                                                       "drop_path": [self.drop_path[(i + self.d_depth)*self.num_blocks + ni] 
+                                                                                     for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.m_depth) ])
 
         ### fully connected layers
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *dense_channels[0])
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                norm = normalization, num_groups=num_groups, 
+                                                norm = normalization, num_norm_groups=num_norm_groups, 
                                                 activation = self.activation) for i in range(len(dense_channels) - 2)]
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
             self.dense = nn.ModuleList([nn.Sequential(*(copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
@@ -131,7 +131,7 @@ class SwinEncoder(nn.Module):
             x = d_trans(x, t)
             res = res + [x,]
             x = down(x)
-        x, _ = self.middle(x, t)
+        x = self.middle(x, t)
         ### The last dimension is feature channel
         if self.vector_embedding:
             x = x.reshape(x.shape[0], -1)
@@ -175,8 +175,8 @@ class SwinDecoder(nn.Module):
                  up_channels = [128, 64], final_channels = [64, 64], 
                  up_num_heads = [3, 3], final_num_heads = [3, 3],
                  dropout=0., atten_dropout=0., drop_path=0.1, 
-                 normalization = 'group', num_groups = 8, 
-                 num_block = 2, activation = 'silu', 
+                 normalization = 'group', num_norm_groups = 8, 
+                 num_blocks = 2, activation = 'silu', 
                  return_feature_list = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -191,10 +191,10 @@ class SwinDecoder(nn.Module):
         self.dropout = dropout
         self.atten_dropout = atten_dropout
         self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
-        self.num_block = num_block
+        self.num_blocks = num_blocks
         # stochastic depth decay rule
         self.drop_path = [x.item() for x in torch.linspace(0, drop_path,
-                                                (self.u_depth + self.f_depth) * self.num_block)][::-1]
+                                                (self.u_depth + self.f_depth) * self.num_blocks)][::-1]
         self.window_size = window_size
         if not isinstance(window_size, tuple) and not isinstance(window_size, list):
             self.window_size = [self.window_size for _ in range(self.dim)]
@@ -214,7 +214,7 @@ class SwinDecoder(nn.Module):
                                 qk_scale = qk_scale,
                                 dropout = dropout,
                                 atten_dropout = atten_dropout,
-                                norm = normalization, num_groups = num_groups,
+                                norm = normalization, num_norm_groups = num_norm_groups,
                                 activation = activation)
         ## fully connected layer
         dense_channels = [in_channel, ] + dense_channels 
@@ -225,13 +225,13 @@ class SwinDecoder(nn.Module):
             # used for view (reshape)
             self.view_shape = [-1, ] + [int(im_size // (self.patch_size * (2** self.u_depth))) for im_size in self.image_size ] + [int( dense_channels[-1]),]
             module_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                    norm = normalization, num_groups=num_groups, 
+                                                    norm = normalization, num_norm_groups=num_norm_groups, 
                                                     activation = self.activation) for i in range(len(dense_channels) - 2)]
             # to construct image shape
             # if there is not fc layer, then we also don't need this step
             module_sequence.append(DenseBlock(dense_channels[-2],  
                                                        int( dense_channels[-1] * math.prod(self.image_size) / ((2**self.u_depth * self.patch_size)**self.dim  )), 
-                                                       norm = normalization, num_groups=num_groups,  
+                                                       norm = normalization, num_norm_groups=num_norm_groups,  
                                                        activation = self.activation))
             self.dense = nn.Sequential(*module_sequence)  
         self.dense_path = dense_channels
@@ -241,28 +241,28 @@ class SwinDecoder(nn.Module):
                                                      in_channel = up_channels[i],
                                                      out_channel = up_channels[i],
                                                      norm = normalization, 
-                                                     num_groups = num_groups) for i in range(self.u_depth)])
+                                                     num_norm_groups = num_norm_groups) for i in range(self.u_depth)])
         ### building block
-        self.u_trans = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.u_trans = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         num_heads = up_num_heads[i],
                                                         in_channel = up_channels[i],
                                                         out_channel = up_channels[i+1],
                                                         patch_image_size = self.patch_image_pyramid[i+1],
-                                                        kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_block) ],
-                                                                       "drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                        kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) for ni in range(self.num_blocks) ],
+                                                                       "drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.u_depth) ])
         self.up_path = up_channels
 
         final_channels = [up_channels[-1]] + final_channels
-        self.final = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.final = SequentialT(*[MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         num_heads = final_num_heads[i],
                                                         in_channel = final_channels[i],
                                                         out_channel = final_channels[i+1],
                                                         patch_image_size = self.patch_image_pyramid[-1],
                                                         kwargs_list = {"shift_size":  [(ni % 2) * (min(self.window_size) // 2) 
-                                                                                       for ni in range(self.num_block) ],
-                                                                       "drop_path": [self.drop_path[(i + self._depth)*self.num_block + ni] 
-                                                                                     for ni in range(self.num_block) ] }
+                                                                                       for ni in range(self.num_blocks) ],
+                                                                       "drop_path": [self.drop_path[(i + self._depth)*self.num_blocks + ni] 
+                                                                                     for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.f_depth) ])
         ### from patch to image: up_sample
         self.patch_recov = PatchRecoveryBlock(dim = self.dim, 
@@ -303,7 +303,7 @@ class SwinDecoder(nn.Module):
         for up, u_trans in zip(self.up, self.u_trans):
             x = u_trans(up(x), t)
             res = res + [x,]
-        x, _ = self.final(x, t)
+        x = self.final(x, t)
         x = self.patch_recov(x)
         if self.return_feature_list:
             return x, res

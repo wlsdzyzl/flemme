@@ -13,7 +13,7 @@ model:
     down_channels: [64, 128]
     middle_channels: [256, 256]
     building_block: res
-    num_block: 1
+    num_blocks: 1
     normalization: batch
   ### loss function
   segmentation_losses: 

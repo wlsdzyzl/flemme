@@ -24,8 +24,8 @@ class VMambaEncoder(nn.Module):
                 dt_init_floor=1e-4, 
                 conv_bias=True, bias=False,             
                 dropout=0., drop_path=0.1, 
-                normalization = 'group', num_groups = 8, 
-                num_block = 2, activation = 'silu', 
+                normalization = 'group', num_norm_groups = 8, 
+                num_blocks = 2, activation = 'silu', 
                 scan_mode = 'single',
                 flip_scan = True,
                 head_channel = 64, 
@@ -47,10 +47,10 @@ class VMambaEncoder(nn.Module):
 
         self.activation = activation
         self.dropout = dropout
-        self.num_block = num_block
+        self.num_blocks = num_blocks
         # stochastic depth decay rule
         self.drop_path = [x.item() for x in torch.linspace(0, drop_path,
-                                                (self.d_depth + self.m_depth) * self.num_block)]
+                                                (self.d_depth + self.m_depth) * self.num_blocks)]
         self.mlp_hidden_ratio = mlp_hidden_ratio
         self.patch_size = patch_size
         self.patch_channel = patch_channel
@@ -69,7 +69,7 @@ class VMambaEncoder(nn.Module):
                                 dt_init = dt_init,
                                 conv_bias = conv_bias, bias = bias,
                                 dropout = dropout,
-                                norm = normalization, num_groups = num_groups,
+                                norm = normalization, num_norm_groups = num_norm_groups,
                                 state_channel = state_channel,
                                 head_channel = head_channel, 
                                 learnable_init_states = learnable_init_states, 
@@ -91,17 +91,17 @@ class VMambaEncoder(nn.Module):
         ### use patch merging block for down sampling
         down_channels = [self.patch_channel, ] + down_channels
         ### building block
-        self.d_ssm = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.d_ssm = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         in_channel = down_channels[i],
                                                         out_channel = down_channels[i+1],
-                                                        kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] 
-                                                                                     for ni in range(self.num_block) ] }
+                                                        kwargs_list = {"drop_path": [self.drop_path[i*self.num_blocks + ni] 
+                                                                                     for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.d_depth) ])
         self.down = nn.ModuleList([PatchMergingBlock(dim = self.dim,
                                                      in_channel = down_channels[i+1],
                                                      out_channel = down_channels[i+1],
                                                      norm = normalization, 
-                                                     num_groups = num_groups)  for i in range(self.d_depth)])
+                                                     num_norm_groups = num_norm_groups)  for i in range(self.d_depth)])
         self.down_path = [self.image_channel, ] + down_channels        
         
         ## middle layer
@@ -112,18 +112,18 @@ class VMambaEncoder(nn.Module):
             middle_channels = [mc * self.z_count for mc in middle_channels]
         ### middle SSM
         middle_channels = [down_channels[-1], ] + middle_channels
-        self.middle = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.middle = SequentialT(*[MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         in_channel = middle_channels[i],
                                                         out_channel = middle_channels[i+1],
-                                                        kwargs_list = {"drop_path": [self.drop_path[(i + self.d_depth)*self.num_block + ni] 
-                                                                                     for ni in range(self.num_block) ] }
+                                                        kwargs_list = {"drop_path": [self.drop_path[(i + self.d_depth)*self.num_blocks + ni] 
+                                                                                     for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.m_depth) ])
 
         ### fully connected layers
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *dense_channels[0])
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],
-                                                norm = normalization, num_groups=num_groups, 
+                                                norm = normalization, num_norm_groups=num_norm_groups, 
                                                 activation = self.activation) for i in range(len(dense_channels) - 2)]
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
             self.dense = nn.ModuleList([nn.Sequential(*(copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
@@ -140,7 +140,7 @@ class VMambaEncoder(nn.Module):
             x = d_ssm(x, t)
             res = res + [x,]
             x = down(x)
-        x, _ = self.middle(x, t)
+        x = self.middle(x, t)
         ### The last dimension is feature channel
         if self.vector_embedding:
             x = x.reshape(x.shape[0], -1)
@@ -195,8 +195,8 @@ class VMambaDecoder(nn.Module):
                 learnable_init_states = True, 
                 chunk_size=256,             
                 dropout=0., drop_path=0.1, 
-                normalization = 'group', num_groups = 8, 
-                num_block = 2, activation = 'silu', 
+                normalization = 'group', num_norm_groups = 8, 
+                num_blocks = 2, activation = 'silu', 
                 scan_mode = 'single', flip_scan = True, 
                 return_feature_list = False,
                 **kwargs):
@@ -210,10 +210,10 @@ class VMambaDecoder(nn.Module):
         self.f_depth = len(final_channels)
         self.activation = activation
         self.dropout = dropout
-        self.num_block = num_block
+        self.num_blocks = num_blocks
         # stochastic depth decay rule
         self.drop_path = [x.item() for x in torch.linspace(0, drop_path,
-                                                (self.u_depth + self.f_depth) * self.num_block)]
+                                                (self.u_depth + self.f_depth) * self.num_blocks)]
         self.mlp_hidden_ratio = mlp_hidden_ratio
         self.patch_size = patch_size
         self.in_channel = in_channel
@@ -236,7 +236,7 @@ class VMambaDecoder(nn.Module):
                                 chunk_size=chunk_size,
                                 conv_bias = conv_bias, bias = bias,
                                 dropout = dropout,
-                                norm = normalization, num_groups = num_groups,
+                                norm = normalization, num_norm_groups = num_norm_groups,
                                 state_channel = state_channel,
                                 activation = activation,
                                 scan_mode = scan_mode, flip_scan = flip_scan)
@@ -250,13 +250,13 @@ class VMambaDecoder(nn.Module):
             # used for view (reshape)
             self.view_shape = [-1, ] +[int(im_size // (self.patch_size * (2** self.u_depth))) for im_size in self.image_size ]  + [int( dense_channels[-1]),]
             module_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                norm = normalization, num_groups=num_groups,
+                                                norm = normalization, num_norm_groups=num_norm_groups,
                                                 activation = self.activation) for i in range(len(dense_channels) - 2)]
             # to construct image shape
             # if there is not fc layer, then we also don't need this step
             module_sequence.append(DenseBlock(dense_channels[-2],  
                                                        int( dense_channels[-1] * math.prod(self.image_size) / ((2**self.u_depth * self.patch_size)**self.dim  )), 
-                                                        norm = normalization, num_groups=num_groups, 
+                                                        norm = normalization, num_norm_groups=num_norm_groups, 
                                                         activation = self.activation))
             self.dense = nn.Sequential(*module_sequence)  
         self.dense_path = dense_channels
@@ -267,21 +267,21 @@ class VMambaDecoder(nn.Module):
                                                      in_channel = up_channels[i],
                                                      out_channel = up_channels[i],
                                                      norm = normalization, 
-                                                     num_groups = num_groups) for i in range(self.u_depth)])
+                                                     num_norm_groups = num_norm_groups) for i in range(self.u_depth)])
         ### building block
-        self.u_ssm = nn.ModuleList([MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.u_ssm = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         in_channel = up_channels[i],
                                                         out_channel = up_channels[i+1],
-                                                        kwargs_list = {"drop_path": [self.drop_path[i*self.num_block + ni] for ni in range(self.num_block) ] }
+                                                        kwargs_list = {"drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.u_depth) ])
         self.up_path = up_channels
 
         final_channels = [up_channels[-1]] + final_channels
-        self.final = SequentialT(*[MultipleBuildingBlocks(n = num_block, BlockClass=self.BuildingBlock, 
+        self.final = SequentialT(*[MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         in_channel = final_channels[i],
                                                         out_channel = final_channels[i+1],
-                                                        kwargs_list = {"drop_path": [self.drop_path[(i + self.u_depth)*self.num_block + ni] 
-                                                                                     for ni in range(self.num_block) ] }
+                                                        kwargs_list = {"drop_path": [self.drop_path[(i + self.u_depth)*self.num_blocks + ni] 
+                                                                                     for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.f_depth) ])
         ### from patch to image: up_sample
         self.patch_recov = PatchRecoveryBlock(dim = self.dim, 
@@ -322,7 +322,7 @@ class VMambaDecoder(nn.Module):
         for up, u_ssm in zip(self.up, self.u_ssm):
             x = u_ssm(up(x), t)
             res = res + [x,]
-        x, _ = self.final(x, t)
+        x = self.final(x, t)
         x = self.patch_recov(x)
         if self.return_feature_list:
             return x, res

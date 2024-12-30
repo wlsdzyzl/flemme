@@ -21,9 +21,9 @@ model:
       ### with time embedding
       building_block: single
       activation: silu
-      num_block: 2
+      num_blocks: 2
       normalization: group
-      num_groups: 16
+      num_norm_groups: 16
       dropout: 0.1
   ## 2D ddpm
   eps_loss:

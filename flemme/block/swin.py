@@ -12,7 +12,7 @@ logger = get_logger('swin_block')
 
 ### use convolution to transfer image to patches embedding
 class PatchConstructionBlock(NormBlock):
-    def __init__(self, dim, patch_size, in_channel, out_channel, norm = 'layer', num_groups = 4, 
+    def __init__(self, dim, patch_size, in_channel, out_channel, norm = 'layer', num_norm_groups = 4, 
                  activation = None, order="cn"):
         super().__init__()
         self.dim = dim
@@ -28,7 +28,7 @@ class PatchConstructionBlock(NormBlock):
         if order.index('n') < order.index('c'):
             norm_channel = in_channel
         ### normalization layer
-        self.norm, self.norm_type = get_norm(norm, norm_channel, self.dim, num_groups)
+        self.norm, self.norm_type = get_norm(norm, norm_channel, self.dim, num_norm_groups)
         # activation function
         self.act = get_act(activation)
         self.order = order
@@ -45,12 +45,12 @@ class PatchConstructionBlock(NormBlock):
 ### use convolution to transfer image to patches embedding
 class PatchRecoveryBlock(NormBlock):
     def __init__(self, dim, patch_size, 
-                 in_channel, out_channel, norm = None, num_groups = 4, 
+                 in_channel, out_channel, norm = None, num_norm_groups = 4, 
                  activation = None, order="en"):
         super().__init__(_channel_dim = -1)
         self.expand = PatchExpansionBlock(dim = dim,
                                     in_channel = in_channel, out_channel = in_channel,
-                                    factor = patch_size, norm = norm, num_groups = num_groups, 
+                                    factor = patch_size, norm = norm, num_norm_groups = num_norm_groups, 
                                     activation = activation, order = "en")
         self.dim = dim
         if dim ==1:
@@ -66,7 +66,7 @@ class PatchRecoveryBlock(NormBlock):
             self._channel_dim = 1
             
         ### normalization layer
-        self.norm, self.norm_type = get_norm(norm, norm_channel, self.dim, num_groups)
+        self.norm, self.norm_type = get_norm(norm, norm_channel, self.dim, num_norm_groups)
         # activation function
         self.act = get_act(activation)
         self.order = order
@@ -85,7 +85,7 @@ class PatchRecoveryBlock(NormBlock):
 class PatchMergingBlock(NormBlock):
 
     def __init__(self, dim, in_channel, out_channel = None, 
-                 factor = 2, norm = None, num_groups = 4, 
+                 factor = 2, norm = None, num_norm_groups = 4, 
                  activation = None, order="mn"):
         super().__init__(_channel_dim = -1)
         self.dim = dim
@@ -100,7 +100,7 @@ class PatchMergingBlock(NormBlock):
         if order.index('n') < order.index('m'):
             norm_channel = in_channel
         ### normalization layer
-        self.norm, self.norm_type = get_norm(norm, norm_channel, self.dim, num_groups)
+        self.norm, self.norm_type = get_norm(norm, norm_channel, self.dim, num_norm_groups)
         # activation function
         self.act = get_act(activation)
         self.order = order
@@ -146,7 +146,7 @@ class PatchMergingBlock(NormBlock):
 ### final expand can be implemented using this block
 class PatchExpansionBlock(NormBlock):
     def __init__(self, dim, in_channel, out_channel = None, factor = 2, 
-                norm = None, num_groups = 4, activation = None, order="en"):
+                norm = None, num_norm_groups = 4, activation = None, order="en"):
         super().__init__(_channel_dim = -1)
         self.dim = dim
         self.in_channel = in_channel
@@ -163,7 +163,7 @@ class PatchExpansionBlock(NormBlock):
         if order.index('n') < order.index('e'):
             norm_channel = in_channel
         ### normalization layer
-        self.norm, self.norm_type = get_norm(norm, norm_channel, self.dim, num_groups)
+        self.norm, self.norm_type = get_norm(norm, norm_channel, self.dim, num_norm_groups)
         # activation function
         self.act = get_act(activation)
         self.order = order
@@ -373,7 +373,7 @@ class VisionTransformerBlock(nn.Module):
                 window_size=[7, 7], shift_size=0,
                 mlp_hidden_ratio=[4.0,], qkv_bias=True, 
                 qk_scale=None, dropout=0., atten_dropout=0., drop_path=0.,
-                activation = 'silu', norm = 'layer', num_groups = 4, **kwargs):
+                activation = 'silu', norm = 'layer', num_norm_groups = 4, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -388,8 +388,8 @@ class VisionTransformerBlock(nn.Module):
         ## latter we need to transfer window size to tuple.
         
         self.mlp_hidden_ratio = mlp_hidden_ratio
-        self.norm1 = NormBlock(*(get_norm(norm, in_channel, self.dim, num_groups) + (-1,)))
-        self.norm2 = NormBlock(*(get_norm(norm, in_channel, self.dim, num_groups) + (-1,)))
+        self.norm1 = NormBlock(*(get_norm(norm, in_channel, self.dim, num_norm_groups) + (-1,)))
+        self.norm2 = NormBlock(*(get_norm(norm, in_channel, self.dim, num_norm_groups) + (-1,)))
         self.atten = SelfAttentionBlock(
             in_channel, num_heads=num_heads,
             qkv_bias=qkv_bias, qk_scale=qk_scale, atten_dropout=atten_dropout, dropout=dropout,
@@ -448,13 +448,13 @@ class SwinTransformerBlock(VisionTransformerBlock):
                 mlp_hidden_ratio=[4.0,], 
                 qkv_bias=True, qk_scale=None, dropout=0., 
                 atten_dropout=0., drop_path=0.,
-                activation = 'silu', norm = 'layer', num_groups = 4, **kwargs):
+                activation = 'silu', norm = 'layer', num_norm_groups = 4, **kwargs):
         super().__init__(dim = len(patch_image_size), in_channel = in_channel, out_channel = out_channel, 
                  num_heads = num_heads, mlp_hidden_ratio=mlp_hidden_ratio, 
                  qkv_bias=qkv_bias, qk_scale=qk_scale, 
                  dropout=dropout, atten_dropout=atten_dropout, 
                  drop_path=drop_path, activation=activation, 
-                 norm = norm, num_groups = num_groups)
+                 norm = norm, num_norm_groups = num_norm_groups)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.patch_image_size = patch_image_size
@@ -583,7 +583,7 @@ class DoubleSwinTransformerBlock(nn.Module):
                 num_heads = 1, window_size=7, shift_size=0,
                 mlp_hidden_ratio=[4.0,], qkv_bias=True, qk_scale=None, 
                 dropout=0., atten_dropout=0., drop_path=0.,
-                activation = 'silu', norm = 'layer', num_groups = 4, **kwargs):
+                activation = 'silu', norm = 'layer', num_norm_groups = 4, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -595,14 +595,14 @@ class DoubleSwinTransformerBlock(nn.Module):
                 shift_size=shift_size, mlp_hidden_ratio=mlp_hidden_ratio, 
                 qkv_bias=qkv_bias, qk_scale=qk_scale, 
                 dropout=dropout, atten_dropout=atten_dropout, drop_path=drop_path,
-                activation=activation, norm = norm, num_groups = num_groups)
+                activation=activation, norm = norm, num_norm_groups = num_norm_groups)
         self.st2 = SwinTransformerBlock(patch_image_size = patch_image_size, in_channel = out_channel, 
                 out_channel = out_channel, num_heads = num_heads, window_size=window_size, 
                 shift_size=min(window_size) // 2 if shift_size_sum == 0 else 0, 
                 mlp_hidden_ratio=mlp_hidden_ratio, 
                 qkv_bias=qkv_bias, qk_scale=qk_scale, 
                 dropout=dropout, atten_dropout=atten_dropout, drop_path=drop_path,
-                activation=activation, norm = norm, num_groups = num_groups)
+                activation=activation, norm = norm, num_norm_groups = num_norm_groups)
         self.time_channel = time_channel
         if self.time_channel > 0:
             self.time_emb = nn.Linear(time_channel, out_channel)
@@ -619,7 +619,7 @@ class ResSwinTransformerBlock(nn.Module):
     def __init__(self, patch_image_size, in_channel, out_channel = None, time_channel = 0, 
                  num_heads = 1, window_size=7, shift_size=0,
                  mlp_hidden_ratio=[4.0,], qkv_bias=True, qk_scale=None, dropout=0., atten_dropout=0., drop_path=0.,
-                 activation = 'silu', norm = 'layer', num_groups = 4, **kwargs):
+                 activation = 'silu', norm = 'layer', num_norm_groups = 4, **kwargs):
         super().__init__()
         shift_size_sum = shift_size
         if isinstance(shift_size, list) or isinstance(shift_size, tuple):
@@ -629,14 +629,14 @@ class ResSwinTransformerBlock(nn.Module):
                 shift_size=shift_size, mlp_hidden_ratio=mlp_hidden_ratio, 
                 qkv_bias=qkv_bias, qk_scale=qk_scale, 
                 dropout=dropout, atten_dropout=atten_dropout, drop_path=drop_path,
-                activation=activation, norm = norm, num_groups = num_groups)
+                activation=activation, norm = norm, num_norm_groups = num_norm_groups)
         self.st2 = SwinTransformerBlock(patch_image_size = patch_image_size, in_channel = out_channel, 
                 out_channel = out_channel, num_heads = num_heads, window_size=window_size, 
                 shift_size=min(window_size) // 2 if shift_size_sum == 0 else 0, 
                 mlp_hidden_ratio=mlp_hidden_ratio, 
                 qkv_bias=qkv_bias, qk_scale=qk_scale, 
                 dropout=dropout, atten_dropout=atten_dropout, drop_path=drop_path,
-                activation=None, norm = norm, num_groups = num_groups)
+                activation=None, norm = norm, num_norm_groups = num_norm_groups)
         self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
         self.act = get_act(activation)
         self.time_channel = time_channel

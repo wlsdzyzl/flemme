@@ -28,7 +28,7 @@ loader:
     data_dir: 02691156/points
     data_suffix: .pts
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/shapenetcore_v0  
+    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0  
   batch_size: 2
   num_workers: 8
   shuffle: true

@@ -21,9 +21,9 @@ model:
       ### with time embedding
       building_block: res
       activation: silu
-      num_block: 2
+      num_blocks: 2
       normalization: group
-      num_groups: 16
+      num_norm_groups: 16
       dropout: 0.1
     # condition_embedding:
     #   combine_condition: add
@@ -43,7 +43,7 @@ loader:
   dataset: 
     name: MNIST
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/MNIST
+    - /media/wlsdzyzl/DATA/datasets/img/MNIST
   batch_size: 128
   num_workers: 8
   shuffle: true
