@@ -23,7 +23,7 @@ model:
       activation: silu
       abs_pos_embedding: false
       normalization: group
-      num_group: 16
+      num_norm_groups: 16
       num_blocks: 1
     #   ## the value can be list or int
     # condition_embedding:
