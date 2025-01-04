@@ -96,7 +96,7 @@ class GraphEncoder(nn.Module):
             x = [self.dense[i](x, t) for i in range(self.z_count)]
         else:
             ## split nf to 
-            x = torch.chunk(x, self.z_count, dim = -1)
+            x = list(torch.chunk(x, self.z_count, dim = -1))
         if self.z_count == 1:
             x = x[0]
         return x

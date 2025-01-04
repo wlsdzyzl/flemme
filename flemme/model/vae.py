@@ -20,8 +20,8 @@ class VariationalAutoEncoder(AutoEncoder):
         super().__init__(model_config)
         if self.with_time_embedding:
             raise NotImplementedError("Time embedding is not implemented for VAE model.")
-        # assert not self.encoder_name in ['UNet', 'SwinU', 'MambaU'], \
-        #     'UNet and PointWiseNet are not suitable for constructing a VAE.'
+        assert not self.encoder_name in ['UNet', 'ViTU', 'SwinU', 'MambaU'], \
+            'UNet and PointWiseNet are not suitable for constructing a VAE.'
         distr_loss_config = model_config.get('distribution_loss', {'name':'KL'})
         distr_loss_config['reduction'] = self.loss_reduction
         self.distr_loss_name = distr_loss_config.get('name')
@@ -32,25 +32,18 @@ class VariationalAutoEncoder(AutoEncoder):
         _str = '********************* Variational Auto-Encoder ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def encode(self, x, c=None):
-        en_features = None
-        if self.data_form == DataForm.IMG and self.encoder.return_feature_list:
-            (mean, logvar), en_features = super().encode(x, c = c)
-        else:
+        try:
             mean, logvar = super().encode(x, c = c)
-        return Gaussian(mean = mean, logvar = logvar), en_features
+            gauss = Gaussian(mean = mean, logvar = logvar)
+        except Exception as e:
+            logger.error(f'Parsing mean and logvar failed: {e}')
+            exit(1)
+        return gauss
     def decode(self, z, c=None):
         return super().decode(z, c = c)
     def forward(self, x, c = None):
-        # if self.encoder_name == 'UNet':
-        #     (mean, logvar), res = self.encode(x, c)
-        #     z = mean + torch.randn_like(logvar, device=x.device) * torch.exp(0.5 * logvar)
-        #     res.append(z)
-        #     res = res[::-1]
-        #     return self.decode(res, c), mean, logvar
-        gaussian, en_features = self.encode(x, c)
+        gaussian = self.encode(x, c)
         z = gaussian.sample()
-        if en_features is not None:
-            z = (z, en_features)
         # print(z.shape, c.shape)
         # sample from the mean (mean) and log-variance (logvar)
         # reparameterization

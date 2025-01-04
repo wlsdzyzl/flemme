@@ -3,44 +3,43 @@
 mode: train
 model:
   # can be AE, VAE, SeM and DDPM
-  name: AE
+  name: VAE
   # encoder config
   encoder:
-    name: PointMamba
+    name: PointNet
     in_channel: 3
-    point_num: 1024
-    building_block: pmamba
-    num_neighbors_k: 20
-    # folding_times: 2
+    point_num: 2048
+    building_block: dense
+    # num_neighbors_k: 20
     local_feature_channels: [64, 64, 128, 256, 512]
     dense_channels: [1024]
     decoder_dense_channels: [512, 256]
     activation: lrelu
-    normalization: group
+    normalization: batch
     vector_embedding: True
+    # folding_times: 2
   reconstruction_losses: 
-    - name: EMD
-      eps: 0.005
-      iters: 50
+    - name: ECD
+  distribution_loss:
+    name: KL
+    weight: 0.0001
 loader:
   dataset: 
     name: PcdDataset
-    data_dir: 02691156/points
-    data_suffix: .pts
+    data_dir: left
+    data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0  
-  batch_size: 2
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/lrply/surface/
+  batch_size: 32
   num_workers: 8
   shuffle: true
-  drop_last: true
   data_transforms:
     - name: Normalize
     - name: FixedPoints
-      num: 1024
-    - name: ReorderByHilbert
+      num: 2048
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointTrans_AE_EMD
+check_point_dir: path/to/checkpoint/imagecas/PointNet_VAE_KL1eN4_ECD
 ### parameter for optimizer
 optimizer:
   name: Adam
@@ -48,8 +47,11 @@ optimizer:
   weight_decay: 0.00000001
 ### scheduler for learning rate
 lr_scheduler: 
-  name: ReduceLROnPlateau
-  patience: 5
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+sampler:
+  name: NormalSampler
 max_epoch: 500
 write_after_iters: 20
 save_after_epochs: 10

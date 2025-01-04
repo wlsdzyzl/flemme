@@ -4,7 +4,7 @@ model:
   name: VAE
   # encoder config
   encoder:
-    name: UNet
+    name: CNN
     in_channel: 1
     ## the value can be list or int
     image_size: 32
@@ -53,6 +53,7 @@ lr_scheduler:
   start_factor: 1.0
   end_factor: 0.01
 sampler:
+  rand_seed: 2024
 max_epoch: 50
 write_after_iters: 50
 save_after_epochs: 5

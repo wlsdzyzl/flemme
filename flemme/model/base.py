@@ -91,6 +91,13 @@ class BaseModel(nn.Module):
         self.encoder_name = encoder_config.get('name')
         self.decoder_name = decoder_config.get('name') if decoder_config is not None else self.encoder_name
 
+        ### point2encoder
+        if self.encoder_name in ['PointNet2', 'PointTrans2', 'PointMamba2']:
+            if self.decoder_name in ['PointNet2', 'PointTrans2', 'PointMamba2']:
+                encoder_config['is_point2decoder'] = True
+            else:
+                encoder_config['is_point2decoder'] = False
+        
         self.encoder, self.decoder = create_encoder(encoder_config=encoder_config, return_decoder=(decoder_config is None))
 
         ### create decoder

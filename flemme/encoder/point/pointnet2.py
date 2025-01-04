@@ -45,7 +45,8 @@ class Point2Encoder(nn.Module):
                  activation, dropout,
                  normalization, num_norm_groups,  
                  z_count, vector_embedding, 
-                 return_feature_list,
+                 is_point2decoder,
+                 return_xyz,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -66,8 +67,9 @@ class Point2Encoder(nn.Module):
         self.num_blocks = num_blocks
         # fps_depth
         self.fps_depth = len(fps_feature_channels)
-        self.return_feature_list = return_feature_list
+        self.is_point2decoder = is_point2decoder
         self.use_xyz = use_xyz
+        self.return_xyz = return_xyz
         if not type(self.num_fps_points) == list:
             self.num_fps_points = [self.num_fps_points,] * len(fps_feature_channels)
 
@@ -140,7 +142,6 @@ class Point2Encoder(nn.Module):
             # B * D -> B * N * D
             # local feature plus global feature
             global_features = global_features.repeat(1, self.num_fps_points[-1], 1)
-            # print(global_features.shape, features.shape)
             features = torch.concat([global_features, features], dim=-1)
         else:
             xyz = None
@@ -151,13 +152,13 @@ class Point2Encoder(nn.Module):
         if self.z_count == 1:
             features = features[0]
 
-        ### for pointnet2 decoder
-        if self.return_feature_list:
+        if self.is_point2decoder:
             xyz_list.append(xyz)
             feature_list.append(features)
             return feature_list, xyz_list
-
-        return features, xyz
+        if self.return_xyz:
+            return features, xyz
+        return features
 
     def __str__(self):
         _str = f'projection layer: {self.point_dim}->{self.projection_channel}\n'
@@ -205,7 +206,6 @@ class Point2Decoder(nn.Module):
         self.dense_path = dense_channels
         self.final = nn.Linear(dense_channels[-1], point_dim)
         self.fp = None
-        # print(in_channels, fp_channels)
         assert len(in_channels) == len(fp_channels) + 1, 'The number of feature propagation layers is ambiguous .'
         self.unknow_feature_channels = in_channels[-2:-len(in_channels) - 1:-1]
         self.known_feature_channels = [in_channels[-1],] + fp_channels[:-1]
@@ -249,8 +249,9 @@ class PointNet2Encoder(Point2Encoder):
                  normalization = 'group', num_norm_groups = 8, 
                  activation = 'lrelu', dropout = 0., 
                  vector_embedding = True, 
-                 return_feature_list = True,
+                 is_point2decoder = True,
                  z_count = 1, 
+                 return_xyz = False,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -269,7 +270,8 @@ class PointNet2Encoder(Point2Encoder):
                 num_norm_groups = num_norm_groups,  
                 z_count = z_count, 
                 vector_embedding = vector_embedding, 
-                return_feature_list = return_feature_list)
+                is_point2decoder = is_point2decoder,
+                return_xyz = return_xyz)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 

@@ -179,7 +179,13 @@ def main():
         start_time = datetime.now()
         ### training process
         model.train()
-        results = {'input':[], 'target':[], 'condition':[], 'latent':[], 'recon':[], 'seg':[], 'cluster':[]}
+        results = {'input':[], 'target':[], 
+            'condition':[], 
+            'latent':[], 
+            'recon':[], 
+            'seg':[], 
+            'cls':[],
+            'cluster':[]}
         for t in data_loader:
             x, y, _ = t
             x, y = x.to(device).float(), y.to(device)
@@ -265,7 +271,14 @@ def main():
                 ## set val_loss as loss
                 model.eval()
                 with torch.no_grad():
-                    vresults = {'input':[], 'target':[], 'condition':[], 'latent':[], 'recon':[], 'seg':[], 'cluster':[]}
+                    vresults = {'input':[], 
+                        'target':[], 
+                        'condition':[], 
+                        'latent':[], 
+                        'recon':[], 
+                        'seg':[], 
+                        'cls':[],
+                        'cluster':[]}
                     val_losses = torch.zeros(len(loss_names))
                     val_n = 0
                     for vt in val_data_loader:

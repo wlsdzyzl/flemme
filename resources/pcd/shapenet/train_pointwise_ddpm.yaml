@@ -24,7 +24,7 @@ model:
     name: MSE
 loader:
   dataset: 
-    name: PCDDataset
+    name: PcdDataset
     data_dir: 02691156/points
     data_suffix: .pts
   data_path_list: 

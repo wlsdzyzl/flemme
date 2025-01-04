@@ -26,7 +26,7 @@ model:
     - name: CE
 loader:
   dataset: 
-    name: PCDSegDataset
+    name: PcdSegDataset
     data_dir: points
     label_dir: points_label
     data_suffix: .pts

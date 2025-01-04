@@ -19,7 +19,7 @@ import yaml
 from flemme.block import channel_recover
 import shutil
 from torch_geometric.data import Batch as BatchGraph, Data as Graph
-
+from stl import mesh
 logger = get_logger('utils')
 
 class DataForm(Enum):
@@ -481,10 +481,12 @@ if module_config['point-cloud'] or module_config['graph']:
         suffix = basename.split('.')[-1]
         if suffix == 'ply':
             return load_ply(filename)
+        elif suffix == 'stl':
+            return load_stl(filename)
         elif suffix == 'xyz' or suffix == 'pts':
             return load_xyz(filename)
         else:
-            logger.warning('unsupported file format.')
+            logger.error(f'unsupported file format {suffix}.')
             raise NotImplementedError
             
     def save_pcd(filename, x):

@@ -18,7 +18,8 @@ class PointEncoder(nn.Module):
                  dense_channels,
                  activation, dropout,
                  normalization, num_norm_groups,  
-                 z_count, vector_embedding, **kwargs):
+                 z_count, vector_embedding, 
+                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
@@ -258,6 +259,8 @@ class PointDecoder(nn.Module):
         _str += '\n'
         return _str 
     def forward(self, x, t = None):
+        if type(x) == tuple:
+            x = x[0]
         x = self.dense(x, t)
         if self.folding_times > 0:
             if self.fold is None: raise NotImplementedError

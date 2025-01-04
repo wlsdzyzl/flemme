@@ -19,7 +19,7 @@ class UNetEncoder(CNNEncoder):
                  building_block='res_t', normalization = 'group', num_norm_groups = 8, cn_order = 'cn',
                  activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 abs_pos_embedding = False, z_count = 1, **kwargs):
+                 abs_pos_embedding = False, **kwargs):
         '''
         ## check down channels and middle channels
         ## each value in down channels corresponds to a downsample layer and a convolution layer
@@ -34,7 +34,7 @@ class UNetEncoder(CNNEncoder):
             num_norm_groups = num_norm_groups, cn_order = cn_order, activation = activation, dropout = dropout,
             num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
             abs_pos_embedding=abs_pos_embedding, atten_dropout = atten_dropout,
-            z_count = z_count, dense_channels = [], return_feature_list = True)
+            z_count = 1, dense_channels = [], return_feature_list = True)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
     
@@ -97,7 +97,6 @@ if module_config['transformer']:
                     normalization = 'group', num_norm_groups = 8, 
                     num_blocks = 2, activation = 'silu', 
                     abs_pos_embedding = False,
-                    z_count = 1, 
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 patch_size = patch_size, patch_channel = patch_channel, time_channel = time_channel,
@@ -108,7 +107,7 @@ if module_config['transformer']:
                 normalization = normalization, num_norm_groups = num_norm_groups, 
                 num_blocks = num_blocks, activation = activation, 
                 abs_pos_embedding = abs_pos_embedding, 
-                z_count = z_count, dense_channels = [], return_feature_list = True)
+                z_count = 1, dense_channels = [], return_feature_list = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class ViTUNetDecoder(ViTDecoder):
@@ -175,7 +174,6 @@ if module_config['transformer']:
                     normalization = 'group', num_norm_groups = 8, 
                     num_blocks = 2, activation = 'silu', 
                     abs_pos_embedding = False,
-                    z_count = 1, 
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 window_size = window_size, time_channel = time_channel,
@@ -187,7 +185,7 @@ if module_config['transformer']:
                 normalization = normalization, num_norm_groups = num_norm_groups, 
                 num_blocks = num_blocks, activation = activation, 
                 abs_pos_embedding = abs_pos_embedding, 
-                z_count = z_count, dense_channels = [], return_feature_list = True)
+                z_count = 1, dense_channels = [], return_feature_list = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class SwinUNetDecoder(SwinDecoder):
@@ -267,7 +265,6 @@ if module_config['mamba']:
                     head_channel = 64, 
                     learnable_init_states = True, 
                     chunk_size=256,
-                    z_count = 1, 
                     **kwargs):
             super().__init__(image_size, image_channel = image_channel, 
                     time_channel = time_channel,
@@ -289,7 +286,7 @@ if module_config['mamba']:
                     num_blocks = num_blocks, activation = activation, 
                     scan_mode = scan_mode, flip_scan=flip_scan, 
                     abs_pos_embedding = abs_pos_embedding,
-                    z_count = z_count, dense_channels = [],
+                    z_count = 1, dense_channels = [],
                     return_feature_list = True)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))

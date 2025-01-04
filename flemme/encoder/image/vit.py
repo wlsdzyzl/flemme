@@ -128,7 +128,7 @@ class ViTEncoder(nn.Module):
             x = x.reshape(x.shape[0], -1)
             x = [ self.dense[i](x) for i in range(self.z_count) ]
         else:
-            x = torch.chunk(x, self.z_count, dim = -1)
+            x = list(torch.chunk(x, self.z_count, dim = -1))
         if self.z_count == 1:
             x = x[0]
         if self.return_feature_list:

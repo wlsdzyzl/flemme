@@ -44,6 +44,8 @@ def create_loader(loader_config):
             "If suffix is provided in loader config, it should be a list and has the equal length to the data_path_list."
     if dataset_cls_str == 'ImgDataset':
         dataset_class = ImgDataset
+    if dataset_cls_str == 'ImgClsDataset':
+        dataset_class = ImgClsDataset
     elif dataset_cls_str == 'ImgSegDataset' or dataset_cls_str == 'ImgReconDataset':
         dataset_class = ImgSegDataset
         process_label = True
@@ -56,11 +58,13 @@ def create_loader(loader_config):
         dataset_class = CIFAR10Wrapper
     elif dataset_cls_str == 'CelebA':
         dataset_class = CelebAWrapper
-    elif dataset_cls_str == 'PCDDataset':
-        dataset_class = PCDDataset
+    elif dataset_cls_str == 'PcdDataset':
+        dataset_class = PcdDataset
         data_form = DataForm.PCD
-    elif dataset_cls_str == 'PCDSegDataset':
-        dataset_class = PCDSegDataset
+    if dataset_cls_str == 'PcdClsDataset':
+        dataset_class = PcdClsDataset
+    elif dataset_cls_str == 'PcdSegDataset':
+        dataset_class = PcdSegDataset
         data_form = DataForm.PCD
         process_label = True
     elif dataset_cls_str == 'PointDataset':
@@ -72,6 +76,7 @@ def create_loader(loader_config):
     elif dataset_cls_str == 'GraphDataset':
         dataset_class = GraphDataset
         data_form = DataForm.GRAPH
+    ### read shapenet as graph
     elif dataset_cls_str == 'GraphShapeNet':
         dataset_class = GraphShapeNetWrapper
         data_form = DataForm.GRAPH

@@ -1,0 +1,275 @@
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/000442 ...
+unknown label: tumoredbrain
+unknown label: vertebrae
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/000442/000442_vertebraeT3.stl
+File too large, got 875442995 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/001313 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/001313/001313_ribcartilage.stl
+File too large, got 959590702 triangles which exceeds the maximum of 100000000
+unknown label: ribcartilage
+unknown label: vertebrae
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/001313/001313_vertebraeL2.stl
+File too large, got 892481075 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/001313/001313_vertebraeT12.stl
+File too large, got 808465465 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002056 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002056/002056_pulmonaryartery.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+unknown label: pulmonaryartery
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002056/002056_sacrum.stl
+File too large, got 841889337 triangles which exceeds the maximum of 100000000
+unknown label: sacrum
+unknown label: vertebrae
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002459 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002459/002459_portalveinandsplenicvein.stl
+File too large, got 892809781 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002459/002459_scapularight.stl
+File too large, got 926428729 triangles which exceeds the maximum of 100000000
+unknown label: scapularight
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002459/002459_sternum.stl
+File too large, got 909128504 triangles which exceeds the maximum of 100000000
+unknown label: sternum
+unknown label: vertebrae
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002459/002459_vertebraeC5.stl
+File too large, got 859057721 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002459/002459_vertebraeC6.stl
+File too large, got 825243955 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002459/002459_vertebraeL2.stl
+File too large, got 925776181 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002459/002459_vertebraeT3.stl
+File too large, got 825571120 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002737 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002737/002737_scapularight.stl
+File too large, got 808335153 triangles which exceeds the maximum of 100000000
+unknown label: scapularight
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002737/002737_spinalcanal.stl
+File too large, got 808794420 triangles which exceeds the maximum of 100000000
+unknown label: spinalcanal
+unknown label: vertebrae
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002737/002737_vertebraeC5.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/002737/002737_vertebraeL2.stl
+File too large, got 876164665 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/003164 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/003164/003164_scapularight.stl
+File too large, got 1634100334 triangles which exceeds the maximum of 100000000
+unknown label: scapularight
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/003164/003164_thymus.stl
+File too large, got 959854894 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/003164/003164_trachea.stl
+File too large, got 876164665 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/003164/003164_uterus.stl
+File too large, got 909717045 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/003164/003164_vertebraeT12.stl
+File too large, got 1919251573 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/004329 ...
+unknown label: prostate
+unknown label: ribcartilage
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/004329/004329_thyroidright.stl
+File too large, got 959330361 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/004329/004329_vertebraeC6.stl
+File too large, got 842348854 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/004329/004329_vertebraeT3.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005001 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005001/005001_spinalcanal.stl
+File too large, got 1634100334 triangles which exceeds the maximum of 100000000
+unknown label: spinalcanal
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005001/005001_thymus.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005001/005001_thyroidleft.stl
+File too large, got 842542643 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005001/005001_vertebraeC1.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005001/005001_vertebraeL4.stl
+File too large, got 808858928 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005001/005001_vertebraeT3.stl
+File too large, got 808660533 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005001/005001_vertebraeT4.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005703 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005703/005703_prostate.stl
+File too large, got 908996916 triangles which exceeds the maximum of 100000000
+unknown label: prostate
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005703/005703_ribcartilage.stl
+File too large, got 1919251573 triangles which exceeds the maximum of 100000000
+unknown label: ribcartilage
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005703/005703_sacrum.stl
+File too large, got 875639350 triangles which exceeds the maximum of 100000000
+unknown label: sacrum
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/005703/005703_vertebraeC3.stl
+File too large, got 925775667 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006412 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006412/006412_spleen.stl
+File too large, got 1869573152 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006919 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006919/006919_pancreas.stl
+File too large, got 544367988 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006919/006919_pulmonaryartery.stl
+File too large, got 825111350 triangles which exceeds the maximum of 100000000
+unknown label: pulmonaryartery
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006919/006919_thymus.stl
+File too large, got 825111601 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006919/006919_vertebraeT10.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006919/006919_vertebraeT11.stl
+File too large, got 959329329 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006968 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006968/006968_vertebraeL1.stl
+File too large, got 842609717 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006968/006968_ribcartilage.stl
+File too large, got 757086007 triangles which exceeds the maximum of 100000000
+unknown label: ribcartilage
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006968/006968_vertebraeL2.stl
+File too large, got 875442737 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/006968/006968_vertebraeT10.stl
+File too large, got 808334129 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/007499 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/007499/007499_scapularight.stl
+File too large, got 1634100334 triangles which exceeds the maximum of 100000000
+unknown label: scapularight
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/007499/007499_uterus.stl
+File too large, got 825112372 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/007563 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/007563/007563_prostate.stl
+File too large, got 841889075 triangles which exceeds the maximum of 100000000
+unknown label: prostate
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/007954 ...
+unknown label: sacrum
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/007954/007954_spleen.stl
+File too large, got 926494260 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/007954/007954_stomach.stl
+File too large, got 544367988 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008282 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008282/008282_vertebraeL1.stl
+File too large, got 909128494 triangles which exceeds the maximum of 100000000
+unknown label: scapularight
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008282/008282_vertebraeC6.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008282/008282_vertebraeT4.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008512 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008512/008512_vertebraeL1.stl
+File too large, got 544367988 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008512/008512_pulmonaryartery.stl
+File too large, got 1814065765 triangles which exceeds the maximum of 100000000
+unknown label: pulmonaryartery
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008512/008512_spinalcanal.stl
+File too large, got 959591470 triangles which exceeds the maximum of 100000000
+unknown label: spinalcanal
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008512/008512_uterus.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008512/008512_vertebraeT4.stl
+File too large, got 808263732 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008517 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008517/008517_portalveinandsplenicvein.stl
+File too large, got 926496822 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008517/008517_stomach.stl
+File too large, got 892939825 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008525 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008525/008525_vertebraeL2.stl
+File too large, got 942551090 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008525/008525_vertebraeT12.stl
+File too large, got 825701940 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008717 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008717/008717_pulmonaryartery.stl
+File too large, got 942812721 triangles which exceeds the maximum of 100000000
+unknown label: pulmonaryartery
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008717/008717_scapulaleft.stl
+File too large, got 908996661 triangles which exceeds the maximum of 100000000
+unknown label: scapulaleft
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008717/008717_skull.stl
+File too large, got 842544179 triangles which exceeds the maximum of 100000000
+unknown label: skull
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008717/008717_thyroidleft.stl
+File too large, got 908997426 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/008717/008717_vertebraeT11.stl
+File too large, got 908997169 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009110 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009110/009110_sacrum.stl
+File too large, got 875836471 triangles which exceeds the maximum of 100000000
+unknown label: sacrum
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009110/009110_scapulaleft.stl
+File too large, got 808334388 triangles which exceeds the maximum of 100000000
+unknown label: scapulaleft
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009110/009110_thyroidright.stl
+File too large, got 959330356 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009110/009110_vertebraeC2.stl
+File too large, got 925775408 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009110/009110_vertebraeT1.stl
+File too large, got 875443504 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009110/009110_vertebraeT11.stl
+File too large, got 808466734 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009110/009110_vertebraeT12.stl
+File too large, got 892743223 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009129 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009129/009129_sacrum.stl
+File too large, got 925775921 triangles which exceeds the maximum of 100000000
+unknown label: sacrum
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009129/009129_vertebraeL3.stl
+File too large, got 959920434 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009129/009129_vertebraeL5.stl
+File too large, got 1970216992 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009129/009129_vertebraeT3.stl
+File too large, got 875771696 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009310 ...
+unknown label: pulmonaryartery
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009310/009310_scapulaleft.stl
+File too large, got 892549422 triangles which exceeds the maximum of 100000000
+unknown label: scapulaleft
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009310/009310_sternum.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+unknown label: sternum
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009401 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009401/009401_thymus.stl
+File too large, got 875967026 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009401/009401_vertebraeT3.stl
+File too large, got 875835957 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009791 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009791/009791_pulmonaryartery.stl
+File too large, got 875704366 triangles which exceeds the maximum of 100000000
+unknown label: pulmonaryartery
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009791/009791_scapularight.stl
+File too large, got 842150966 triangles which exceeds the maximum of 100000000
+unknown label: scapularight
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009791/009791_spleen.stl
+File too large, got 842215990 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/009791/009791_vertebraeL1.stl
+File too large, got 859320366 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010303 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010303/010303_vertebraeC7.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010303/010303_vertebraeT11.stl
+File too large, got 168653925 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010445 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010445/010445_uterus.stl
+File too large, got 825112624 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010445/010445_vertebraeC6.stl
+File too large, got 859189555 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010445/010445_vertebraeT10.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010445/010445_vertebraeT3.stl
+File too large, got 825701941 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010464 ...
+unknown label: prostate
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010464/010464_smallbowel.stl
+File too large, got 926496567 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010464/010464_vertebraeC1.stl
+File too large, got 1717857893 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010527 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010527/010527_vertebraeC1.stl
+File too large, got 808335408 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/010527/010527_vertebraeL4.stl
+File too large, got 841889329 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/011736 ...
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/011736/011736_vertebraeL1.stl
+File too large, got 858665008 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/011736/011736_portalveinandsplenicvein.stl
+File too large, got 1684956448 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/011736/011736_stomach.stl
+File too large, got 859255349 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/011736/011736_vertebraeL2.stl
+File too large, got 959527224 triangles which exceeds the maximum of 100000000
+loading stl from /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/011736/011736_vertebraeT3.stl
+File too large, got 959655481 triangles which exceeds the maximum of 100000000
+Processing /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/by_number/012499 ...

@@ -36,6 +36,51 @@ class ImgDataset(Dataset):
         if self.data_transform is not None:
             img = self.data_transform(img)
         return img, 0, img_path
+
+class ImgClsDataset(Dataset):
+    def __init__(self, data_path, 
+                dim = 2,
+                data_transform = None, 
+                mode = 'train', 
+                data_suffix = '.ply',
+                pre_shuffle = True,
+                class_dirs = [],  
+                class_to_label = {},
+                **kwargs):
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters: {}".format(kwargs))
+        self.data_path = data_path
+        self.mode = mode
+        self.dim = dim
+        self.data_transform = data_transform
+        self.img_path_list = []
+        self.labels = []
+        for cls_dir in class_dirs:
+            sub_path_list = sorted(glob.glob(os.path.join(data_path + '/' + cls_dir,  "*" + data_suffix)))
+            self.img_path_list = self.img_path_list + sub_path_list
+            assert cls_dir in class_to_label, f'Unknowk class: {cls_dir}'
+            self.labels = self.labels + [class_to_label[cls_dir], ] * len(sub_path_list)
+        if pre_shuffle:
+            shuffled_index = np.random.shuffle(np.arange(len(sub_path_list)))
+            self.img_path_list = [self.img_path_list[sid] for i in shuffled_index]
+            self.labels = [self.labels[sid] for i in shuffled_index]
+    def __len__(self):
+        return len(self.img_path_list)
+    ### the dataset will not be stored in the memory
+    def __getitem__(self, index):
+        """Get the images"""
+        img_path = self.img_path_list[index]
+        label = self.labels[index]
+        if self.dim == 2:
+            img = load_img(img_path)
+        else:
+            img = load_itk(img_path)[0]
+        if self.data_transform is not None:
+            img = self.data_transform(img)
+
+        return img, label, img_path
+
 class ImgSegDataset(Dataset):
     def __init__(self, data_path, dim = 2, data_transform = None, mode = 'train', 
                  data_dir = 'raw', label_dir = 'label', data_suffix='.png', 

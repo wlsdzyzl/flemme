@@ -137,12 +137,29 @@ if module_config['point-cloud']:
         def forward(self, x, y):
             d1, d2 = self.chamfer(x, y)
             d1, d2 = d1.mean(dim=-1), d2.mean(dim=-1)
+            dist = (d1 + d2) * 0.5
             if self.reduction == 'sum':
-                return 0.5 * (torch.sum(d1) + torch.sum(d2))
+                return dist.sum()
             elif self.reduction == "mean":
-                return 0.5 * (torch.mean(d1) + torch.mean(d2))
+                return dist.mean()
             else:
-                return d1, d2
+                return dist
+    class ExtendedChamferLoss(nn.Module):
+        def __init__(self, reduction = 'mean'):
+            super().__init__()
+            self.reduction = reduction
+            self.chamfer = ChamferDistance()
+        def forward(self, x, y):
+            d1, d2 = self.chamfer(x, y)
+            d1, d2 = d1.mean(dim=-1, keepdim=True), d2.mean(dim=-1, keepdim=True)
+            ## for each pair of point cloud,  we compute the maximum distance
+            dist, _ = torch.max(torch.cat([d1, d2], dim = -1), dim = -1)
+            if self.reduction == 'sum':
+                return dist.sum()
+            elif self.reduction == "mean":
+                return dist.mean()
+            else:
+                return dist
     ## Wasserstein distance based on optimal transport
     ## a small value of eps leads to bad reconstruction
     class EMDLoss(nn.Module):

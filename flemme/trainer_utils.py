@@ -369,6 +369,7 @@ def create_batch_evaluators(eval_metrics, data_form):
     r_eval = create_evaluator(eval_metrics.get('recon', []), data_form)
     s_eval = create_evaluator(eval_metrics.get('seg', []), data_form)
     c_eval = create_evaluator(eval_metrics.get('cluster', []), data_form)
+    cls_eval = create_evaluator(eval_metrics.get('cls', []), data_form)
     evaluators = {}
 
     if r_eval is not None: 
@@ -377,12 +378,16 @@ def create_batch_evaluators(eval_metrics, data_form):
         evaluators['seg'] = s_eval
     if c_eval is not None: 
         evaluators['cluster'] = c_eval
+    if cls_eval is not None:
+        evaluators['cls'] = cls_eval
     return evaluators
 
 def evaluate_results(results, evaluators, data_form):
+
     sample_num = len(results['input'])
     if data_form == DataForm.GRAPH:
         sample_num = sum([g.batch_size for g in results['input']])
+    
     eval_res = {}
     for eval_type in evaluators:
         if len(results[eval_type]) == 0:
@@ -392,6 +397,9 @@ def evaluate_results(results, evaluators, data_form):
             if eval_type == 'cluster':
                 for (eval_metric, eval_func) in evaluators[eval_type].items():
                     eval_res[eval_type][eval_metric] = eval_func(results['cluster'], results['target'])
+            elif eval_type == 'cls':
+                for (eval_metric, eval_func) in evaluators[eval_type].items():
+                    eval_res[eval_type][eval_metric] = eval_func(results['cls'], results['target'])
             else:
                 for (eval_metric, eval_func) in evaluators[eval_type].items():
                     eval_res[eval_type][eval_metric] = 0.0

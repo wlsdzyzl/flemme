@@ -6,39 +6,44 @@ model:
   name: VAE
   # encoder config
   encoder:
-    name: PointNet
+    name: PointNet2
     in_channel: 3
-    point_num: 1024
+    point_num: 2048
     building_block: dense
-    num_neighbors_k: 20
-    local_feature_channels: [64, 64, 128, 256, 512]
+    num_neighbors_k: 32
+    num_fps_points: [1024, 512, 256, 128]
+    fps_feature_channels: [128, 256, 512, 1024]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.8]
     dense_channels: [1024]
-    decoder_dense_channels: [512, 256]
-    activation: lrelu
-    normalization: group
-    vector_embedding: True
+    activation: relu
+    normalization: batch
+    vector_embedding: true
+  decoder:
+    name: PointNet
+    dense_channels: [512, 256]
+    # folding_times: 2
   reconstruction_losses: 
-    - name: EMD
+    - name: ECD
   distribution_loss:
     name: KL
-    weight: 0.1
+    weight: 0.0001
 loader:
   dataset: 
     name: PcdDataset
-    data_dir: 02691156/points
-    data_suffix: .pts
+    data_dir: left
+    data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0
-  batch_size: 32
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/lrply/surface/
+  batch_size: 16
   num_workers: 8
   shuffle: true
   data_transforms:
     - name: Normalize
     - name: FixedPoints
-      num: 1024
+      num: 2048
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet/PointNet_VAE_EMD_LOCAL_K
+check_point_dir: path/to/checkpoint/imagecas/PointNet2_VAE_KL1eN4_ECD
 ### parameter for optimizer
 optimizer:
   name: Adam
@@ -46,9 +51,11 @@ optimizer:
   weight_decay: 0.00000001
 ### scheduler for learning rate
 lr_scheduler: 
-  name: ReduceLROnPlateau
-  patience: 5
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
 sampler:
+  name: NormalSampler
 max_epoch: 500
 write_after_iters: 20
 save_after_epochs: 10

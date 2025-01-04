@@ -17,9 +17,7 @@ def get_loss(loss_config, data_form = DataForm.IMG):
         return TorchLoss(torch_loss = nn.L1Loss, **loss_config)
     if loss_name == 'SSIM':
         return SSIMLoss(**loss_config)
-    if loss_name == 'BCE':
-        return TorchLoss(torch_loss = nn.BCELoss, **loss_config)
-    if loss_name == 'BCEL':
+    if loss_name == 'BCE' or loss_name == 'BCEL':
         return TorchLoss(torch_loss = nn.BCEWithLogitsLoss, **loss_config)
     if loss_name == 'CE':
         return TorchLoss(torch_loss = nn.CrossEntropyLoss, channel_dim=channel_dim, **loss_config)
@@ -35,6 +33,8 @@ def get_loss(loss_config, data_form = DataForm.IMG):
         return EMDLoss(**loss_config)
     if loss_name == 'Chamfer' or loss_name == 'CD':
         return ChamferLoss(**loss_config)
+    if loss_name == 'EChamfer' or loss_name == 'ECD':
+        return ExtendedChamferLoss(**loss_config)
     if loss_name == 'Sinkhorn':
         return SinkhornLoss(**loss_config)
     if loss_name == 'Sphere':

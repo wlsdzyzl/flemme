@@ -1,0 +1,57 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: test
+model:
+  name: VAE
+  # encoder config
+  encoder:
+    name: PointNet2
+    in_channel: 3
+    point_num: 2048
+    building_block: dense
+    num_neighbors_k: 32
+    num_fps_points: [1024, 512, 256, 128]
+    fps_feature_channels: [128, 256, 512, 1024]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.8]
+    dense_channels: [1024]
+    activation: relu
+    normalization: batch
+    vector_embedding: true
+  decoder:
+    name: PointNet
+    dense_channels: [512, 256]
+    # folding_times: 2
+loader:
+  dataset: 
+    name: PcdDataset
+    data_dir: left
+    data_suffix: ply
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/lrply/surface/
+  batch_size: 32
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+model_path: path/to/checkpoint/imagecas/PointNet2_VAE_KL1eN4_ECD/ckp_best_loss.pth
+
+recon_dir: /home/wlsdzyzl/project/flemme/results/recon/imagecas/lrply/surface/left/vae_pointnet
+evaluation_metrics:
+  recon:
+    - name: Chamfer
+    - name: EMD
+
+eval_gen:
+  sampler:
+    name: NormalSampler
+  gen_dir: /home/wlsdzyzl/project/flemme/results/gen/imagecas/lrply/surface/left/vae_pointnet
+  interpolation:
+    group_num: 2
+    corner_num: 4
+    inter_num: 8
+  ### new generation from random noise
+  random_sample_num: 64

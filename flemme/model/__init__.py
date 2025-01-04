@@ -7,6 +7,7 @@ from flemme.model.ddim import DiffusionImplicit as DDIM
 from flemme.model.ldm import LatentDiffusionProbabilistic as LDPM, LatentDiffusionImplicit as LDIM, supported_ae_models
 from flemme.model.sdm import SupervisedDiffusionProbabilistic as SDPM, SupervisedDiffusionImplicit as SDIM
 from flemme.model.half import OnlyDecoder, OnlyEncoder
+from flemme.model.cls import ClassificationModel as ClM
 from flemme.utils import load_config
 from flemme.logger import get_logger
 logger = get_logger('model.create_model')
@@ -15,7 +16,9 @@ supported_models = {
     'Base': Base,
     #### h-base model
     'HBase': HBase,
-    #### base model with segmentation loss
+    #### classification model: encoder with classification loss
+    'ClM': ClM,
+    #### segmentation model: base model with segmentation loss
     'SeM': SeM,
     #### h-base model with segmentation loss
     'HSeM': HSeM,
