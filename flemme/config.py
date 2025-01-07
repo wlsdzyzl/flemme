@@ -9,6 +9,6 @@ module_config = {
     ### geometric_torch
     'graph': True,
     'logger_level': logging.INFO,
-    'color_map': 'Custom'
+    'color_map': 'Scannet'
 
 }

@@ -33,8 +33,8 @@ def get_loss(loss_config, data_form = DataForm.IMG):
         return EMDLoss(**loss_config)
     if loss_name == 'Chamfer' or loss_name == 'CD':
         return ChamferLoss(**loss_config)
-    if loss_name == 'EChamfer' or loss_name == 'ECD':
-        return ExtendedChamferLoss(**loss_config)
+    if loss_name == 'DChamfer' or loss_name == 'DCD':
+        return DensityAwareChamferLoss(**loss_config)
     if loss_name == 'Sinkhorn':
         return SinkhornLoss(**loss_config)
     if loss_name == 'Sphere':

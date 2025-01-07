@@ -24,7 +24,7 @@ model:
       # width: 1.0
       # height: 1.0
   reconstruction_losses: 
-    - name: ECD
+    - name: DCD
       eps: 0.005
       iters: 50
     # - name: CD

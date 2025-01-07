@@ -34,7 +34,7 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-model_path: path/to/checkpoint/imagecas/PointNet_VAE_KL1eN4_ECD/ckp_best_loss.pth
+model_path: path/to/checkpoint/imagecas/PointNet_VAE_KL1eN4_DCD/ckp_best_loss.pth
 
 recon_dir: /home/wlsdzyzl/project/flemme/results/recon/imagecas/lrply/surface/left/vae_pointnet_ecd
 evaluation_metrics:

@@ -23,7 +23,7 @@ model:
     dense_channels: [512, 256]
     # folding_times: 2
   reconstruction_losses: 
-    - name: ECD
+    - name: DCD
   distribution_loss:
     name: KL
     weight: 0.0001
@@ -43,7 +43,7 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/imagecas/PointNet2_VAE_KL1eN4_ECD
+check_point_dir: path/to/checkpoint/imagecas/PointNet2_VAE_KL1eN4_DCD
 ### parameter for optimizer
 optimizer:
   name: Adam

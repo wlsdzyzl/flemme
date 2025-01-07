@@ -130,36 +130,70 @@ if module_config['point-cloud']:
     ### The following loss can be used as reconstruction loss for point clouds
     ## Chamfer distance
     class ChamferLoss(nn.Module):
-        def __init__(self, reduction = 'mean'):
+        def __init__(self, reduction = 'mean', extended = False):
             super().__init__()
             self.reduction = reduction
             self.chamfer = ChamferDistance()
+            self.extended = extended
+        def calc_cd(self, x, gt):
+            return self.chamfer(x, gt)
         def forward(self, x, y):
-            d1, d2 = self.chamfer(x, y)
-            d1, d2 = d1.mean(dim=-1), d2.mean(dim=-1)
-            dist = (d1 + d2) * 0.5
-            if self.reduction == 'sum':
-                return dist.sum()
-            elif self.reduction == "mean":
-                return dist.mean()
-            else:
-                return dist
-    class ExtendedChamferLoss(nn.Module):
-        def __init__(self, reduction = 'mean'):
-            super().__init__()
-            self.reduction = reduction
-            self.chamfer = ChamferDistance()
-        def forward(self, x, y):
-            d1, d2 = self.chamfer(x, y)
+            d1, d2 = self.calc_cd(x, y)
             d1, d2 = d1.mean(dim=-1, keepdim=True), d2.mean(dim=-1, keepdim=True)
-            ## for each pair of point cloud,  we compute the maximum distance
-            dist, _ = torch.max(torch.cat([d1, d2], dim = -1), dim = -1)
+            if self.extended:
+                ## for each pair of point cloud,  we compute the maximum distance
+                dist, _ = torch.max(torch.cat([d1, d2], dim = -1), dim = -1)
+            else:
+                dist = ((d1 + d2) * 0.5).squeeze(-1)
             if self.reduction == 'sum':
                 return dist.sum()
             elif self.reduction == "mean":
                 return dist.mean()
             else:
                 return dist
+    ## from `Density-aware Chamfer Distance as a Comprehensive Metric for Point Cloud Completion`, 
+    ## https://arxiv.org/pdf/2111.12702
+    class DensityAwareChamferLoss(ChamferLoss):
+        def __init__(self, reduction = 'mean', extended = False, 
+                alpha=1000, n_lambda=1, non_reg=False):
+            super().__init__(reduction, extended)
+            self.reduction = reduction
+            self.chamfer = ChamferDistance()
+            self.alpha = alpha
+            self.n_lambda = n_lambda
+            self.non_reg = non_reg
+        def calc_cd(self, x, gt):
+            x = x.float()
+            gt = gt.float()
+            batch_size, n_x, _ = x.shape
+            batch_size, n_gt, _ = gt.shape
+            assert x.shape[0] == gt.shape[0]
+
+            if self.non_reg:
+                frac_12 = max(1, n_x / n_gt)
+                frac_21 = max(1, n_gt / n_x)
+            else:
+                frac_12 = n_x / n_gt
+                frac_21 = n_gt / n_x
+
+            dist1, dist2, idx1, idx2 = self.chamfer(x, gt, return_idx=True)
+            # dist1 (batch_size, n_gt): a gt point finds its nearest neighbour x' in x;
+            # idx1  (batch_size, n_gt): the idx of x' \in [0, n_x-1]
+            # dist2 and idx2: vice versa
+            exp_dist1, exp_dist2 = torch.exp(-dist1 * self.alpha), torch.exp(-dist2 * self.alpha)
+
+            count1 = torch.zeros_like(idx2)
+            count1.scatter_add_(1, idx1.long(), torch.ones_like(idx1))
+            weight1 = count1.gather(1, idx1.long()).float().detach() ** self.n_lambda
+            weight1 = (weight1 + 1e-6) ** (-1) * frac_21
+            loss1 = (1 - exp_dist1 * weight1)
+
+            count2 = torch.zeros_like(idx1)
+            count2.scatter_add_(1, idx2.long(), torch.ones_like(idx2))
+            weight2 = count2.gather(1, idx2.long()).float().detach() ** self.n_lambda
+            weight2 = (weight2 + 1e-6) ** (-1) * frac_12
+            loss2 = (1 - exp_dist2 * weight2)
+            return loss1, loss2
     ## Wasserstein distance based on optimal transport
     ## a small value of eps leads to bad reconstruction
     class EMDLoss(nn.Module):

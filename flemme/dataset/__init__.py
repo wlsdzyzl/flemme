@@ -61,7 +61,7 @@ def create_loader(loader_config):
     elif dataset_cls_str == 'PcdDataset':
         dataset_class = PcdDataset
         data_form = DataForm.PCD
-    if dataset_cls_str == 'PcdClsDataset':
+    elif dataset_cls_str == 'PcdClsDataset':
         dataset_class = PcdClsDataset
     elif dataset_cls_str == 'PcdSegDataset':
         dataset_class = PcdSegDataset

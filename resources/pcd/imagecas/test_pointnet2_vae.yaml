@@ -37,9 +37,9 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-model_path: path/to/checkpoint/imagecas/PointNet2_VAE_KL1eN4_ECD/ckp_best_loss.pth
+model_path: path/to/checkpoint/imagecas/PointNet2_VAE_KL1eN4_DCD/ckp_best_loss.pth
 
-recon_dir: /home/wlsdzyzl/project/flemme/results/recon/imagecas/lrply/surface/left/vae_pointnet
+recon_dir: /home/wlsdzyzl/project/flemme/results/recon/imagecas/lrply/surface/left/vae_pointnet2_ecd
 evaluation_metrics:
   recon:
     - name: Chamfer
@@ -48,7 +48,7 @@ evaluation_metrics:
 eval_gen:
   sampler:
     name: NormalSampler
-  gen_dir: /home/wlsdzyzl/project/flemme/results/gen/imagecas/lrply/surface/left/vae_pointnet
+  gen_dir: /home/wlsdzyzl/project/flemme/results/gen/imagecas/lrply/surface/left/vae_pointnet2_ecd
   interpolation:
     group_num: 2
     corner_num: 4
