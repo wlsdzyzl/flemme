@@ -44,7 +44,7 @@ model:
 loader:
   dataset: 
     name: MNIST
-    data_path: path/to/datasets/MNIST
+    data_path: /media/wlsdzyzl/DATA/flemme-path/to/datasets/MNIST
   batch_size: 64
   num_workers: 8
   shuffle: true
@@ -56,7 +56,7 @@ loader:
     - name: Normalize
       mean: [0.1307]
       std: [0.3081]
-check_point_dir: path/to/checkpoint/MNIST/CDDPM
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CDDPM
 sampler:
   num_sample_steps: 200
   rand_seed: 2024

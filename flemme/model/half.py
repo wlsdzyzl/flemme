@@ -5,7 +5,7 @@ from flemme.logger import get_logger
 from flemme.model.embedding import get_embedding, add_embedding, concat_embedding
 from flemme.utils import DataForm
 from flemme.encoder import create_encoder
-logger = get_logger('model.base')
+logger = get_logger('model.half')
 ### some times we may want to construct a model with only encoder or decoder with conditional embedding.
 ### this might be useful, for a classification model
 class OnlyEncoder(nn.Module):

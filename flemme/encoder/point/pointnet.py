@@ -6,6 +6,7 @@ from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, \
     FoldingLayer, LocalGraphLayer, MultipleBuildingBlocks
 from flemme.logger import get_logger
+from .sphere3d import icosphere, uvsphere
 import copy
 logger = get_logger("encoder.point.pointnet")
 class PointEncoder(nn.Module):
@@ -19,6 +20,7 @@ class PointEncoder(nn.Module):
                  activation, dropout,
                  normalization, num_norm_groups,  
                  z_count, vector_embedding, 
+                 last_activation,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -44,14 +46,20 @@ class PointEncoder(nn.Module):
         dense_channels = [global_feature_channel, ] + dense_channels
         if not self.vector_embedding:
             dense_channels[0] += local_feature_channels[-1]
-        dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
-                                            time_channel = self.time_channel,
-                                            activation = self.activation, dropout=self.dropout, 
-                                            norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 2)]
-        # the last layer is a linear layer, without batch normalization
-        dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], 
-                                    time_channel = self.time_channel,
-                                    activation = None, norm = None), ]
+        if last_activation:
+            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
+                                                time_channel = self.time_channel,
+                                                activation = self.activation, dropout=self.dropout, 
+                                                norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 1)]
+        else:
+            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
+                                                time_channel = self.time_channel,
+                                                activation = self.activation, dropout=self.dropout, 
+                                                norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 2)]
+            # the last layer is a linear layer, without batch normalization
+            dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], 
+                                        time_channel = self.time_channel,
+                                        activation = None, norm = None), ]
         self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
@@ -114,7 +122,8 @@ class PointNetEncoder(PointEncoder):
                  building_block = 'dense', 
                  normalization = 'group', num_norm_groups = 8, 
                  activation = 'lrelu', dropout = 0., 
-                 z_count = 1, vector_embedding = True, **kwargs):
+                 z_count = 1, vector_embedding = True, 
+                 last_activation = True, **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
                 time_channel = time_channel,
@@ -125,7 +134,8 @@ class PointNetEncoder(PointEncoder):
                 normalization = normalization,
                 num_norm_groups = num_norm_groups,
                 activation = activation, dropout = dropout, 
-                z_count = z_count, vector_embedding = vector_embedding)
+                z_count = z_count, vector_embedding = vector_embedding, 
+                last_activation = last_activation)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 
@@ -156,14 +166,14 @@ class PointNetEncoder(PointEncoder):
         self.lf = nn.ModuleList(lf_sequence)
 
 class PointDecoder(nn.Module):
-    def __init__(self, point_dim=3, point_num = 2048, 
-                in_channel = 256, time_channel = 0, 
-                dense_channels = [], 
-                normalization = 'group', num_norm_groups = 8, 
-                activation = 'lrelu', dropout = 0., 
-                folding_times = 0, 
-                base_shape_config = {}, 
-                vector_embedding = True, 
+    def __init__(self, point_dim, point_num, 
+                in_channel, time_channel, 
+                dense_channels, 
+                normalization, num_norm_groups, 
+                activation, dropout, 
+                folding_times, 
+                base_shape_config, 
+                vector_embedding, 
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -211,8 +221,10 @@ class PointDecoder(nn.Module):
                 zz = np.linspace(-depth / 2, depth / 2, grid_len, dtype=np.float32)
                 np_grid = np.stack(np.meshgrid(xx, yy, zz), axis=-1)   # (grid_len, grid_len, grid_len, 3)
                 self.base_shape = torch.Tensor(np_grid).view(-1, 3)
-            elif base_shape == 'sphere':
-                pass
+            elif base_shape == 'icosphere':
+                self.base_shape = torch.from_numpy(icosphere(point_num))
+            elif base_shape == 'uvsphere':
+                self.base_shape = torch.from_numpy(uvsphere(point_num))
             elif base_shape == 'cylinder':
                 self.base_shape_dim = 3
                 c_len = int(point_num**0.5) * 2
@@ -252,10 +264,10 @@ class PointDecoder(nn.Module):
         for c in self.dense_path:
             _str += '{}->'.format(c)  
         _str += f'{self.point_dim}'
-        if self.folding_times > 0:
-            _str+= f'\nFold for {self.folding_times} times to {self.point_dim}'
-        else:
-            _str += f'-> {self.point_dim})'
+        # if self.folding_times > 0:
+        #     _str+= f'\nFold for {self.folding_times} times to {self.point_dim}'
+        # else:
+        #     _str += f'-> {self.point_dim}'
         _str += '\n'
         return _str 
     def forward(self, x, t = None):

@@ -5,12 +5,14 @@ from flemme.utils import DataForm
 from torchvision.transforms import Compose
 from flemme.augment import get_transforms, select_label_transforms, check_random_transforms
 from flemme.logger import get_logger
+from .label_dict import get_cls_label
 if module_config['point-cloud']:
     from .pcd import *
     from .point import PointDataset, ToyDataset
 if module_config['graph']:
     from .graph import *
     from torch_geometric.loader import DataLoader as GraphLoader
+
 logger = get_logger('dataset')
 
 
@@ -63,6 +65,7 @@ def create_loader(loader_config):
         data_form = DataForm.PCD
     elif dataset_cls_str == 'PcdClsDataset':
         dataset_class = PcdClsDataset
+        data_form = DataForm.PCD
     elif dataset_cls_str == 'PcdSegDataset':
         dataset_class = PcdSegDataset
         data_form = DataForm.PCD
@@ -96,8 +99,9 @@ def create_loader(loader_config):
     data_transforms = Compose(data_transforms)
     dataset_config['data_transform'] = data_transforms
     ### label_transform and label
-    if process_label:
-        label_trans_config_list = loader_config.get('label_transforms', None)
+    label_trans_config_list = loader_config.get('label_transforms', None)
+    if process_label or label_trans_config_list is not None:
+        
         if label_trans_config_list is None:
             logger.info('There is no specified transforms for labels, we would generate the necessary transforms for labels automatically.')
             label_trans_config_list = \
@@ -130,6 +134,11 @@ def create_loader(loader_config):
 
     logger.info(f'Batch size for {mode} loader: {batch_size}')
     
+
+    ### for classification dataset
+    cls_label = dataset_config.get('cls_label', None)
+    if cls_label is not None and not type(cls_label) == dict:
+        dataset_config['cls_label'] = get_cls_label(cls_label)
     shuffle = loader_config.get('shuffle', None)
     # if shuffle is not set, we use the mode to determine whether the datasets need to be shuffled
     if shuffle is None:

@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import Dataset
 from glob import glob
 from torchvision.datasets import MNIST, CIFAR10, CelebA
-from flemme.utils import load_img, load_itk, set_random_state, get_random_state, crop_boundingbox
+from flemme.utils import load_img, load_itk, set_random_state, get_random_state, crop_boundingbox, rreplace
 from flemme.logger import get_logger
 from functools import partial
 # image segmentation dataloader
@@ -41,11 +41,12 @@ class ImgClsDataset(Dataset):
     def __init__(self, data_path, 
                 dim = 2,
                 data_transform = None, 
+                label_transform = None,
                 mode = 'train', 
                 data_suffix = '.ply',
                 pre_shuffle = True,
                 class_dirs = [],  
-                class_to_label = {},
+                cls_label = {},
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -54,17 +55,18 @@ class ImgClsDataset(Dataset):
         self.mode = mode
         self.dim = dim
         self.data_transform = data_transform
+        self.label_transform = label_transform
         self.img_path_list = []
         self.labels = []
         for cls_dir in class_dirs:
             sub_path_list = sorted(glob.glob(os.path.join(data_path + '/' + cls_dir,  "*" + data_suffix)))
             self.img_path_list = self.img_path_list + sub_path_list
-            assert cls_dir in class_to_label, f'Unknowk class: {cls_dir}'
-            self.labels = self.labels + [class_to_label[cls_dir], ] * len(sub_path_list)
+            assert cls_dir in cls_label, f'Unknowk class: {cls_dir}'
+            self.labels = self.labels + [cls_label[cls_dir], ] * len(sub_path_list)
         if pre_shuffle:
-            shuffled_index = np.random.shuffle(np.arange(len(sub_path_list)))
-            self.img_path_list = [self.img_path_list[sid] for i in shuffled_index]
-            self.labels = [self.labels[sid] for i in shuffled_index]
+            shuffled_index = np.random.shuffle(np.arange(len(self.img_path_list)))
+            self.img_path_list = [self.img_path_list[i] for i in shuffled_index]
+            self.labels = [self.labels[i] for i in shuffled_index]
     def __len__(self):
         return len(self.img_path_list)
     ### the dataset will not be stored in the memory
@@ -78,7 +80,8 @@ class ImgClsDataset(Dataset):
             img = load_itk(img_path)[0]
         if self.data_transform is not None:
             img = self.data_transform(img)
-
+        if self.label_transform is not None:
+            label = self.label_transform(label)
         return img, label, img_path
 
 class ImgSegDataset(Dataset):
@@ -91,7 +94,7 @@ class ImgSegDataset(Dataset):
         label_suffix = label_suffix or data_suffix
         logger.info("loading data from the directory: {}".format(data_path))
         self.img_path_list = sorted(glob(os.path.join(data_path+'/' + data_dir, "*" + data_suffix)))
-        self.mask_path_list = [ipath.replace(data_suffix, label_suffix).replace(data_dir, label_dir) for ipath in self.img_path_list]
+        self.mask_path_list = [rreplace(rreplace(ipath, data_suffix, label_suffix, 1), data_dir, label_dir, 1) for ipath in self.img_path_list]
         self.mode = mode
         self.data_transform = data_transform
         self.label_transform = label_transform
@@ -169,10 +172,10 @@ class MultiModalityImgSegDataset(Dataset):
             if len(self.img_path_list) == 0:
                 self.img_path_list.append(sorted(glob(os.path.join(data_path+'/' + rd, "*" + sf))))
             else:
-                self.img_path_list.append([rpath.replace(data_dir[0], rd).replace(data_suffix[0], sf) for rpath in self.img_path_list[0]])
+                self.img_path_list.append([rreplace( rreplace(rpath, data_dir[0], rd, 1), data_suffix[0], sf, 1) for rpath in self.img_path_list[0]])
                 
         for ld, lsf in zip(label_dir, label_suffix):
-            self.mask_path_list.append([rpath.replace(data_dir[0], ld).replace(data_suffix[0], lsf) for rpath in self.img_path_list[0]])
+            self.mask_path_list.append([rreplace(rreplace(rpath, data_dir[0], ld, 1), data_suffix[0], lsf, 1) for rpath in self.img_path_list[0]])
 
         logger.info("loading data from the directory: {}".format(data_path))
         self.mode = mode

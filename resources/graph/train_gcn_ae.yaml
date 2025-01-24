@@ -19,7 +19,7 @@ model:
 loader:
   dataset: 
     name: GraphShapeNet
-    data_path: path/to/datasets/ShapeNet
+    data_path: /media/wlsdzyzl/DATA/flemme-path/to/datasets/ShapeNet
     pre_transform: 
       - name: FixedPoints
         num: 2048
@@ -39,7 +39,7 @@ loader:
     - name: Normalize
       mean: [0.1307]
       std: [0.3081]
-check_point_dir: path/to/checkpoint/MNIST/AE
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/AE
 
 ### parameter for optimizer
 optimizer:

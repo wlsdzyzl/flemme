@@ -20,7 +20,7 @@ model:
     # folding_times: 2
   reconstruction_losses: 
     - name: DCD
-      alpha: 200
+      alpha: 40
       n_lambda: 0.5
   distribution_loss:
     name: KL
@@ -41,7 +41,7 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/imagecas/PointNet_VAE_KL1eN4_DCD
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/imagecas/PointNet_VAE_KL1eN4_DCD
 ### parameter for optimizer
 optimizer:
   name: Adam

@@ -28,9 +28,9 @@ loader:
     label_dir: esc
     data_suffix: png
   data_path_list: 
-    - path/to/datasets/fastMRI/knee_single_png/fold1/
-    - path/to/datasets/fastMRI/knee_single_png/fold2/
-    - path/to/datasets/fastMRI/knee_single_png/fold3/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/fastMRI/knee_single_png/fold1/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/fastMRI/knee_single_png/fold2/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/fastMRI/knee_single_png/fold3/
   batch_size: 8
   num_workers: 8
   shuffle: true
@@ -54,7 +54,7 @@ val_loader:
     label_dir: esc
     data_suffix: png
   data_path_list: 
-    - path/to/datasets/fastMRI/knee_single_png/fold4/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/fastMRI/knee_single_png/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
@@ -68,8 +68,8 @@ val_loader:
     - name: Normalize
       mean: [0.5]
       std: [0.5]
-check_point_dir: path/to/checkpoint/fastMRI-mzf1/MambaU_HAE
-# resume: path/to/checkpoint/fastMRI-mzf1/MambaU_HAE/ckp_last.pth
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/fastMRI-mzf1/MambaU_HAE
+# resume: /media/wlsdzyzl/DATA/flemme-ckp/fastMRI-mzf1/MambaU_HAE/ckp_last.pth
 ### parameter for optimizer
 optimizer:
   name: Adam

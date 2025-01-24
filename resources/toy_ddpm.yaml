@@ -29,7 +29,7 @@ loader:
   batch_size: 1024
   num_workers: 8
   shuffle: true
-check_point_dir: path/to/checkpoint/Toy/DDIM_Layer_res
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/Toy/DDIM_Layer_res
 ### parameter for optimizer
 optimizer:
   name: Adam

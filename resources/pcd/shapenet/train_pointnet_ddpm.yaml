@@ -1,7 +1,7 @@
 # train ae or vae
 #### a template for pcd encoder
 mode: train
-# pretrained: path/to/checkpoint/SHAPENET/02691156/PointNet_DDPM/ckp_last.pth
+# pretrained: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/02691156/PointNet_DDPM/ckp_last.pth
 model:
   # can be AE, VAE and DDPM
   name: DDPM
@@ -38,7 +38,7 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet_DDPM
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/02691156/PointNet_DDPM
 ### parameter for optimizer
 optimizer:
   name: Adam

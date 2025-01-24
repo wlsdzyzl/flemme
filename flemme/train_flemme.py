@@ -250,6 +250,7 @@ def main():
             if len(eval_res) > 0:
                 for eval_type, eval in eval_res.items():
                     for eval_metric, eval_value in eval.items():
+                        # print(eval_value)
                         if eval_metric == score_metric:
                             eval_score = eval_value
                         write_eval(writer=writer, eval_metric=eval_type + '_eval/' + eval_metric, 

@@ -28,7 +28,7 @@ loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - path/to/datasets/Echonet/fold5/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/Echonet/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false
@@ -39,8 +39,8 @@ loader:
     - name: GrayScale
     - name: ToTensor
 
-model_path: path/to/checkpoint/Echonet/UNet/ckp_best.pth
-seg_dir: path/to/results/seg/Echonet/UNet
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/Echonet/UNet/ckp_best.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/seg/Echonet/UNet
 save_target: true
 save_input: true
 save_colorized: true

@@ -85,7 +85,7 @@ class LatentDiffusionProbabilistic(DDPM):
         if not self.freeze_ae:
             loss_names += self.ae_model.get_loss_name()
         return loss_names
-    def compute_loss(self, x0, c = None):
+    def compute_loss(self, x0, c = None, **kwargs):
         ac, ec = None, None
         if self.ae_model.is_conditional:
             ac = c 
@@ -164,7 +164,7 @@ class LatentDiffusionImplicit(DDIM):
         if not self.freeze_ae:
             loss_names += self.ae_model.get_loss_name()
         return loss_names
-    def compute_loss(self, x0, c = None):
+    def compute_loss(self, x0, c = None, **kwargs):
         ac, ec = None, None
         if self.ae_model.is_conditional:
             ac = c 

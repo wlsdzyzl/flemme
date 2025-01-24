@@ -31,7 +31,7 @@ loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - path/to/datasets/REFUGE2/fold5/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/REFUGE2/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false
@@ -49,7 +49,7 @@ loader:
     - name: Relabel
     - name: ToOneHot
       num_classes: 3
-model_path: path/to/checkpoint/REFUGE2/SwinU_HSeg/ckp_best.pth
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/REFUGE2/SwinU_HSeg/ckp_best.pth
 
 evaluation_metrics:
   seg:

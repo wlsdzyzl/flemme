@@ -167,7 +167,7 @@ def create_formatter(data_form):
         return PcdTensorboardFormatter()
     elif data_form == DataForm.VEC:
         return Vec2PCDTensorboardFormatter()
-def write_data(writer, formatter, data_form, iter_id, input_map, prefix='train'):
+def write_data(writer, formatter, data_form, iter_id, input_map, prefix='train', additional_keys = []):
     #### if data form is pcd, get the color by labels
     if 'seg_logits' in input_map:
         if data_form == DataForm.PCD:
@@ -180,7 +180,7 @@ def write_data(writer, formatter, data_form, iter_id, input_map, prefix='train')
             input_map['seg'] = logits_to_onehot_label(input_map['seg_logits'], data_form)
 
     for name, batch in input_map.items():
-        if not name in ['input', 'target', 'condition', 'recon', 'seg', 'gen']: continue
+        if not name in ['input', 'target', 'condition', 'recon', 'seg', 'gen'] + additional_keys: continue
         if batch is None or not torch.is_tensor(batch): 
             logger.debug('results of {} is not a tensor.'.format(name))
             continue
@@ -292,7 +292,8 @@ def unfreeze(model):
     for param in model.parameters():
         param.requires_grad = True
 
-def append_results(results, x, y, res, data_form, path = None,  is_supervised = False, is_conditional = False):
+def append_results(results, x, y, res, data_form, path = None,  
+        is_supervised = False, is_conditional = False, additional_keys = []):
     if not data_form == DataForm.GRAPH:
         results['input'].append(x.cpu().detach().numpy())
         if y is not None:
@@ -314,6 +315,8 @@ def append_results(results, x, y, res, data_form, path = None,  is_supervised = 
         if res:
             if 'cluster_logits' in res:
                 res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
+            if 'cls_logits' in res:
+                res['cls'] = logits_to_onehot_label(res['cls_logits'], data_form)
             if 'seg_logits' in res:
                 res['seg'] = logits_to_onehot_label(res['seg_logits'], data_form)
             if 'latent' in res:
@@ -324,8 +327,15 @@ def append_results(results, x, y, res, data_form, path = None,  is_supervised = 
                 results['seg'].append(res['seg'].cpu().detach().numpy())
             if 'cluster' in res:
                 results['cluster'].append(res['cluster'].cpu().detach().numpy())
+            if 'cls' in res:
+                results['cls'].append(res['cls'].cpu().detach().numpy())
             if 'cluster_centers' in res:
                 results['cluster_centers'] = res['cluster_centers'].cpu().detach().numpy()
+            for k in additional_keys:
+                if not k in results:
+                    results[k] = []
+                if k in res:
+                    results[k].append(res[k].cpu().detach().numpy())
     else:
         results['input'].append(x)
         if res:
@@ -334,7 +344,7 @@ def append_results(results, x, y, res, data_form, path = None,  is_supervised = 
             if 'recon' in res:
                 results['recon'].append(res['recon'])
             
-def compact_results(results, data_form):
+def compact_results(results, data_form, additional_keys = []):
     if not data_form == DataForm.GRAPH:
         results['input'] = np.concatenate(results['input'])
         if len(results['target']) > 0:
@@ -349,6 +359,11 @@ def compact_results(results, data_form):
             results['seg'] = np.concatenate(results['seg'])
         if len(results['cluster']) > 0:
             results['cluster'] = np.concatenate(results['cluster'])
+        if len(results['cls']) > 0:
+            results['cls'] = np.concatenate(results['cls'])
+        for k in additional_keys:
+            if len(results[k]) > 0:
+                results[k] = np.concatenate(results[k])
     return results
 
 def create_evaluator(eval_configs, data_form):
@@ -419,14 +434,14 @@ def evaluate_results(results, evaluators, data_form):
                     eval_res[eval_type][eval_metric] /= sample_num
     return eval_res
 
-def compute_loss(model, x, y):
+def compute_loss(model, x, y, **kwargs):
     if model.is_supervised:
-        losses, res = model.compute_loss(x, y = y)
+        losses, res = model.compute_loss(x, y = y, **kwargs)
     elif model.is_conditional:
         # losses, res = model.compute_loss(x, y, epoch<=2)
-        losses, res = model.compute_loss(x, c = y)
+        losses, res = model.compute_loss(x, c = y, **kwargs)
     else:
-        losses, res = model.compute_loss(x)
+        losses, res = model.compute_loss(x, **kwargs)
     return losses, res
 def forward_pass(model, x, y):
     if model.is_conditional:

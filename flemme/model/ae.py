@@ -40,7 +40,7 @@ class AutoEncoder(BaseModel):
         if type(z) == tuple:
             z = z[0]
         return {'recon':res, 'latent':z}
-    def compute_loss(self, x, c = None, res = None, y = None):
+    def compute_loss(self, x, c = None, res = None, y = None, **kwargs):
         if res is None:
             res = self.forward(x, c)   
         losses = []
@@ -83,7 +83,7 @@ class HAutoEncoder(HBaseModel):
         if type(z) == tuple:
             z = z[0]
         return {'recon':res, 'hierarchical_recon':h_res, 'latent':z}
-    def compute_loss(self, x, c = None, res = None, y = None):
+    def compute_loss(self, x, c = None, res = None, y = None, **kwargs):
         if res is None:
             res = self.forward(x, c)   
         losses = []

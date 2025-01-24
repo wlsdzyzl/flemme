@@ -2,9 +2,10 @@ import os
 from glob import glob
 from flemme.utils import load_pcd, save_pcd
 import numpy as np
-from label_map import fine_labels, coarse_labels
+from flemme.dataset.label_dict.medshapenet import fine_labels, coarse_labels
 from flemme.color_table import color_table
 dataset_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet'
+output_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD'
 selected_number_paths = glob(os.path.join(dataset_path, 'by_number/*')) 
 sample_num = 65536
 broken_stls = []
@@ -24,6 +25,9 @@ for p in selected_number_paths:
         except Exception as e:
             broken_stls.append(op)
         else:
+            if len(tmp_pcd) == 0:
+                broken_stls.append(op)
+                continue
             if len(tmp_pcd) > sample_num:
                 tmp_pcd = tmp_pcd[ np.random.choice(len(tmp_pcd), sample_num, replace = False)]
 
@@ -56,12 +60,12 @@ for p in selected_number_paths:
     print(f'saving sampled point cloud and labels of {p}')
     ### save_pcd and labels
     filename = p.split('/')[-1]
-    save_pcd(os.path.join(dataset_path, f'segmentation/pcd/{filename}.ply'), pcd)
-    np.savetxt(os.path.join(dataset_path, f'segmentation/fine_label/{filename}.seg'), pcd_flabel)
-    np.savetxt(os.path.join(dataset_path, f'segmentation/coarse_label/{filename}.seg'), pcd_clabel)
+    save_pcd(os.path.join(output_path, f'segmentation/pcd/{filename}.ply'), pcd)
+    np.savetxt(os.path.join(output_path, f'segmentation/fine_label/{filename}.seg'), pcd_flabel)
+    np.savetxt(os.path.join(output_path, f'segmentation/coarse_label/{filename}.seg'), pcd_clabel)
     ### save colorized pcds
     pcd_color = color_table[(pcd_clabel - 1) % len(color_table)]
-    save_pcd(os.path.join(dataset_path, f'segmentation/colorized_pcd/{filename}.ply'), (pcd, pcd_color))
+    save_pcd(os.path.join(output_path, f'segmentation/colorized_pcd/{filename}.ply'), (pcd, pcd_color))
 
 ### Exception checking
 print('broken_stls:')

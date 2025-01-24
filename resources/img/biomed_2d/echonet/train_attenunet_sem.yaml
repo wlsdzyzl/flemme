@@ -29,9 +29,9 @@ loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - path/to/datasets/Echonet/fold1/
-    - path/to/datasets/Echonet/fold2/
-    - path/to/datasets/Echonet/fold3/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/Echonet/fold1/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/Echonet/fold2/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/Echonet/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
@@ -48,7 +48,7 @@ val_loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - path/to/datasets/Echonet/fold4/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/Echonet/fold4/
   batch_size: 4
   num_workers: 8
   shuffle: false
@@ -59,7 +59,7 @@ val_loader:
     - name: GrayScale
     - name: ToTensor
 
-check_point_dir: path/to/checkpoint/Echonet/UNet_Atten
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/Echonet/UNet_Atten
 
 ### parameter for optimizer
 optimizer:

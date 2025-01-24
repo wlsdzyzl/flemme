@@ -18,7 +18,6 @@ import argparse
 import yaml
 from flemme.block import channel_recover
 import shutil
-from torch_geometric.data import Batch as BatchGraph, Data as Graph
 from stl import mesh
 logger = get_logger('utils')
 
@@ -27,7 +26,8 @@ class DataForm(Enum):
     IMG = auto()
     PCD = auto()
     GRAPH = auto()
-
+def rreplace(s, old, new, count = -1):
+    return new.join(s.rsplit(old, count))
 
 def get_random_state():
     return np.random.get_state(), torch.get_rng_state()
@@ -67,7 +67,7 @@ def label_to_onehot(m, channel_dim = 0, num_classes = None,
             res = res.transpose(0, 1)
             res_shape = (num_classes, )  + m_shape
         return res.reshape(res_shape)
-    else:
+    elif isinstance(m, np.ndarray):
         m = m.astype(int)
         if not num_classes:
             num_classes = m.max() + 1
@@ -83,7 +83,13 @@ def label_to_onehot(m, channel_dim = 0, num_classes = None,
             res = res.transpose()
             res_shape = m_shape + (num_classes, ) 
         return res.reshape(res_shape)
-
+    else:
+        if ignore_background:
+            m = m - 1
+            num_classes = num_classes - 1
+        res = np.zeros((num_classes, ))
+        res[m] = 1
+        return res
 def logits_to_onehot_label(logits, data_form):
     if torch.is_tensor(logits):
         ### in batch form
@@ -667,6 +673,7 @@ if module_config['point-cloud'] or module_config['graph']:
         return rotations
 
 if module_config['graph']:
+    from torch_geometric.data import Data as Graph
     def load_graph(filename, vertex_features = None):
         basename = os.path.basename(filename)
         suffix = basename.split('.')[-1]

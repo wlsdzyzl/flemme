@@ -211,7 +211,7 @@ class DiffusionProbabilistic(nn.Module):
         if isinstance(self.eps_model, HBase):
             return [self.eps_loss_name, 'hierarchical_' + self.eps_loss_name]
         return [self.eps_loss_name,]
-    def compute_loss(self, x0: torch.Tensor, c = None):
+    def compute_loss(self, x0: torch.Tensor, c = None, **kwargs):
         """
         #### Simplified Loss
 

@@ -76,7 +76,7 @@ val_loader:
     - name: Relabel
     - name: ToOneHot
       num_classes: 3
-check_point_dir: path/to/checkpoint/REFUGE2/UNet
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/REFUGE2/UNet
 
 ### parameter for optimizer
 optimizer:

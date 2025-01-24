@@ -37,8 +37,6 @@ def get_loss(loss_config, data_form = DataForm.IMG):
         return DensityAwareChamferLoss(**loss_config)
     if loss_name == 'Sinkhorn':
         return SinkhornLoss(**loss_config)
-    if loss_name == 'Sphere':
-        return SphereLoss(**loss_config)
     ## graph node error
     if loss_name == 'GraphNodeLoss' or loss_name == 'GNE':
         return GraphNodeLoss(**loss_config)

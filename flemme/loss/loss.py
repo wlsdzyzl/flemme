@@ -5,6 +5,7 @@ import torch.nn as nn
 from flemme.logger import get_logger
 from geomloss import SamplesLoss
 from .ssim import create_window, create_window_3D, _ssim, _ssim_3D
+from .sphere import icosphere
 logger = get_logger('loss')
 class TorchLoss(nn.Module):
     def __init__(self, torch_loss = nn.MSELoss, reduction = 'mean', channel_dim = 1):
@@ -223,59 +224,6 @@ if module_config['point-cloud']:
                 return loss.mean()
             else:
                 return loss
-    ### compute loss between skeleton and surface
-    class SphereLoss(nn.Module):
-        def __init__(self, dim = 3, n = 1, loss = 'Chamfer', sphere_method = 'subdivision', **kwargs):
-            super(SphereLoss, self).__init__()
-            self.dim = dim
-            self.sphere_method = sphere_method
-            self.reduction = reduction
-            if self.dim == 2:
-                # uniform
-                step = 2 * np.pi / n
-                theta_vec =  np.arange(step / 2, 2 * np.pi, step)
-                self.local_coor = torch.from_numpy(np.array([np.cos(theta_vec),np.sin(theta_vec)]).T)
-            elif self.dim == 3:
-                # subdivision
-                if self.sphere_method == 'subdivision':
-                    self.local_coor = torch.from_numpy(icosphere(n))
-                elif self.sphere_method == 'uv':
-                    n = int(round(n ** (1/3)))
-                    step_t = 2 * np.pi / (n * n)
-                    step_p = np.pi / n 
-                    theta_vec = np.arange(step_t / 2, 2 * np.pi, step_t)
-                    phi_vec = np.arange(step_p / 2, np.pi, step_p)
-                    sin_theta = np.sin(theta_vec)
-                    cos_theta = np.cos(theta_vec)
-                    sin_phi = np.sin(phi_vec)
-                    cos_phi = np.cos(phi_vec)
-                    tmp_x = np.outer(sin_phi, cos_theta).reshape(-1)
-                    tmp_y = np.outer(sin_phi, sin_theta).reshape(-1)
-                    tmp_z = cos_phi.repeat(n ** 2)
-                    self.local_coor = torch.from_numpy(np.array([tmp_x, tmp_y, tmp_z]).T )
-                else:
-                    logger.error('Unsupported method for sphere sampling.')
-                    exit(1)
-                logger.info('Using {sphere_method} to sample sphere points.')
-            if loss == 'Sinkhorn':
-                self.loss = SinkhornLoss(reduction = self.reduction, **kwargs)
-            elif loss == 'Chamfer':
-                self.loss = ChamferLoss(reduction = self.reduction, **kwargs)
-            elif loss == 'EMD':
-                self.loss = EMDLoss(reduction = self.reduction, **kwargs)
-            else:
-                logger.error(f'Unsupported loss for point cloud, {loss}')
-                exit(1)
-        def forward(self, skeleton, radius, surface):
-            # skeleton: B, N_k, D
-            # radius: B, N_k, 1
-            # surface: B, N, D
-            sphere_n = self.local_coor.shape[0]
-            B, skeleton_n = skeleton.shape[0], skeleton.shape[1]
-            # construct sinkhorn distance
-            sphere_points = self.local_coor.repeat(B, skeleton_n, 1) * radius.repeat_interleave(sphere_n, dim = 1)\
-                        + centers.repeat_interleave(sphere_n, dim = 1)
-            return self.loss(sphere_points, surface)
 
 if module_config['graph']:    
     ### loss for graph reconstruction

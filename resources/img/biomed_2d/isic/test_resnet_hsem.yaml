@@ -30,7 +30,7 @@ loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - path/to/datasets/ISIC/fold5/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/ISIC/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false
@@ -39,8 +39,8 @@ loader:
       ## the value must be list
       size: [384, 256]
     - name: ToTensor
-model_path: path/to/checkpoint/ISIC/ResNet_HSeg/ckp_best.pth
-seg_dir: path/to/results/seg/ISIC/ResNet_HSeg
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/ISIC/ResNet_HSeg/ckp_best.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/seg/ISIC/ResNet_HSeg
 evaluation_metrics:
   seg:
     - name: Dice

@@ -51,7 +51,7 @@ loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/SHAPENET/03001627/PointNet2_Seg
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/03001627/PointNet2_Seg
 ### parameter for optimizer
 optimizer:
   name: Adam

@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import SequentialT, get_building_block, FoldingLayer, LocalGraphLayer
+from flemme.block import SequentialT, get_building_block, FoldingLayer, LocalGraphLayer, MultipleBuildingBlocks
 from .pointnet import PointEncoder, PointDecoder
 from flemme.logger import get_logger
 logger = get_logger("encoder.point.pointtrans")
@@ -20,6 +20,7 @@ class PointTransEncoder(PointEncoder):
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  residual_attention = False, skip_connection = True,
                  z_count = 1, vector_embedding = True, 
+                 last_activation = True,
                  use_local = True, use_global = True, **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -31,7 +32,8 @@ class PointTransEncoder(PointEncoder):
                 normalization = normalization,
                 num_norm_groups = num_norm_groups,
                 activation = activation, dropout = dropout, 
-                z_count = z_count, vector_embedding = vector_embedding)
+                z_count = z_count, vector_embedding = vector_embedding,
+                last_activation = last_activation)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 

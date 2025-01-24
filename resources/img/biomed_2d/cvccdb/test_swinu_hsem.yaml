@@ -30,7 +30,7 @@ loader:
     label_dir: masks
     data_suffix: jpg
   data_path_list: 
-    - path/to/datasets/CVC-ClinicDB/fold5/
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/CVC-ClinicDB/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false
@@ -46,8 +46,8 @@ loader:
     - name: ToTensor
     - name: ToBinaryMask
       threshold: 0.5
-model_path: path/to/checkpoint/CVC-ClinicDB/SwinU_HSeg/ckp_best.pth
-seg_dir: path/to/results/seg/CVC-ClinicDB/SwinU_HSeg
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/CVC-ClinicDB/SwinU_HSeg/ckp_best.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/seg/CVC-ClinicDB/SwinU_HSeg
 evaluation_metrics:
   seg:
     - name: Dice

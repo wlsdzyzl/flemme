@@ -19,7 +19,7 @@ loader:
     data_dir: 02691156/points
     data_suffix: .pts
   data_path_list: 
-    - path/to/datasets/shapenetcore_v0  
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/shapenetcore_v0  
   batch_size: 4
   num_workers: 8
   shuffle: false
@@ -30,11 +30,11 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet_VAE_Chamfer
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/02691156/PointNet_VAE_Chamfer
 ### parameter for optimizer
-model_path: path/to/checkpoint/SHAPENET/02691156/PointNet_VAE/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/02691156/PointNet_VAE/ckp_last.pth
 #### directory that saves the reconstructed images
-# recon_dir: path/to/results/recon/shapenet/02691156/vae_pointnet
+# recon_dir: /media/wlsdzyzl/DATA/flemme-results/recon/shapenet/02691156/vae_pointnet
 
 #### metrics used for evaluation (reconstruction accuracy)
 # evaluation_metrics:
@@ -50,7 +50,7 @@ model_path: path/to/checkpoint/SHAPENET/02691156/PointNet_VAE/ckp_last.pth
 eval_gen:
   sampler:
     name: NormalSampler
-  gen_dir: path/to/results/gen/shapenet/02691156/vae_pointnet
+  gen_dir: /media/wlsdzyzl/DATA/flemme-results/gen/shapenet/02691156/vae_pointnet
   interpolation:
     group_num: 2
     corner_num: 4

@@ -5,9 +5,10 @@ from flemme.utils import DataForm
 from flemme.logger import get_logger
 from flemme.model.embedding import get_embedding, add_embedding, concat_embedding
 from flemme.block import CombineLayer, ResConvBlock, ConvBlock, \
-    channel_recover, TimeEmbeddingBlock, VMambaBlock
+    channel_recover, TimeEmbeddingBlock
 from flemme.utils import DataForm
 from flemme.encoder import create_encoder
+from flemme.config import module_config
 logger = get_logger('model.base')
 
 class BaseModel(nn.Module):
@@ -238,24 +239,32 @@ class HBaseModel(BaseModel):
                                             combine = combine, 
                                             apply_fft=apply_fft)
         self.channel_recover = False
-        if self.decoder_name in ['Swin', 'SwinU', 'SwinD', 'VMamba', 'VMambaU', 'VMambaD']:
-            self.channel_recover = True
-            self.abbs = nn.ModuleList([VMambaBlock(dim = self.encoder.dim,
-                                    in_channel=upc, 
-                                    out_channel=upc,
-                                    normalization='layer',
-                                    activation='silu',
-                                    time_channel=self.final_time_channel) 
-                                    for upc in self.decoder.up_path])
-        else:
-            self.abbs = nn.ModuleList([ResConvBlock(dim = self.encoder.dim, 
-                                    in_channel=upc, 
-                                    out_channel=upc,
-                                    normalization='group',
-                                    num_norm_groups=16,
-                                    activation='relu',
-                                    time_channel=self.final_time_channel) 
-                                    for upc in self.decoder.up_path])
+        self.final_feature_extraction = model_config.get('final_feature_extraction', True)
+        if self.final_feature_extraction:
+            if self.decoder_name in ['ViT', 'ViTU', 'ViTD', 'Swin', 'SwinU', 'SwinD', 'VMamba', 'VMambaU', 'VMambaD']:
+                self.channel_recover = True
+                if module_config['mamba']:
+                    from flemme.block import VMambaBlock
+                    SeqModelingBlock = VMambaBlock
+                else:
+                    from flemme.block import VisionTransformerBlock
+                    SeqModelingBlock = VisionTransformerBlock
+                self.abbs = nn.ModuleList([SeqModelingBlock(dim = self.encoder.dim,
+                                        in_channel=upc, 
+                                        out_channel=upc,
+                                        normalization='layer',
+                                        activation='silu',
+                                        time_channel=self.final_time_channel) 
+                                        for upc in self.decoder.up_path])
+            else:
+                self.abbs = nn.ModuleList([ResConvBlock(dim = self.encoder.dim, 
+                                        in_channel=upc, 
+                                        out_channel=upc,
+                                        normalization='group',
+                                        num_norm_groups=16,
+                                        activation='relu',
+                                        time_channel=self.final_time_channel) 
+                                        for upc in self.decoder.up_path])
                             
             
         self.final_projs = nn.ModuleList([ConvBlock(dim = self.encoder.dim, 
@@ -296,7 +305,8 @@ class HBaseModel(BaseModel):
         features = [en_feature,] + de_features
         h_x = []
         for i in range(len(features)):
-            fi = self.abbs[i] ( features[i], t)
+            if self.final_feature_extraction:
+                fi = self.abbs[i] ( features[i], t)
             if self.channel_recover:
                 fi = channel_recover(fi)
             h_x.append(self.final_projs[i](fi))

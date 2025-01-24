@@ -30,7 +30,7 @@ class CNNEncoder(nn.Module):
                  normalization = 'group', num_norm_groups = 8, cn_order = 'cn', num_blocks = 2,
                  activation = 'relu', z_count = 1, dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 abs_pos_embedding = False, return_feature_list = False,
+                 abs_pos_embedding = False, last_activation = True, return_feature_list = False,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -98,11 +98,18 @@ class CNNEncoder(nn.Module):
         ### fully connected layers
         
         if self.vector_embedding:
+            
+
             dense_channels[0] = int( math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)  *dense_channels[0])
-            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                            norm = normalization, num_norm_groups=num_norm_groups, 
-                                            activation = self.activation) for i in range(len(dense_channels) - 2)]
-            dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
+            if last_activation:
+                dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+                                                norm = normalization, num_norm_groups=num_norm_groups, 
+                                                activation = self.activation) for i in range(len(dense_channels) - 1)]
+            else:
+                dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+                                                norm = normalization, num_norm_groups=num_norm_groups, 
+                                                activation = self.activation) for i in range(len(dense_channels) - 2)]
+                dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
             self.dense = nn.ModuleList([nn.Sequential(*(copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
 
         ## set out_channel

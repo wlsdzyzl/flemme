@@ -32,6 +32,7 @@ class VMambaEncoder(nn.Module):
                 learnable_init_states = True, 
                 chunk_size=256,
                 abs_pos_embedding = False,
+                last_activation = True,
                 return_feature_list = False,
                 z_count = 1, **kwargs):
         super().__init__()
@@ -122,10 +123,15 @@ class VMambaEncoder(nn.Module):
         ### fully connected layers
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *dense_channels[0])
-            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],
+            if last_activation:
+                dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+                                                norm = normalization, num_norm_groups=num_norm_groups, 
+                                                activation = self.activation) for i in range(len(dense_channels) - 1)]
+            else:
+                dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
                                                 norm = normalization, num_norm_groups=num_norm_groups, 
                                                 activation = self.activation) for i in range(len(dense_channels) - 2)]
-            dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
+                dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
             self.dense = nn.ModuleList([nn.Sequential(*(copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
 
         ## set out_channel

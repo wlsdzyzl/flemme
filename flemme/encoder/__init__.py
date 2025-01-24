@@ -74,7 +74,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         if not isinstance(dense_channels, list):
             dense_channels = [dense_channels]    
 
-        de_dense_channels = encoder_config.pop('decoder_dense_channels', None) or dense_channels[::-1]    
+        de_dense_channels = encoder_config.pop('decoder_dense_channels', [])   
         
         ## read in / out channel of data form
         #### in channel of encoder
@@ -317,7 +317,6 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                         fps_feature_channels = fp_channels[::-1]
                     assert len(fp_channels) == len(fps_feature_channels), \
                         'Point2Encoder should have a same number of feature propagating layers and sampling and grouping layers.'
-                    fp_channels = fp_channels + [projection_channel, ]
                     if return_encoder:
                         encoder = Encoder(point_dim=in_channel + eai_channel, 
                                                     projection_channel = projection_channel,

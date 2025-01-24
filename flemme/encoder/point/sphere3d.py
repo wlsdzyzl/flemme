@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 from scipy.spatial.transform import Rotation as R
-
+import math
 
 # the input should be alpha, dimension, initial skeleton points.
 # the output should be the loss.
@@ -29,8 +29,9 @@ def middle_point(verts,middle_point_cache,point_1, point_2):
     middle_point_cache[key] = index 
     return index
 
-def icosphere(subdiv):
+def icosphere(point_num):
     # verts for icosahedron
+    subdiv = max(0, int(math.log((point_num - 12) / 10 + 1, 4)))
     r = (1.0 + np.sqrt(5.0)) / 2.0
     verts = np.array([[-1.0, r, 0.0],[ 1.0, r, 0.0],[-1.0, -r, 0.0],
                       [1.0, -r, 0.0],[0.0, -1.0, r],[0.0, 1.0, r],
@@ -63,3 +64,18 @@ def icosphere(subdiv):
         faces = faces_subdiv
                 
     return np.array(verts)
+
+def uvsphere(point_num):
+    n = max(2, int(round(point_num ** (1/3))))
+    step_t = 2 * np.pi / (n * n)
+    step_p = np.pi / n 
+    theta_vec = np.arange(step_t / 2, 2 * np.pi, step_t)
+    phi_vec = np.arange(step_p / 2, np.pi, step_p)
+    sin_theta = np.sin(theta_vec)
+    cos_theta = np.cos(theta_vec)
+    sin_phi = np.sin(phi_vec)
+    cos_phi = np.cos(phi_vec)
+    tmp_x = np.outer(sin_phi, cos_theta).reshape(-1)
+    tmp_y = np.outer(sin_phi, sin_theta).reshape(-1)
+    tmp_z = cos_phi.repeat(n ** 2)
+    return np.array([tmp_x, tmp_y, tmp_z]).T

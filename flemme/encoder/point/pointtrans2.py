@@ -26,11 +26,12 @@ class PointTrans2Encoder(Point2Encoder):
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  residual_attention = False, skip_connection = True,
                  vector_embedding = True, 
-                 is_point2decoder = True,
+                 is_point2decoder = False,
                  use_local = True,
                  use_global = True,
                  z_count = 1, 
                  return_xyz = False,
+                 last_activation = True,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -50,7 +51,8 @@ class PointTrans2Encoder(Point2Encoder):
                 z_count = z_count, 
                 vector_embedding = vector_embedding, 
                 is_point2decoder = is_point2decoder,
-                return_xyz = return_xyz)
+                return_xyz = return_xyz,
+                last_activation = last_activation)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 

@@ -13,7 +13,7 @@ from functools import partial
 from flemme.logger import get_logger
 from scipy.optimize import linear_sum_assignment
 from flemme.utils import label_to_onehot, DataForm
-from flemme.loss import GraphNodeLoss
+
 logger = get_logger('metrics')
 #### image similarity
 ### multi channel case
@@ -231,7 +231,8 @@ if module_config['point-cloud']:
                 logger.error("Invalid direction type. Supported types: \'y_x\', \'x_y\', \'bi\'")
                 raise ValueError
             return chamfer_dist
-if module_config['graph']:
+if module_config['graph']: 
+    from flemme.loss import GraphNodeLoss
     ## graph node distance
     class GND(GraphNodeLoss):
         def __init__(self,

@@ -4,13 +4,12 @@ import torch
 from torch.utils.data import Dataset
 import os
 import glob
-from flemme.utils import load_pcd, save_pcd, get_random_state, set_random_state
+from flemme.utils import load_pcd, get_random_state, set_random_state, rreplace
 from flemme.logger import get_logger
 ### Pure point cloud dataset
 ## there can be other types of datasets, such as point cloud segmentation or point cloud classification
 ## other types of datasets can be used for conditional generation
 logger = get_logger('pcd_dataset')
-shapenet_codemap = {'Airplane': '02691156', 'Bag': '02773838', 'Cap': '02954340', 'Car': '02958343', 'Chair': '03001627', 'Earphone': '03261776', 'Guitar': '03467517', 'Knife': '03624134', 'Lamp': '03636649', 'Laptop': '03642806', 'Motorbike': '03790512', 'Mug': '03797390', 'Pistol': '03948459', 'Rocket': '04099429', 'Skateboard': '04225987', 'Table': '04379243'}
 
 class PcdDataset(Dataset):
     def __init__(self, data_path, data_transform = None, mode = 'train', data_dir = '', 
@@ -38,11 +37,12 @@ class PcdDataset(Dataset):
 class PcdClsDataset(Dataset):
     def __init__(self, data_path, 
                 data_transform = None, 
+                label_transform = None,
                 mode = 'train', 
                 pre_shuffle = True,
                 data_suffix = '.ply',
-                class_dirs = [],  
-                class_to_label = {},
+                class_dirs = None,  
+                cls_label = {},
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -50,17 +50,21 @@ class PcdClsDataset(Dataset):
         self.data_path = data_path
         self.mode = mode
         self.data_transform = data_transform
+        self.label_transform = label_transform
         self.pcd_path_list = []
         self.labels = []
+        if class_dirs == None:
+            class_dirs = list(cls_label.keys())
         for cls_dir in class_dirs:
             sub_path_list = sorted(glob.glob(os.path.join(data_path + '/' + cls_dir,  "*" + data_suffix)))
             self.pcd_path_list = self.pcd_path_list + sub_path_list
-            assert cls_dir in class_to_label, f'Unknowk class: {cls_dir}'
-            self.labels = self.labels + [class_to_label[cls_dir], ] * len(sub_path_list)
+            assert cls_dir in cls_label, f'Unknowk class: {cls_dir}'
+            self.labels = self.labels + [cls_label[cls_dir], ] * len(sub_path_list)
         if pre_shuffle:
-            shuffled_index = np.random.shuffle(np.arange(len(sub_path_list)))
-            self.pcd_path_list = [self.pcd_path_list[sid] for i in shuffled_index]
-            self.labels = [self.labels[sid] for i in shuffled_index]
+            shuffled_index = np.arange(len(self.pcd_path_list))
+            np.random.shuffle(shuffled_index)
+            self.pcd_path_list = [self.pcd_path_list[i] for i in shuffled_index]
+            self.labels = [self.labels[i] for i in shuffled_index]
     def __len__(self):
         return len(self.pcd_path_list)
     def __getitem__(self, index):
@@ -69,6 +73,8 @@ class PcdClsDataset(Dataset):
         label = self.labels[index]
         if self.data_transform:
             pcd = self.data_transform(pcd)
+        if self.label_transform is not None:
+            label = self.label_transform(label)
         return pcd, label, self.pcd_path_list[index]
 
 ### pcd segmentation dataset
@@ -79,7 +85,7 @@ class PcdSegDataset(PcdDataset):
             data_dir = data_dir, data_suffix = data_suffix)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
-        self.label_path_list = [ppath.replace(data_suffix, label_suffix).replace(data_dir, label_dir) for ppath in self.pcd_path_list]
+        self.label_path_list = [rreplace(rreplace(ppath, data_suffix, label_suffix, 1), data_dir, label_dir, 1) for ppath in self.pcd_path_list]
         self.label_transform = label_transform
         
     def __getitem__(self, index):

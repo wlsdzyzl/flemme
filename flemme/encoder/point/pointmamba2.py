@@ -32,11 +32,12 @@ class PointMamba2Encoder(Point2Encoder):
                 dt_max=0.1, dt_init_floor=1e-4, 
                 dt_rank = None, dt_scale = 1.0,
                 skip_connection = True,
-                is_point2decoder = True,
+                is_point2decoder = False,
                 use_local = True,
                 use_global = True,
                 z_count = 1, 
                 return_xyz = False,
+                last_activation = True,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -56,7 +57,8 @@ class PointMamba2Encoder(Point2Encoder):
                 z_count = z_count, 
                 vector_embedding = vector_embedding, 
                 is_point2decoder = is_point2decoder,
-                return_xyz = return_xyz)
+                return_xyz = return_xyz,
+                last_activation = last_activation)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 

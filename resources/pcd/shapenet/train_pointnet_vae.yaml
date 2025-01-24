@@ -38,7 +38,7 @@ loader:
       num: 1024
     - name: ToTensor
       dtype: float
-check_point_dir: path/to/checkpoint/SHAPENET/02691156/PointNet/PointNet_VAE_EMD_LOCAL_K
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/02691156/PointNet/PointNet_VAE_EMD_LOCAL_K
 ### parameter for optimizer
 optimizer:
   name: Adam

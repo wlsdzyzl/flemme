@@ -27,6 +27,7 @@ class PointMambaEncoder(PointEncoder):
                 dt_max=0.1, dt_init_floor=1e-4, 
                 dt_rank = None, dt_scale = 1.0,
                 z_count = 1, vector_embedding = True, 
+                last_activation = True,
                 skip_connection = True,
                 use_local = True,
                 use_global = True,
@@ -41,7 +42,8 @@ class PointMambaEncoder(PointEncoder):
                 normalization = normalization,
                 num_norm_groups = num_norm_groups,
                 activation = activation, dropout = dropout, 
-                z_count = z_count, vector_embedding = vector_embedding)
+                z_count = z_count, vector_embedding = vector_embedding,
+                last_activation = last_activation)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 

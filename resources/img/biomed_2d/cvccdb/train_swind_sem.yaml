@@ -56,7 +56,7 @@ val_loader:
       size: [320, 256]
     - name: ToTensor
 
-check_point_dir: path/to/checkpoint/CVC-ClinicDB/SwinD
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/CVC-ClinicDB/SwinD
 
 ### parameter for optimizer
 optimizer:

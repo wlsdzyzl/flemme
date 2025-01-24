@@ -47,6 +47,7 @@ class Point2Encoder(nn.Module):
                  z_count, vector_embedding, 
                  is_point2decoder,
                  return_xyz,
+                 last_activation,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -106,14 +107,20 @@ class Point2Encoder(nn.Module):
         dense_channels = [fps_feature_channels[-1] * 2, ] + dense_channels
         if not self.vector_embedding:
             dense_channels[0] += fps_feature_channels[-1]
-        dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
-                                            time_channel = self.time_channel,
-                                            activation = self.activation, dropout=self.dropout, 
-                                            norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 2)]
-        # the last layer is a linear layer, without batch normalization
-        dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], 
-                                    time_channel = self.time_channel,
-                                    activation = None, norm = None), ]
+        if last_activation:
+            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
+                                                time_channel = self.time_channel,
+                                                activation = self.activation, dropout=self.dropout, 
+                                                norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 1)]
+        else:
+            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
+                                                time_channel = self.time_channel,
+                                                activation = self.activation, dropout=self.dropout, 
+                                                norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 2)]
+            # the last layer is a linear layer, without batch normalization
+            dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], 
+                                        time_channel = self.time_channel,
+                                        activation = None, norm = None), ]
         self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
@@ -192,6 +199,7 @@ class Point2Decoder(nn.Module):
         self.activation = activation
         self.time_channel = time_channel
         # self.vector_embedding = False
+        fp_channels = [in_channels[-1], ] + fp_channels
         self.fp_depth = len(fp_channels)
         self.fp_path = [in_channels[-1], ] + fp_channels
         self.num_blocks = num_blocks
@@ -249,9 +257,10 @@ class PointNet2Encoder(Point2Encoder):
                  normalization = 'group', num_norm_groups = 8, 
                  activation = 'lrelu', dropout = 0., 
                  vector_embedding = True, 
-                 is_point2decoder = True,
+                 is_point2decoder = False,
                  z_count = 1, 
                  return_xyz = False,
+                 last_activation = True,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -271,7 +280,8 @@ class PointNet2Encoder(Point2Encoder):
                 z_count = z_count, 
                 vector_embedding = vector_embedding, 
                 is_point2decoder = is_point2decoder,
-                return_xyz = return_xyz)
+                return_xyz = return_xyz, 
+                last_activation = last_activation)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
@@ -313,6 +323,8 @@ class PointNet2Decoder(Point2Decoder):
                 num_norm_groups = num_norm_groups, 
                 activation = activation, 
                 dropout = dropout)
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
                                         time_channel = self.time_channel, 
                                         activation=activation, 

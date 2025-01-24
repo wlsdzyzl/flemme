@@ -35,7 +35,7 @@ loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - path/to/datasets/biomed_3d_dataset/BraTS2021/fold5
+    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/biomed_3d_dataset/BraTS2021/fold5
   batch_size: 16
   num_workers: 8
   shuffle: false
@@ -54,7 +54,7 @@ loader:
       ignore_background: False
     - name: ToTensor
 
-model_path: path/to/checkpointcheckpoint/BRATS21/UNet_Atten/ckp_best_loss.pth
+model_path: /media/wlsdzyzl/DATA/flemme-path/to/checkpointcheckpoint/BRATS21/UNet_Atten/ckp_best_loss.pth
 
 evaluation_metrics:
   seg:

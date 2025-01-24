@@ -14,6 +14,7 @@ class VariationalAutoEncoder(AutoEncoder):
         # a very similar structure with AutoEncoder
         if 'encoder' in model_config:
             model_config['encoder']['z_count'] = 2 
+            model_config['encoder']['last_activation'] = False
         else:
             logger.error('There is no encoder configuration.')
             exit(1)
@@ -51,7 +52,7 @@ class VariationalAutoEncoder(AutoEncoder):
     def get_loss_name(self):
          return [self.distr_loss_name, ] + self.recon_loss_names
 
-    def compute_loss(self, x, c = None, res = None, y = None):
+    def compute_loss(self, x, c = None, res = None, y = None, **kwargs):
         if res is None:
             res = self.forward(x, c)   
         ## compute the KL Divergence between N(mean, var) and N(0, 1)

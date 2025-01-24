@@ -60,7 +60,7 @@ val_loader:
     # - name: Normalize
     #   mean: [0.485, 0.456, 0.406]
     #   std: [0.229, 0.224, 0.225]
-check_point_dir: path/to/checkpoint/ISIC/UNet
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/ISIC/UNet
 
 ### parameter for optimizer
 optimizer:

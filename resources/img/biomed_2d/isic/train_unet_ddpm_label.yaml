@@ -75,7 +75,7 @@ val_loader:
     # - name: Normalize
     #   mean: [0.485, 0.456, 0.406]
     #   std: [0.229, 0.224, 0.225]
-check_point_dir: path/to/checkpoint/ISIC/DDPM_UNet_RES_Normalized
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/ISIC/DDPM_UNet_RES_Normalized
 sampler:
   num_sample_steps: 200
   rand_seed: 2024

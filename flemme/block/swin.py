@@ -370,7 +370,6 @@ class VisionTransformerBlock(nn.Module):
     """
     def __init__(self, dim, in_channel, out_channel = None, 
                 time_channel = 0, num_heads = 1, 
-                window_size=[7, 7], shift_size=0,
                 mlp_hidden_ratio=[4.0,], qkv_bias=True, 
                 qk_scale=None, dropout=0., atten_dropout=0., drop_path=0.,
                 activation = 'silu', norm = 'layer', num_norm_groups = 4, **kwargs):

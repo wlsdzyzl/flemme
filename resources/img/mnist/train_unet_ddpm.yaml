@@ -55,7 +55,7 @@ loader:
     - name: Normalize
       mean: [0.5]
       std: [0.5]
-check_point_dir: path/to/checkpoint/MNIST/DDPM
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/DDPM
 sampler:
   num_sample_steps: 100
   rand_seed: 2024

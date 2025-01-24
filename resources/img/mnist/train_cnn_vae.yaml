@@ -42,7 +42,7 @@ loader:
       mean: [0.1307]
       std: [0.3081]
 
-check_point_dir: path/to/checkpoint/MNIST/CNN_VAE
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CNN_VAE
 ### parameter for optimizer
 optimizer:
   name: Adam
