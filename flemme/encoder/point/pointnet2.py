@@ -48,6 +48,7 @@ class Point2Encoder(nn.Module):
                  is_point2decoder,
                  return_xyz,
                  last_activation,
+                 pos_embedding,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -71,6 +72,9 @@ class Point2Encoder(nn.Module):
         self.is_point2decoder = is_point2decoder
         self.use_xyz = use_xyz
         self.return_xyz = return_xyz
+        if pos_embedding:
+            self.pos_embed = nn.Linear(point_dim, projection_channel)
+
         if not type(self.num_fps_points) == list:
             self.num_fps_points = [self.num_fps_points,] * len(fps_feature_channels)
 
@@ -130,12 +134,15 @@ class Point2Encoder(nn.Module):
             raise NotImplementedError
         B, _, _ = xyz.shape
         ## N * Np * d
-        res = []
         features = self.point_proj(xyz)
+        if hasattr(self, 'pos_embed'):
+            xyz_embed = self.pos_embed(xyz_embed)
+        else:
+            xyz_embed = xyz
         xyz = xyz[...,0:3]
         xyz_list, feature_list = [xyz], [features]
         for msg in self.msg:
-            xyz, features = msg(xyz, features = features, t = t)
+            xyz, xyz_embed, features = msg(xyz, xyz_embed, features = features, t = t)
             xyz_list.append(xyz)
             feature_list.append(features)
 
@@ -261,6 +268,7 @@ class PointNet2Encoder(Point2Encoder):
                  z_count = 1, 
                  return_xyz = False,
                  last_activation = True,
+                 pos_embedding = False,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -281,7 +289,8 @@ class PointNet2Encoder(Point2Encoder):
                 vector_embedding = vector_embedding, 
                 is_point2decoder = is_point2decoder,
                 return_xyz = return_xyz, 
-                last_activation = last_activation)
+                last_activation = last_activation,
+                pos_embedding=pos_embedding)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
@@ -289,7 +298,8 @@ class PointNet2Encoder(Point2Encoder):
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
-                                        dropout = dropout)
+                                        dropout = dropout, 
+                                        pos_embedding_channel = projection_channel if pos_embedding else point_dim)
         msg_sequence = [MSGBlock(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
             num_fps_points = self.num_fps_points[fid],

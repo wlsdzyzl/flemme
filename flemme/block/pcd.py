@@ -289,27 +289,35 @@ class LocalGraphLayer(nn.Module):
         return x
         
 
-class FoldingLayer(nn.Module):
+class FoldingLayer(MultiLayerPerceptionBlock):
     """
     The folding operation of FoldingNet
     """
 
     def __init__(self, in_channel, 
                 out_channel, 
-                BuildingBlock,
-                hidden_channels = None, 
-                num_blocks = 2,
+                hidden_channels,
+                time_channel = 0, 
+                norm = None, 
+                num_norm_groups = 0, 
+                activation = 'relu', 
+                dropout=None, 
+                order="ln", 
                 **kwargs):
                 
-        super().__init__()
+        super().__init__(in_channel=in_channel,
+                            out_channel=out_channel,
+                            hidden_channels=hidden_channels,
+                            time_channel=time_channel,
+                            norm=norm,
+                            num_norm_groups=num_norm_groups,
+                            activation=activation,
+                            dropout=dropout,
+                            order=order,
+                            final_activation=False)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
-        
         self.in_channel = in_channel
-        self.layers = MultipleBuildingBlocks(n = num_blocks, in_channel = in_channel, 
-                    out_channel = out_channel, hidden_channels = hidden_channels,
-                    BuildingBlock = BuildingBlock)        
-        self.final = nn.Linear(out_channel, out_channel)
     ## codewords
     def forward(self, shapes, codewords, t = None):
         """
@@ -322,8 +330,50 @@ class FoldingLayer(nn.Module):
             f"channel of grid + channel of codewords should be equal to the channel of input, we get: {shapes.shape[-1]} {codewords.shape[-1]} and {self.in_channel}."
         # concatenate
         x = torch.cat([shapes, codewords], dim=-1)
-        x = self.layers(x, t)
-        return self.final(x)
+        return self.mlp(x, t)
+    
+# class FoldingLayer(nn.Module):
+#     """
+#     The folding operation of FoldingNet
+#     """
+
+#     def __init__(self, in_channel, 
+#                 out_channel, 
+#                 BuildingBlock,
+#                 hidden_channels = None, 
+#                 **kwargs):
+                
+#         super().__init__()
+#         if len(kwargs) > 0:
+#             logger.debug("redundant parameters:{}".format(kwargs))
+        
+#         self.in_channel = in_channel
+#         self.out_channel = out_channel
+#         module_sequence = []
+#         hidden_channels = [512, 512]
+#         for hc in hidden_channels:
+#             module_sequence.append(BuildingBlock(in_channel = in_channel, 
+#                     out_channel = hc))         
+#             in_channel = hc
+#         # module_sequence.append(DenseBlock(in_channel = in_channel, 
+#         #         out_channel = out_channel, activation = None))
+#         self.layers = SequentialT(*module_sequence)
+#         self.final = nn.Linear(in_channel, out_channel)
+#     ## codewords
+#     def forward(self, grids, codewords, t = None):
+#         """
+#         Parameters
+#         ----------
+#             codewords = B * N * D
+#             grids: reshaped 2D grids or intermediate reconstructed point clouds
+#         """
+#         assert grids.shape[-1] + codewords.shape[-1] == self.in_channel,\
+#             f"channel of grid + channel of codewords should be equal to the channel of input, we get: {grids.shape[-1]} {codewords.shape[-1]} and {self.in_channel}."
+#         # concatenate
+#         x = torch.cat([grids, codewords], dim=-1)
+#         x = self.layers(x, t)
+#         x = self.final(x)
+#         return x
 
         
 ### sampling and multi-scale grouping
@@ -337,7 +387,8 @@ class SamplingAndGroupingBlock(nn.Module):
             num_fps_points, k, radius, 
             BuildingBlock, num_blocks = 1, 
             hidden_channels = None, use_xyz = True, 
-            use_local = True, use_global = True):
+            use_local = True, use_global = True,
+            pos_embedding_channel = 3):
         super().__init__()
         self.in_channel = in_channel
         self.out_channels = out_channels or self.in_channel
@@ -364,7 +415,7 @@ class SamplingAndGroupingBlock(nn.Module):
             len(self.out_channels) == len(hidden_channels), 'The numbers of scales inferred from different parameters are not identical.'
         
         if use_xyz:
-            self.in_channel += 3
+                self.in_channel += pos_embedding_channel
         ### real out_channel
         self.out_channel = sum(self.out_channels)
         is_seq = BuildingBlock.func.is_sequence_modeling()        
@@ -394,7 +445,7 @@ class SamplingAndGroupingBlock(nn.Module):
                                 use_local = use_local, 
                                 use_global = use_global)))
 
-    def forward(self, xyz, features = None, t = None):
+    def forward(self, xyz, xyz_embed, features = None, t = None):
         r"""
         Parameters
         ----------
@@ -408,19 +459,22 @@ class SamplingAndGroupingBlock(nn.Module):
             (B, M, C_out) tensor of the center_features descriptors
         """
         centers = None
+        center_embed = None
         if self.num_fps_points > 0:
-            xyz_trans = channel_recover(xyz)
+            sample_ids =  furthest_point_sample(xyz, self.num_fps_points)
             centers = channel_transfer(gather_operation(
-                    xyz_trans, furthest_point_sample(xyz, self.num_fps_points)
+                    channel_recover(xyz), sample_ids
                 ))
-            
+            center_embed = channel_transfer(gather_operation(
+                    channel_recover(xyz_embed), sample_ids
+                ))
         ## None center indicates we will group all the points.
         features_trans = channel_recover(features) if features is not None else None
         center_feature_list = []
         for gid in range(len(self.groupers)):
             ## (B, N, 3), (B, M, 3), (B, N, C_in) -> (B, C_in (+3), M, k) 
             grouped_features_trans = self.groupers[gid](
-                xyz, centers, features_trans
+                xyz, xyz_embed, centers, center_embed, features_trans,
             ) 
             ## (B, C (+3), M, k) -> (B, M, k, C (+3))
             grouped_features = channel_transfer(grouped_features_trans)
@@ -428,7 +482,8 @@ class SamplingAndGroupingBlock(nn.Module):
             center_features = self.bb[gid](grouped_features, t)  
             # (B, M, out_channel)
             center_feature_list.append(center_features.max(dim=2)[0])
-        return centers, torch.cat(center_feature_list, dim = -1)
+        
+        return centers, center_embed, torch.cat(center_feature_list, dim = -1)
 
 
 ### Propagates the features of one set to another

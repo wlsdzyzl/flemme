@@ -91,20 +91,24 @@ def main():
             iter_id = 0
             for t in data_loader:
                 ### split x, y, path in later implementation.
-                x, y, path = t
+                x, y, c, path = process_input(t)
+                x  = x.to(device).float() 
+                if y is not None: 
+                    y = y.to(device)
+                if c is not None:
+                    c = c.to(device)
                 # print(x.shape, y.shape, len(path))
                 ### move data to cuda
-                x, y = x.to(device).float(), y.to(device)
                 if not x.shape[1:] == tuple(model.get_input_shape()):
                     logger.error("Inconsistent sample shape between data and model")
                     exit(1)   
                 ### here we want to generate raw image
-                res = forward_pass(model, x, y)
+                res = forward_pass(model, x, y, c)
                 if verbose:
                     logger.info(f'We are at iter {iter_id}/{len(data_loader)}.')
                 iter_id += 1
                 if len(results['input']) < eval_batch_num:
-                    append_results(results=results, x = x, y = y, 
+                    append_results(results=results, x = x, y = y, c = c,
                                             path = path, res = res, data_form = model.data_form,
                                             is_supervised=is_supervised,
                                             is_conditional=is_conditional)
@@ -148,7 +152,6 @@ def main():
                     os.makedirs(seg_dir)
                 for idx, (data, seg, tar) in enumerate(zip(results['input'], results['seg'], results['target'])):
                     origin_path = results['path'][idx]
-                    # print(origin_path)
                     if origin_path != '':
                         filename = os.path.basename(origin_path).split('.')[0]
                     else:

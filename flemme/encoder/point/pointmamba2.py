@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import DenseBlock, SequentialT, get_building_block, \
+from flemme.block import get_building_block, \
     SamplingAndGroupingBlock as MSGBlock, FeaturePropogatingBlock as FPBlock 
 from .pointnet2 import Point2Encoder, Point2Decoder
 from flemme.logger import get_logger
@@ -38,6 +38,7 @@ class PointMamba2Encoder(Point2Encoder):
                 z_count = 1, 
                 return_xyz = False,
                 last_activation = True,
+                pos_embedding = False,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -57,6 +58,7 @@ class PointMamba2Encoder(Point2Encoder):
                 z_count = z_count, 
                 vector_embedding = vector_embedding, 
                 is_point2decoder = is_point2decoder,
+                pos_embedding=pos_embedding,
                 return_xyz = return_xyz,
                 last_activation = last_activation)
         if len(kwargs) > 0:
@@ -67,6 +69,7 @@ class PointMamba2Encoder(Point2Encoder):
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
                                         dropout = dropout,
+                                        pos_embedding_channel = projection_channel if pos_embedding else point_dim,
                                         state_channel = state_channel, 
                                         conv_kernel_size = conv_kernel_size, 
                                         inner_factor = inner_factor,  
@@ -110,7 +113,6 @@ class PointMamba2Decoder(Point2Decoder):
                 dt_max=0.1, dt_init_floor=1e-4, 
                 dt_rank = None, dt_scale = 1.0,
                 skip_connection = True,
-                vector_embedding = True, 
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
@@ -123,6 +125,8 @@ class PointMamba2Decoder(Point2Decoder):
                 num_norm_groups = num_norm_groups, 
                 activation = activation, 
                 dropout = dropout)
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
                                         time_channel = self.time_channel, 
                                         activation=activation, 

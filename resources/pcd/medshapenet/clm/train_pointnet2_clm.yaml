@@ -19,6 +19,7 @@ model:
     neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
     dense_channels: [1024, 512, 256]
     activation: lrelu
+    pos_embedding: True
     normalization: group
   classification_losses: 
     - name: CE
@@ -68,7 +69,7 @@ val_loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedShapeNet/PointNet2/PointNet2_CLS
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedShapeNet/PointNet2/PointNet2_CLS_test
 ### parameter for optimizer
 optimizer:
   name: Adam

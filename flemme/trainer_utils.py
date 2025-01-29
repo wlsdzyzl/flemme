@@ -292,14 +292,16 @@ def unfreeze(model):
     for param in model.parameters():
         param.requires_grad = True
 
-def append_results(results, x, y, res, data_form, path = None,  
+def append_results(results, x, y, c, res, data_form, path = None,  
         is_supervised = False, is_conditional = False, additional_keys = []):
     if not data_form == DataForm.GRAPH:
         results['input'].append(x.cpu().detach().numpy())
         if y is not None:
             if is_supervised:
                 results['target'].append(y.cpu().detach().numpy())
-            if is_conditional:
+            if is_conditional and is_supervised:
+                results['condition'].append(c.cpu().detach().numpy())
+            elif is_conditional:
                 results['condition'].append(y.cpu().detach().numpy())
             else:
                 ### y is not used during the model training.
@@ -429,22 +431,33 @@ def evaluate_results(results, evaluators, data_form):
                         zipped = zip(results['seg'], results['target'])
                     for pred, target in zipped:
                         eval_res[eval_type][eval_metric] += eval_func(pred, target)
-                    # print(eval_metric, eval_func)
-                    # print(eval_res)
                     eval_res[eval_type][eval_metric] /= sample_num
     return eval_res
-
-def compute_loss(model, x, y, **kwargs):
-    if model.is_supervised:
+def process_input(t):
+    x, y, c, p = None, None, None, None
+    if len(t) == 2:
+        x, p = t
+    if len(t) == 3:
+        x, y, p = t
+    if len(t) == 4:
+        x, y, c, p = t
+    return x, y, c, p
+def compute_loss(model, x, y, c, **kwargs):
+    if model.is_supervised and model.is_conditional:
+        losses, res = model.compute_loss(x, y = y, c = c, **kwargs)
+    elif model.is_supervised:
         losses, res = model.compute_loss(x, y = y, **kwargs)
+    ## using y as condition
     elif model.is_conditional:
         # losses, res = model.compute_loss(x, y, epoch<=2)
         losses, res = model.compute_loss(x, c = y, **kwargs)
     else:
         losses, res = model.compute_loss(x, **kwargs)
     return losses, res
-def forward_pass(model, x, y):
-    if model.is_conditional:
+def forward_pass(model, x, y, c):
+    if model.is_supervised and model.is_conditional:
+        res = model(x, c = c)
+    elif model.is_conditional:
         res = model(x, c = y)
     else:
         res = model(x)

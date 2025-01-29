@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import SequentialT, get_building_block, FoldingLayer, LocalGraphLayer, MultipleBuildingBlocks
-from .pointnet import PointEncoder, PointDecoder
+from flemme.block import get_building_block, LocalGraphLayer, MultipleBuildingBlocks
+from .pointnet import PointEncoder
 from flemme.logger import get_logger
 logger = get_logger("encoder.point.pointtrans")
         
@@ -67,49 +67,3 @@ class PointTransEncoder(PointEncoder):
                                         out_channel=self.lf_path[-1]))
 
         self.lf = nn.ModuleList(trans_sequence)
-        
-class PointTransDecoder(PointDecoder):
-    def __init__(self, point_dim=3, point_num = 2048, 
-                in_channel = 256, dense_channels = [256], 
-                building_block = 'pct_sa', 
-                normalization = 'group', num_norm_groups = 8, 
-                activation = 'lrelu', dropout = 0., 
-                folding_times = 0, 
-                base_shape_config = {},
-                folding_num_blocks = 2,
-                num_heads = 4, d_k = None, 
-                qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                residual_attention = False, skip_connection = True,
-                vector_embedding = True, **kwargs):
-        super().__init__(point_dim=point_dim, 
-                point_num = point_num,
-                in_channel = in_channel,
-                dense_channels = dense_channels,
-                normalization = normalization,
-                num_norm_groups = num_norm_groups,
-                activation = activation, dropout = dropout, 
-                folding_times = folding_times,
-                base_shape_config = base_shape_config,
-                vector_embedding = vector_embedding)
-        if len(kwargs) > 0:
-           logger.debug("redundant parameters:{}".format(kwargs))
-        
-        if self.folding_times > 0:
-            self.BuildingBlock = get_building_block(building_block, 
-                                            time_channel = self.time_channel, 
-                                            activation=activation, 
-                                            norm = normalization, 
-                                            num_norm_groups = 1, 
-                                            dropout = dropout,
-                                            num_heads = num_heads, d_k = d_k, 
-                                            qkv_bias = qkv_bias, qk_scale = qk_scale, 
-                                            atten_dropout = atten_dropout, 
-                                            residual_attention = residual_attention,
-                                            skip_connection = skip_connection)
-            if self.folding_times < 1:
-                logger.warning('Folding times should be larger than 1.')
-            folding_channels = [dense_channels[-1] + 2, ] + [ dense_channels[-1] + point_dim] * (folding_times - 1)
-            folding_sequence = [FoldingLayer(BuildingBlock = self.BuildingBlock,
-                                in_channel = fc, out_channel = point_dim,
-                                num_blocks = folding_num_blocks) for fc in folding_channels]
-            self.fold = SequentialT(*folding_sequence)

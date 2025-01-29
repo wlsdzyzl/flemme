@@ -31,7 +31,7 @@ class BaseModel(nn.Module):
         if self.with_time_embedding:
             logger.info("Construct base model with time embedding.")
             self.t_embed = TimeEmbeddingBlock(out_channel=self.time_channel, activation=self.time_act)
-        self.final_time_channel = model_config.get('concat_time_channel', 0) + self.time_channel
+        self.final_time_channel =  self.time_channel
 
         ### condition_embedding
         en_emb_config, de_emb_config = None, None
@@ -56,6 +56,8 @@ class BaseModel(nn.Module):
                         encoder_config.get('encoder_additional_in_channel', 0) + self.en_cemb.out_channel
                 else:
                     self.final_time_channel += self.en_cemb.out_channel
+            elif self.final_time_channel == 0 and self.merge_ct:
+                self.final_time_channel = self.en_cemb.out_channel
         ### create encoder
         encoder_config['time_channel'] = self.final_time_channel
 
@@ -139,6 +141,7 @@ class BaseModel(nn.Module):
     def encode(self, x, t = None, c = None):
         if self.condition_for_encoder:
             if c is not None:
+                # print(c.shape)
                 c = self.en_cemb(c)
                 if self.merge_ct:
                     if self.combine_condition == 'add':

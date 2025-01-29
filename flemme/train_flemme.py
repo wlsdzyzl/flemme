@@ -187,19 +187,23 @@ def main():
             'cls':[],
             'cluster':[]}
         for t in data_loader:
-            x, y, _ = t
-            x, y = x.to(device).float(), y.to(device)
-            
+            x, y, c, _ = process_input(t)
+            x  = x.to(device).float() 
+            if y is not None: 
+                y = y.to(device)
+            if c is not None:
+                c = c.to(device)
+
             if not x.shape[1:] == tuple(model.get_input_shape()):
                 logger.error("Inconsistent sample shape between data and model: {} and {}".format(x.shape[1:], tuple(model.get_input_shape())))
                 exit(1)                
             ### here we want to generate raw image
-            losses, res = compute_loss(model, x, y)
+            losses, res = compute_loss(model, x, y, c)
             
             #### to numpy for evaluation
             if evaluators is not None and len(results['input']) < eval_batch_num:
-                if res is None: res = forward_pass(model, x, y)
-                append_results(results=results, x = x, y = y, 
+                if res is None: res = forward_pass(model, x, y, c)
+                append_results(results=results, x = x, y = y, c = c,
                                         res = res, data_form = model.data_form, 
                                         is_supervised=is_supervised, 
                                         is_conditional=is_conditional)
@@ -219,8 +223,12 @@ def main():
                     or model.data_form == DataForm.VEC):
                     with torch.no_grad():
                         x = x[:write_sample_num]
-                        y = y[:write_sample_num]
-                        if res is None: res = forward_pass(model, x, y)
+                        if y is not None:
+                            y = y[:write_sample_num]
+                        if c is not None:
+                            c = c[:write_sample_num]
+
+                        if res is None: res = forward_pass(model, x, y, c)
                         else:
                             for rn in res:
                                 if torch.is_tensor(res[rn]):
@@ -236,7 +244,9 @@ def main():
                         res['input'] = x
                         if is_supervised:
                             res['target'] = y
-                        if is_conditional:
+                        if is_supervised and is_conditional:
+                            res['condition'] = c
+                        elif is_conditional:
                             res['condition'] = y
 
                     write_data(writer=writer, formatter=formatter, data_form = model.data_form, 
@@ -250,7 +260,6 @@ def main():
             if len(eval_res) > 0:
                 for eval_type, eval in eval_res.items():
                     for eval_metric, eval_value in eval.items():
-                        # print(eval_value)
                         if eval_metric == score_metric:
                             eval_score = eval_value
                         write_eval(writer=writer, eval_metric=eval_type + '_eval/' + eval_metric, 
@@ -283,13 +292,17 @@ def main():
                     val_losses = torch.zeros(len(loss_names))
                     val_n = 0
                     for vt in val_data_loader:
-                        vx, vy, _ = vt
-                        vx, vy = vx.to(device), vy.to(device)
-                        vlosses, vres = compute_loss(model, vx, vy)
+                        vx, vy, vc, _ = process_input(vt)
+                        vx  = vx.to(device).float() 
+                        if vy is not None: 
+                            vy = vy.to(device).float()
+                        if vc is not None:
+                            vc = vc.to(device).float()
+                        vlosses, vres = compute_loss(model, vx, vy, vc)
 
                         if evaluators is not None and len(vresults['input']) < eval_batch_num:
-                            if vres is None: vres = forward_pass(model, x, y)
-                            append_results(results=vresults, x = vx, y = vy, 
+                            if vres is None: vres = forward_pass(model, x, y, c)
+                            append_results(results=vresults, x = vx, y = vy, c = vc,
                                                 res = vres, data_form = model.data_form,
                                                 is_supervised=is_supervised, 
                                                 is_conditional=is_conditional)
@@ -305,15 +318,18 @@ def main():
                         and (model.data_form == DataForm.IMG or model.data_form == DataForm.PCD \
                         or model.data_form == DataForm.VEC):
                         vx = vx[:write_sample_num]
-                        vy = vy[:write_sample_num]
-                        if vres is None: vres = forward_pass(model, vx, vy)
+                        if vy is not None: vy = vy[:write_sample_num]
+                        if vc is not None: vc = vc[:write_sample_num]
+                        if vres is None: vres = forward_pass(model, vx, vy, vc)
                         else:
                             for rn in vres:
                                 vres[rn] = vres[rn][:write_sample_num]
                         vres['input'] = vx
                         if is_supervised:
                             vres['target'] = vy
-                        if is_conditional:
+                        if is_conditional and is_supervised:
+                            vres['condition'] = vc
+                        elif is_conditional:
                             vres['condition'] = vy
                         write_data(writer=writer, formatter=formatter, data_form = model.data_form, 
                                 input_map=vres, iter_id=epoch, prefix='val')

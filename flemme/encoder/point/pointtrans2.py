@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import DenseBlock, SequentialT, get_building_block, \
+from flemme.block import get_building_block, \
     SamplingAndGroupingBlock as MSGBlock, FeaturePropogatingBlock as FPBlock 
 from .pointnet2 import Point2Encoder, Point2Decoder
 from flemme.logger import get_logger
@@ -32,6 +32,7 @@ class PointTrans2Encoder(Point2Encoder):
                  z_count = 1, 
                  return_xyz = False,
                  last_activation = True,
+                 pos_embedding = False,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -52,7 +53,8 @@ class PointTrans2Encoder(Point2Encoder):
                 vector_embedding = vector_embedding, 
                 is_point2decoder = is_point2decoder,
                 return_xyz = return_xyz,
-                last_activation = last_activation)
+                last_activation = last_activation,
+                pos_embedding= pos_embedding)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
@@ -61,6 +63,7 @@ class PointTrans2Encoder(Point2Encoder):
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
                                         dropout = dropout,
+                                        pos_embedding_channel = projection_channel if pos_embedding else point_dim,
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                         atten_dropout = atten_dropout, 
@@ -73,8 +76,8 @@ class PointTrans2Encoder(Point2Encoder):
             radius = self.neighbor_radius[fid],
             num_blocks = self.num_blocks,
             use_xyz = self.use_xyz,
-            use_local = True,
-            use_global = True,
+            use_local = use_local,
+            use_global = use_global,
             BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
         self.msg = nn.ModuleList(msg_sequence)
 
@@ -93,6 +96,19 @@ class PointTrans2Decoder(Point2Decoder):
                 qkv_bias = True, qk_scale = None, atten_dropout = None, 
                 residual_attention = False, skip_connection = True,
                 **kwargs):
+        super().__init__(point_dim=point_dim, 
+                point_num = point_num,
+                in_channels = in_channels,
+                time_channel = time_channel,
+                num_blocks = num_blocks,
+                fp_channels = fp_channels, 
+                dense_channels = dense_channels, 
+                normalization = normalization, 
+                num_norm_groups = num_norm_groups, 
+                activation = activation, 
+                dropout = dropout)
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
                                         time_channel = self.time_channel, 
                                         activation=activation, 

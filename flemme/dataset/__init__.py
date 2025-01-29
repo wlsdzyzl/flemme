@@ -32,6 +32,7 @@ def create_loader(loader_config):
     data_form = DataForm.IMG
     dataset_cls_str = dataset_config.get('name', None)
     process_label = False
+    process_target = False
     if dataset_cls_str is None:
         dataset_cls_str = 'ImgSegDataset'
         logger.warning(f"Cannot find dataset class in the config. Using default '{dataset_cls_str}'.")
@@ -48,9 +49,12 @@ def create_loader(loader_config):
         dataset_class = ImgDataset
     if dataset_cls_str == 'ImgClsDataset':
         dataset_class = ImgClsDataset
-    elif dataset_cls_str == 'ImgSegDataset' or dataset_cls_str == 'ImgReconDataset':
+    elif dataset_cls_str == 'ImgSegDataset':
         dataset_class = ImgSegDataset
         process_label = True
+    elif dataset_cls_str == 'ImgReconDataset':
+        dataset_class = ImgReconDataset
+        process_target = True
     elif dataset_cls_str == 'MultiModalityImgSegDataset':
         dataset_class = MultiModalityImgSegDataset
         process_label = True
@@ -70,6 +74,14 @@ def create_loader(loader_config):
         dataset_class = PcdSegDataset
         data_form = DataForm.PCD
         process_label = True
+    elif dataset_cls_str == 'PcdReconDataset':
+        dataset_class = PcdReconDataset
+        data_form = DataForm.PCD
+        process_target = True
+    elif dataset_cls_str == 'PcdReconWithClassLabelDataset':
+        dataset_class = PcdReconWithClassLabelDataset
+        data_form = DataForm.PCD
+        process_target = True
     elif dataset_cls_str == 'PointDataset':
         dataset_class = PointDataset
         data_form = DataForm.VEC
@@ -98,7 +110,16 @@ def create_loader(loader_config):
     data_transforms = get_transforms(trans_config_list, data_form, img_dim=img_dim)
     data_transforms = Compose(data_transforms)
     dataset_config['data_transform'] = data_transforms
+
+
     ### label_transform and label
+    ### None means it has the same suffix with data
+    label_suffix_list = loader_config.get('label_suffix_list', None)
+    if label_suffix_list is not None:
+        assert type(label_suffix_list) == list and len(label_suffix_list) == len(data_path_list), \
+            "If label_suffix_list is provided in loader config, it should be a list and has the equal length to the data_path_list."
+
+
     label_trans_config_list = loader_config.get('label_transforms', None)
     if process_label or label_trans_config_list is not None:
         
@@ -113,11 +134,27 @@ def create_loader(loader_config):
         label_transforms = get_transforms(label_trans_config_list, data_form, img_dim=img_dim)
         label_transforms = Compose(label_transforms)
         dataset_config['label_transform'] = label_transforms
-        ### None means it has the same suffix with data
-        label_suffix_list = loader_config.get('label_suffix_list', None)
-        if label_suffix_list is not None:
-            assert type(label_suffix_list) == list and len(label_suffix_list) == len(data_path_list), \
-                "If label_suffix_list is provided in loader config, it should be a list and has the equal length to the data_path_list."
+
+    ### None means it has the same suffix with data
+    target_suffix_list = loader_config.get('target_suffix_list', None)
+    if target_suffix_list is not None:
+        assert type(target_suffix_list) == list and len(target_suffix_list) == len(data_path_list), \
+            "If target_suffix_list is provided in loader config, it should be a list and has the equal length to the data_path_list."
+
+    target_trans_config_list = loader_config.get('target_transforms', None)
+    if process_target or target_trans_config_list is not None:
+        
+        if target_trans_config_list is None:
+            logger.info('There is no specified transforms for targets, we would generate the necessary transforms for targets automatically.')
+            target_trans_config_list = \
+                select_label_transforms(trans_config_list, data_form)
+
+        ### check random operations are in the same order.
+        check_random_transforms(trans_config_list, target_trans_config_list)
+
+        target_transforms = get_transforms(target_trans_config_list, data_form, img_dim=img_dim)
+        target_transforms = Compose(target_transforms)
+        dataset_config['target_transform'] = target_transforms
 
     
     num_workers = loader_config.get('num_workers', 1)
@@ -154,8 +191,10 @@ def create_loader(loader_config):
             dataset_config['data_path'] = tmp_path
             if data_suffix_list is not None:
                 dataset_config['data_suffix'] = data_suffix_list[idx]
-            if process_label and label_suffix_list is not None:
+            if label_suffix_list is not None:
                 dataset_config['label_suffix'] = label_suffix_list[idx]
+            if target_suffix_list is not None:
+                dataset_config['target_suffix'] = target_suffix_list[idx]
             datasets.append(dataset_class(**dataset_config))
     else:
         ### single dataset, all related information is contained in dataset configuration

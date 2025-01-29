@@ -165,16 +165,16 @@ class PointNetEncoder(PointEncoder):
 
         self.lf = nn.ModuleList(lf_sequence)
 
-class PointDecoder(nn.Module):
-    def __init__(self, point_dim, point_num, 
-                in_channel, time_channel, 
-                dense_channels, 
-                normalization, num_norm_groups, 
-                activation, dropout, 
-                folding_times, 
-                base_shape_config, 
-                vector_embedding, 
-                **kwargs):
+class PointNetDecoder(nn.Module):
+    def __init__(self, point_dim=3, point_num = 2048, 
+                in_channel = 256, dense_channels = [256], 
+                time_channel = 0,
+                normalization = 'group', num_norm_groups = 8, 
+                activation = 'lrelu', dropout = 0., 
+                folding_times = 0, 
+                base_shape_config = {},
+                folding_hidden_channels = [512, 512],
+                vector_embedding = True, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -195,10 +195,11 @@ class PointDecoder(nn.Module):
         if self.folding_times > 0:
             assert self.vector_embedding, \
                 'point cloud decoder with folding operations should have vector embeddings.'
-            self.fold = None
+            assert folding_times > 1, 'You need fold twice at least.'
+
             base_shape = base_shape_config.get('type', 'grid2d')
             logger.info(f'using {base_shape} as base shape for folding.')
-
+            
             if base_shape == 'grid2d':
                 grid_len = int(point_num**0.5)
                 self.base_shape_dim = 2
@@ -254,6 +255,13 @@ class PointDecoder(nn.Module):
             else:
                 logger.error('Unsupported base shape.')
                 exit(1)
+            folding_channels = [self.dense_path[-1] + self.base_shape_dim, ] + [ self.dense_path[-1] + point_dim] * (folding_times - 1)
+            folding_sequence = [FoldingLayer(in_channel = fc, out_channel = point_dim,
+                                    hidden_channels = folding_hidden_channels,
+                                    time_channel = self.time_channel,
+                                    norm = normalization, num_norm_groups=num_norm_groups, 
+                                    activation = activation, dropout=dropout) for fc in folding_channels]
+            self.fold = SequentialT(*folding_sequence)
         else:
             final_out_channel = point_dim * point_num if self.vector_embedding else self.point_dim
             self.final = nn.Linear(dense_channels[-1], final_out_channel)
@@ -275,7 +283,6 @@ class PointDecoder(nn.Module):
             x = x[0]
         x = self.dense(x, t)
         if self.folding_times > 0:
-            if self.fold is None: raise NotImplementedError
             # repeat grid for batch operation
             shape = self.base_shape.to(x.device)
             # (grid_len * grid_len, 2) -> (B, grid_len * grid_len, 2) 
@@ -289,44 +296,3 @@ class PointDecoder(nn.Module):
             if self.vector_embedding:
                 x = x.reshape(-1, self.point_num, self.point_dim)
         return x
-
-
-class PointNetDecoder(PointDecoder):
-    def __init__(self, point_dim=3, point_num = 2048, 
-                in_channel = 256, dense_channels = [256], 
-                time_channel = 0,
-                building_block = 'dense', 
-                normalization = 'group', num_norm_groups = 8, 
-                activation = 'lrelu', dropout = 0., 
-                folding_times = 0, 
-                base_shape_config = {},
-                folding_num_blocks = 2,
-                vector_embedding = True, **kwargs):
-        super().__init__(point_dim=point_dim, 
-                point_num = point_num,
-                in_channel = in_channel,
-                dense_channels = dense_channels,
-                time_channel = time_channel,
-                normalization = normalization,
-                num_norm_groups = num_norm_groups,
-                activation = activation, dropout = dropout, 
-                folding_times = folding_times,
-                base_shape_config = base_shape_config,
-                vector_embedding = vector_embedding)
-        if len(kwargs) > 0:
-           logger.debug("redundant parameters:{}".format(kwargs))
-        
-        if self.folding_times > 0:
-            self.BuildingBlock = get_building_block(building_block, 
-                                            time_channel = self.time_channel, 
-                                            activation=activation, 
-                                            norm = normalization, 
-                                            num_norm_groups = 1)
-            if self.folding_times < 1:
-                logger.warning('Folding times should be larger than 1.')
-            folding_channels = [dense_channels[-1] + self.base_shape_dim, ] + [ dense_channels[-1] + point_dim] * (folding_times - 1)
-            folding_sequence = [FoldingLayer(BuildingBlock = self.BuildingBlock,
-                                    in_channel = fc, out_channel = point_dim,
-                                    num_blocks = folding_num_blocks) for fc in folding_channels]
-            self.fold = SequentialT(*folding_sequence)
-

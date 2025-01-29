@@ -3,7 +3,7 @@ from glob import glob
 from flemme.utils import load_pcd, save_pcd, rkdirs
 import numpy as np
 from flemme.dataset.label_dict.medshapenet import coarse_labels, coarse_label_to_organ
-from flemme.color_table import color_table
+
 dataset_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet'
 selected_number_paths = glob(os.path.join(dataset_path, 'by_number/*')) 
 sample_num = 16384

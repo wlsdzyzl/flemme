@@ -138,6 +138,62 @@ class ImgSegDataset(Dataset):
         # print(mask.max(), mask.shape)
         return img, mask, img_path
 
+
+class ImgReconDataset(Dataset):
+    def __init__(self, data_path, dim = 2, data_transform = None, mode = 'train', 
+                 data_dir = 'raw', target_dir = 'target', data_suffix='.png', 
+                 target_suffix = None, target_transform = None, crop_nonzero = None, **kwargs):
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters: {}".format(kwargs))
+        target_suffix = target_suffix or data_suffix
+        logger.info("loading data from the directory: {}".format(data_path))
+        self.img_path_list = sorted(glob(os.path.join(data_path+'/' + data_dir, "*" + data_suffix)))
+        self.mask_path_list = [rreplace(rreplace(ipath, data_suffix, target_suffix, 1), data_dir, target_dir, 1) for ipath in self.img_path_list]
+        self.mode = mode
+        self.data_transform = data_transform
+        self.target_transform = target_transform
+        self.dim = dim
+        self.crop_by = None
+        if crop_nonzero is not None:
+            self.crop_nonzero = partial(crop_boundingbox, margin = crop_nonzero.get('margin', (0,0,0)), background=0)
+            self.crop_by = crop_nonzero.get('crop_by', 'raw')
+    def __len__(self):
+        return len(self.img_path_list)
+    ### the dataset will not be stored in the memory
+    def __getitem__(self, index):
+        """Get the images"""
+        img_path = self.img_path_list[index]
+        
+        mask_path = self.mask_path_list[index]
+        if self.dim == 2:
+            img = load_img(img_path)
+            mask = load_img(mask_path)
+        else:
+            img = load_itk(img_path)[0]
+            mask = load_itk(mask_path)[0]
+            ### currently, crop_by only support 3D images
+            if self.crop_by == 'raw':
+                img, mask, _ = self.crop_nonzero(data = img, follows = mask)
+            elif self.crop_by == 'mask':
+                mask, img, _ = self.crop_nonzero(data = mask, follows = img)
+        if self.data_transform is not None:
+            ## why do we need to set the state here?
+            # the purpose is to make sure that two transforms are applied on the same state. 
+            n_state, t_state = get_random_state()
+            img = self.data_transform(img)
+            ### to check if the mask and image has the same random transforms
+            # x = np.random.randn(10)
+            # x_torch = torch.randn(10)
+            set_random_state(n_state, t_state)
+            mask = self.target_transform(mask)
+            # y = np.random.randn(10)
+            # y_torch = torch.randn(10)
+            # print((x == y).all(), torch.all(torch.eq(x_torch, y_torch)))
+        # print(mask.max(), mask.shape)
+        return img, mask, img_path
+    
+
 class MultiModalityImgSegDataset(Dataset):
     def __init__(self, data_path, dim = 2, data_transform = None, mode = 'train', 
                  data_dir = 'raw', label_dir = 'label', data_suffix='.png', 

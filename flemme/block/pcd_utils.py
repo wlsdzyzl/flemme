@@ -269,7 +269,7 @@ class QueryAndGroup(nn.Module):
         super(QueryAndGroup, self).__init__()
         self.radius, self.nsample, self.use_xyz = radius, nsample, use_xyz
 
-    def forward(self, xyz, new_xyz, features=None):
+    def forward(self, xyz, xyz_embed, new_xyz, new_xyz_embed, features=None):
         # type: (QueryAndGroup, torch.Tensor. torch.Tensor, torch.Tensor) -> Tuple[Torch.Tensor]
         r"""
         Parameters
@@ -288,21 +288,21 @@ class QueryAndGroup(nn.Module):
         """
 
         idx = ball_query(self.radius, self.nsample, xyz, new_xyz)
-        xyz_trans = xyz.transpose(1, 2).contiguous()
-        grouped_xyz = grouping_operation(xyz_trans, idx)  # (B, 3, npoint, nsample)
-        grouped_xyz -= new_xyz.transpose(1, 2).unsqueeze(-1)
+        xyz_embed_trans = xyz.transpose(1, 2).contiguous()
+        grouped_xyz_emb = grouping_operation(xyz_embed_trans, idx)  # (B, 3, npoint, nsample)
+        grouped_xyz_emb -= new_xyz_embed.transpose(1, 2).contiguous().unsqueeze(-1)
 
         if features is not None:
             grouped_features = grouping_operation(features, idx)
             if self.use_xyz:
                 new_features = torch.cat(
-                    [grouped_xyz, grouped_features], dim=1
+                    [grouped_xyz_emb, grouped_features], dim=1
                 )  # (B, C + 3, npoint, nsample)
             else:
                 new_features = grouped_features
         else:
             assert self.use_xyz, "Cannot have not features and not use xyz as a feature!"
-            new_features = grouped_xyz
+            new_features = grouped_xyz_emb
 
         return new_features
 
@@ -320,7 +320,7 @@ class GroupAll(nn.Module):
         super(GroupAll, self).__init__()
         self.use_xyz = use_xyz
 
-    def forward(self, xyz, new_xyz, features=None):
+    def forward(self, xyz, xyz_embed, new_xyz, new_xyz_embed, features=None):
         # type: (GroupAll, torch.Tensor, torch.Tensor, torch.Tensor) -> Tuple[torch.Tensor]
         r"""
         Parameters
@@ -338,7 +338,7 @@ class GroupAll(nn.Module):
             (B, C + 3, 1, N) tensor
         """
 
-        grouped_xyz = xyz.transpose(1, 2).unsqueeze(2)
+        grouped_xyz = xyz_embed.unsqueeze(2)
         if features is not None:
             grouped_features = features.unsqueeze(2)
             if self.use_xyz:

@@ -182,9 +182,7 @@ class MultipleBuildingBlocks(nn.Module):
         if not type(hidden_channels) == list:
             hidden_channel = int(max(max(in_channel, out_channel) // 2, min(in_channel, out_channel)))
             hidden_channels = [hidden_channel,] * (n - 1)
-            channels = [in_channel,] + [out_channel,] * n
         channels = [in_channel,] + hidden_channels + [out_channel, ]
-            
         building_blocks = []
         for i in range(len(channels) - 1):
             for k, v in kwargs_list.items():

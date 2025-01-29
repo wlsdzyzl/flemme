@@ -333,6 +333,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                     time_channel = time_channel, 
                                                     in_channels=decoder_in_channels, 
                                                     dense_channels=de_dense_channels,
+                                                    building_block=building_block,
                                                     fp_channels = fp_channels,
                                                     **encoder_config)
             if return_encoder:

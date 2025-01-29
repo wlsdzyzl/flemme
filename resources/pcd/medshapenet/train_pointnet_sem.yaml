@@ -76,6 +76,7 @@ val_loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
+pretrained: /media/wlsdzyzl/DATA/flemme-ckp/MedShapeNet/PointNet/PointNet_SEG/ckp_last.pth
 check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedShapeNet/PointNet/PointNet_SEG
 ### parameter for optimizer
 optimizer:
