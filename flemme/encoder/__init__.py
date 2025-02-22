@@ -66,7 +66,8 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 
         else:
             raise RuntimeError(f'Unsupported encoder: {encoder_name}')
-        if not building_block in supported_buildingblocks_for_encoder[encoder_name]:
+        if not building_block in supported_buildingblocks_for_encoder[encoder_name] and \
+             not (return_encoder == False and encoder_name in ['PointNet', 'PointTrans', 'PointMamba']):
             logger.error(f'Unsupported building block \'{building_block}\' for encoder {encoder_name}, please use one of {supported_buildingblocks_for_encoder[encoder_name]}.')
             exit(1)
         ### FC channels

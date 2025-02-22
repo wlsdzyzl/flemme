@@ -41,6 +41,8 @@ class Point2Encoder(nn.Module):
                  num_blocks,
                  num_scales,
                  use_xyz,
+                 sorted_query,
+                 knn_query,
                  dense_channels,
                  activation, dropout,
                  normalization, num_norm_groups,  
@@ -71,10 +73,14 @@ class Point2Encoder(nn.Module):
         self.fps_depth = len(fps_feature_channels)
         self.is_point2decoder = is_point2decoder
         self.use_xyz = use_xyz
+        self.sorted_query = sorted_query
+        self.knn_query = knn_query
+        if knn_query:
+            assert knn_query in ['xyz', 'xyz_embed', 'feature'], "Unsupported KNN query space, shouled be one of ['xyz', 'xyz_embed', 'feature']."
         self.return_xyz = return_xyz
         if pos_embedding:
             self.pos_embed = nn.Linear(point_dim, projection_channel)
-
+            logger.info("Using point cloud positional embedding.")
         if not type(self.num_fps_points) == list:
             self.num_fps_points = [self.num_fps_points,] * len(fps_feature_channels)
 
@@ -129,6 +135,7 @@ class Point2Encoder(nn.Module):
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
         self.out_channels = self.msg_path + [self.out_channel, ]
+
     def forward(self, xyz, t = None):
         if self.msg is None:
             raise NotImplementedError
@@ -136,13 +143,19 @@ class Point2Encoder(nn.Module):
         ## N * Np * d
         features = self.point_proj(xyz)
         if hasattr(self, 'pos_embed'):
-            xyz_embed = self.pos_embed(xyz_embed)
+            xyz_embed = self.pos_embed(xyz)
         else:
             xyz_embed = xyz
         xyz = xyz[...,0:3]
         xyz_list, feature_list = [xyz], [features]
-        for msg in self.msg:
+        for lid, msg in enumerate(self.msg):
             xyz, xyz_embed, features = msg(xyz, xyz_embed, features = features, t = t)
+            if hasattr(self, 'lrm'):
+                if hasattr(self, 'scanners') and len(self.scanners) > 0: 
+                    sorted_index_list = self.scan(xyz)
+                    features = self.lrm[lid](features, (sorted_index_list, t))
+                else:
+                    features = self.lrm[lid](features, t)
             xyz_list.append(xyz)
             feature_list.append(features)
 
@@ -259,6 +272,8 @@ class PointNet2Encoder(Point2Encoder):
                  num_blocks = 1,
                  num_scales = 2,
                  use_xyz = True,
+                 sorted_query = False,
+                 knn_query = False,
                  dense_channels = [1024],
                  building_block = 'dense', 
                  normalization = 'group', num_norm_groups = 8, 
@@ -280,6 +295,8 @@ class PointNet2Encoder(Point2Encoder):
                 num_blocks = num_blocks,
                 num_scales = num_scales,
                 use_xyz = use_xyz,
+                sorted_query = sorted_query,
+                knn_query = knn_query,
                 dense_channels = dense_channels,
                 activation = activation, 
                 dropout = dropout,
@@ -298,8 +315,7 @@ class PointNet2Encoder(Point2Encoder):
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
-                                        dropout = dropout, 
-                                        pos_embedding_channel = projection_channel if pos_embedding else point_dim)
+                                        dropout = dropout)
         msg_sequence = [MSGBlock(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
             num_fps_points = self.num_fps_points[fid],
@@ -307,6 +323,9 @@ class PointNet2Encoder(Point2Encoder):
             radius = self.neighbor_radius[fid],
             num_blocks = self.num_blocks,
             use_xyz = self.use_xyz,
+            sorted_query = self.sorted_query,
+            knn_query = self.knn_query,
+            pos_embedding_channel = projection_channel if pos_embedding else point_dim,
             BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
         self.msg = nn.ModuleList(msg_sequence)
 

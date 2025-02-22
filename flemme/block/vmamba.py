@@ -76,7 +76,6 @@ class MBaseBlock(nn.Module):
         self.K = 1
         self.scan_mode = scan_mode
         assert scan_mode in ['cross', 'single', 'simplified'], 'Unsupported scan model for vision mamba.'
-        
         if self.dim == 2:
             self.conv = nn.Conv2d(
                 self.inner_channel,

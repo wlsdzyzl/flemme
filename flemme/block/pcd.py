@@ -2,9 +2,12 @@ from .common import *
 from .pcd_utils import *
 from functools import partial
 from flemme.config import module_config
+if module_config['mamba']:
+    from .pmamba import get_psmamba_block, get_scanners,\
+            PointMambaBlock
 
-## insight from PCT: https://arxiv.org/pdf/2012.09688
 if module_config['transformer']:
+    ## insight from PCT: https://arxiv.org/pdf/2012.09688
     class OffSetAttentionBlock(nn.Module):
         """
         ### Attention block
@@ -83,7 +86,8 @@ if module_config['transformer']:
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
             dropout = None, residual_attention = False, 
             skip_connection = True, attention = 'SA', 
-            activation = 'relu', norm='batch', num_norm_groups = -1, **kwargs):
+            activation = 'relu', norm='batch', num_norm_groups = -1, 
+            post_normalization = False, **kwargs):
             
             super().__init__(_channel_dim = -1)
             self.in_channel = in_channel
@@ -96,8 +100,11 @@ if module_config['transformer']:
                 self.atten = OffSetAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
                 qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
                 dropout = dropout, skip_connection = residual_attention)
-
-            self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
+            self.post_normalization = post_normalization 
+            if post_normalization:
+                self.norm, self.norm_type = get_norm(norm, out_channel, 1, num_norm_groups)
+            else:
+                self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
             self.act = get_act(activation)
             self.time_channel = time_channel
             self.skip_connection = skip_connection
@@ -108,71 +115,15 @@ if module_config['transformer']:
                 self.hyper_gate = nn.Linear(self.time_channel, out_channel)
         def forward(self, x, t = None):
             res = self.atten(x)
-            res = self.act(self.normalize(res))
+            if not self.post_normalization:
+                res = self.act(self.normalize(res))
+
             if self.skip_connection:
                 res = x + res
             x = self.dense(res)
-            if t is not None:
-                assert self.time_channel == t.shape[-1], \
-                    f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-                gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-                bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-                x = x * gate + bias
-            return x
-        @staticmethod
-        def is_sequence_modeling():
-            return True
-if module_config['mamba']:
-    from mamba_ssm import Mamba, Mamba2
-    class PointMambaBlock(NormBlock):
-        def __init__(self, in_channel, out_channel = None, 
-            time_channel = 0, state_channel = 64, 
-            conv_kernel_size = 4, inner_factor = 2.0,  
-            head_channel = 64,
-            conv_bias=True, bias=False,
-            learnable_init_states = True, chunk_size=256,
-            dt_min=0.001, A_init_range=(1, 16),
-            dt_max=0.1, dt_init_floor=1e-4, 
-            dt_rank = None, dt_scale = 1.0,
-            dropout = None, skip_connection = True, mamba = 'Mamba', 
-            activation = 'relu', norm='batch', num_norm_groups = -1, **kwargs):
             
-            super().__init__(_channel_dim = -1)
-            self.in_channel = in_channel
-            self.out_channel = out_channel or in_channel
-            if mamba == 'Mamba':
-                dt_rank = dt_rank or math.ceil(in_channel / 16)
-                self.mamba = Mamba(d_model = in_channel, d_state = state_channel, 
-                            d_conv = conv_kernel_size, expand = inner_factor, 
-                            bias = bias, conv_bias = conv_bias,                         
-                            dt_max = dt_max, dt_min = dt_min, dt_rank = dt_rank,
-                            dt_init_floor = dt_init_floor, dt_scale = dt_scale)
-            elif mamba == 'Mamba2':
-                self.mamba = Mamba2(d_model = in_channel, d_state = state_channel, 
-                            d_conv = conv_kernel_size, expand = inner_factor, 
-                            headdim = head_channel,
-                            bias = bias, conv_bias = conv_bias, chunk_size = chunk_size,
-                            learnable_init_states = learnable_init_states, 
-                            dt_max = dt_max, dt_min = dt_min, 
-                            dt_init_floor = dt_init_floor,
-                            A_init_range = A_init_range)
-
-            self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
-            self.act = get_act(activation)
-            self.time_channel = time_channel
-            self.skip_connection = skip_connection
-            self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
-
-            if self.time_channel > 0:
-                self.hyper_bias = nn.Linear(self.time_channel, out_channel, bias=False)
-                self.hyper_gate = nn.Linear(self.time_channel, out_channel)
-
-        def forward(self, x, t = None):
-            res = self.mamba(x)
-            res = self.act(self.normalize(res))
-            if self.skip_connection:
-                res = x + res
-            x = self.dense(res)
+            if self.post_normalization:
+                x = self.act(self.normalize(x))
             if t is not None:
                 assert self.time_channel == t.shape[-1], \
                     f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
@@ -183,23 +134,16 @@ if module_config['mamba']:
         @staticmethod
         def is_sequence_modeling():
             return True
-## part of this code is adopted from https://github.com/WangYueFt/dgcnn/blob/master/pytorch/model.py
-def knn(x, k):
-    # x: B*N*D, inner: B*N*N
-    inner = 2*torch.matmul(x, x.transpose(1, 2))
-    # x^2: B*N*1
-    xx = torch.sum(x**2, dim=-1, keepdim=True)
-    # negative distance
-    pairwise_distance = -(xx.transpose(1, 2) - inner + xx)
-    # return the closest k indices, idx: B*N*K
-    idx = pairwise_distance.topk(k=k, dim=-1)[1] 
-    return idx
 
-def get_graph_feature(x, k=20, idx=None):
+## part of this code is adopted from https://github.com/WangYueFt/dgcnn/blob/master/pytorch/model.py
+def get_graph_feature(x, k=20, knn = None, idx=None):
     # B * N * D
     batch_size, num_points, num_dims = x.shape
     if idx is None:
-        idx = knn(x, k=k)   # (batch_size, num_points, k)
+        if knn is not None:
+            _, idx = knn(x, x)
+        else:
+            idx = knn_with_topk(x, k=k)   # (batch_size, num_points, k)
 
     idx_base = torch.arange(0, batch_size, device=x.device).view(-1, 1, 1) * num_points
 
@@ -217,37 +161,23 @@ def get_graph_feature(x, k=20, idx=None):
     return feature
 
 class GroupSeqModelingLayer(nn.Module):
-    def __init__(self, in_channel, out_channel, k,
-        BuildingBlock, use_local = True, use_global = True):
+    def __init__(self, in_channel, out_channel,
+        BuildingBlock):
         super().__init__()
-        assert use_local or use_global, 'At least one of []'
-        self.bb_local = None
-        self.bb_global = None
-        self.k = k
-        if use_local and self.k > 1:
-            self.bb_local = BuildingBlock(in_channel = in_channel,
-                                    out_channel = in_channel if use_global else out_channel) 
-        if use_global:
-            self.bb_global = BuildingBlock(in_channel = in_channel * self.k,
-                                    out_channel = out_channel * self.k) 
+        self.bb = BuildingBlock(in_channel = in_channel,
+                                out_channel = out_channel) 
     ## input: grouped points (B, N, K, C)
     def forward(self, x, t):
         B, N, K, _ = x.shape
-        assert K == self.k, f'Unmatched group size: {K} and {self.k}'
-        if self.bb_local:
-            # B * N * K * 2D -> (B * N) * K * 2D
-            x = x.reshape(B * N, K, -1)
-            # (B * N) * K * 2D -> (B * N) * K * D
-            x = self.bb_local(x, t)
-            # (B * N) * K * D -> B * N * K * D
-            x = x.reshape(B, N, K, -1)
-        if self.bb_global:
-            # B * N * K * D -> B * N * (K * D) 
-            x = x.reshape(B, N, -1)
-            # B * N * (K * D) -> B * N * (K * D) 
-            x = self.bb_global(x, t)
-            # B * N * (K * D) -> B * N * K * D
-            x = x.reshape(B, N, K, -1)
+        # B * N * K * 2D -> (B * N) * K * 2D
+        x = x.reshape(B * N, K, -1)
+        # B * D -> B * N * D
+        if t is not None:
+            t = t.unsqueeze(1).expand(-1, N, -1)
+            t = t.reshape(B * N, -1)
+        x = self.bb(x, t = t)
+        # (B * N) * K * D -> B * N * K * D
+        x = x.reshape(B, N, K, -1)
         return x
 
 class LocalGraphLayer(nn.Module):
@@ -257,11 +187,13 @@ class LocalGraphLayer(nn.Module):
                 BuildingBlock, 
                 num_blocks = 1,
                 hidden_channels = None,
-                use_local = True,
-                use_global = True,
                 **kwargs):
         super().__init__()
         self.k = k
+        self.knn = None
+        if KNN is not None:
+            self.knn = KNN(k=self.k, transpose_mode=True)
+            
         is_seq = BuildingBlock.func.is_sequence_modeling()
         if not is_seq:
             self.bb = MultipleBuildingBlocks(n = num_blocks, 
@@ -276,13 +208,10 @@ class LocalGraphLayer(nn.Module):
                                     hidden_channels = hidden_channels,
                                     BuildingBlock = partial(
                                         GroupSeqModelingLayer,
-                                        k = self.k,
-                                        BuildingBlock = BuildingBlock,
-                                        use_local = use_local, 
-                                        use_global = use_global))
+                                        BuildingBlock = BuildingBlock))
     def forward(self, x, t=None):
         ## x: B * N * D -> B * N * K * 2D
-        x = get_graph_feature(x, k = self.k)
+        x = get_graph_feature(x, k = self.k, knn = self.knn)
         x = self.bb(x, t)
         ## x: B * N * D
         x, _ = x.max(dim=2)
@@ -331,50 +260,6 @@ class FoldingLayer(MultiLayerPerceptionBlock):
         # concatenate
         x = torch.cat([shapes, codewords], dim=-1)
         return self.mlp(x, t)
-    
-# class FoldingLayer(nn.Module):
-#     """
-#     The folding operation of FoldingNet
-#     """
-
-#     def __init__(self, in_channel, 
-#                 out_channel, 
-#                 BuildingBlock,
-#                 hidden_channels = None, 
-#                 **kwargs):
-                
-#         super().__init__()
-#         if len(kwargs) > 0:
-#             logger.debug("redundant parameters:{}".format(kwargs))
-        
-#         self.in_channel = in_channel
-#         self.out_channel = out_channel
-#         module_sequence = []
-#         hidden_channels = [512, 512]
-#         for hc in hidden_channels:
-#             module_sequence.append(BuildingBlock(in_channel = in_channel, 
-#                     out_channel = hc))         
-#             in_channel = hc
-#         # module_sequence.append(DenseBlock(in_channel = in_channel, 
-#         #         out_channel = out_channel, activation = None))
-#         self.layers = SequentialT(*module_sequence)
-#         self.final = nn.Linear(in_channel, out_channel)
-#     ## codewords
-#     def forward(self, grids, codewords, t = None):
-#         """
-#         Parameters
-#         ----------
-#             codewords = B * N * D
-#             grids: reshaped 2D grids or intermediate reconstructed point clouds
-#         """
-#         assert grids.shape[-1] + codewords.shape[-1] == self.in_channel,\
-#             f"channel of grid + channel of codewords should be equal to the channel of input, we get: {grids.shape[-1]} {codewords.shape[-1]} and {self.in_channel}."
-#         # concatenate
-#         x = torch.cat([grids, codewords], dim=-1)
-#         x = self.layers(x, t)
-#         x = self.final(x)
-#         return x
-
         
 ### sampling and multi-scale grouping
 ### furthest point sampling
@@ -384,10 +269,11 @@ class SamplingAndGroupingBlock(nn.Module):
     # in_channel: in_channel of input features
     # out_channel: out_channel of output featuress
     def __init__(self, in_channel, out_channels, 
-            num_fps_points, k, radius, 
-            BuildingBlock, num_blocks = 1, 
+            num_fps_points, k, 
+            BuildingBlock, radius = 0.1, num_blocks = 1, 
             hidden_channels = None, use_xyz = True, 
-            use_local = True, use_global = True,
+            sorted_query = False,
+            knn_query = False,
             pos_embedding_channel = 3):
         super().__init__()
         self.in_channel = in_channel
@@ -424,8 +310,11 @@ class SamplingAndGroupingBlock(nn.Module):
 
         self.bb = nn.ModuleList()
         for sid in range(len(self.out_channels)):
-            self.groupers.append(QueryAndGroup(self.radius[sid], 
-                        self.k[sid], use_xyz=use_xyz) if self.num_fps_points > 0 
+            self.groupers.append(QueryAndGroup(self.k[sid], 
+                        radius = self.radius[sid], 
+                        use_xyz=use_xyz, 
+                        sorted_query = sorted_query,
+                        knn_query = knn_query) if self.num_fps_points > 0 
                         else GroupAll(use_xyz))
             if not is_seq:
                 self.bb.append(MultipleBuildingBlocks(in_channel = self.in_channel, 
@@ -440,11 +329,7 @@ class SamplingAndGroupingBlock(nn.Module):
                         hidden_channels = hidden_channels[sid],
                         BuildingBlock = partial(
                             GroupSeqModelingLayer,
-                                k = self.k[sid], 
-                                BuildingBlock = BuildingBlock,
-                                use_local = use_local, 
-                                use_global = use_global)))
-
+                            BuildingBlock = BuildingBlock)))
     def forward(self, xyz, xyz_embed, features = None, t = None):
         r"""
         Parameters
@@ -460,28 +345,38 @@ class SamplingAndGroupingBlock(nn.Module):
         """
         centers = None
         center_embed = None
+        features_trans = channel_recover(features) if features is not None else None
+        center_features_trans = None
         if self.num_fps_points > 0:
-            sample_ids =  furthest_point_sample(xyz, self.num_fps_points)
+            sample_ids = furthest_point_sample(xyz, self.num_fps_points)
             centers = channel_transfer(gather_operation(
                     channel_recover(xyz), sample_ids
                 ))
             center_embed = channel_transfer(gather_operation(
                     channel_recover(xyz_embed), sample_ids
                 ))
+            if features_trans is not None:
+                center_features_trans = gather_operation(
+                        features_trans, sample_ids
+                    )
+            # print(center_embed.shape, xyz_embed.shape, centers.shape)
         ## None center indicates we will group all the points.
-        features_trans = channel_recover(features) if features is not None else None
+        
         center_feature_list = []
         for gid in range(len(self.groupers)):
             ## (B, N, 3), (B, M, 3), (B, N, C_in) -> (B, C_in (+3), M, k) 
             grouped_features_trans = self.groupers[gid](
-                xyz, xyz_embed, centers, center_embed, features_trans,
+                xyz, xyz_embed, centers, center_embed, features_trans, center_features_trans
             ) 
             ## (B, C (+3), M, k) -> (B, M, k, C (+3))
             grouped_features = channel_transfer(grouped_features_trans)
             ## (B, M, k, C (+3)) -> (B, M, k, C_out)
             center_features = self.bb[gid](grouped_features, t)  
             # (B, M, out_channel)
-            center_feature_list.append(center_features.max(dim=2)[0])
+            center_features = center_features.max(dim=2)[0]
+
+            
+            center_feature_list.append(center_features)
         
         return centers, center_embed, torch.cat(center_feature_list, dim = -1)
 
@@ -548,4 +443,3 @@ class FeaturePropogatingBlock(nn.Module):
         new_features = self.bb(new_features, t)
 
         return new_features
-

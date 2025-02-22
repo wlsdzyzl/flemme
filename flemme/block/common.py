@@ -107,7 +107,9 @@ def get_norm(norm_name, norm_channel, dim = -1, num_norm_groups = 0):
             return get_in(dim, norm_channel), Norm.INSTANCE
         else:
             return nn.Identity(), Norm.NONE 
-
+def get_middle_channel(in_channel, out_channel, unit_channel = 16):
+    tmp_channel = int(max(max(in_channel, out_channel) // 2, min(in_channel, out_channel)))
+    return int(math.ceil(tmp_channel / unit_channel) * unit_channel)
 def drop_path(x: torch.Tensor, prob: float = 0.0, inplace: bool = False) -> torch.Tensor:
     mask_shape: tuple[int] = (x.shape[0],) + (1,) * (x.ndim - 1) 
     # remember tuples have the * operator -> (1,) * 3 = (1,1,1)
@@ -136,8 +138,7 @@ class SequentialT(nn.Sequential):
         for module in self._modules.values():
             if type(inputs) == tuple:
                 res = module(*inputs)
-                res = res if type(res) == tuple else (res, )
-                inputs = res + inputs[1:]
+                inputs = (res, ) + inputs[1:]
             else:
                 inputs = module(inputs)
         if type(inputs) == tuple:
@@ -180,7 +181,7 @@ class MultipleBuildingBlocks(nn.Module):
         assert n is not None and n >= 1 or type(hidden_channels) == list, "Number of layers is not specified."
         out_channel = out_channel or in_channel
         if not type(hidden_channels) == list:
-            hidden_channel = int(max(max(in_channel, out_channel) // 2, min(in_channel, out_channel)))
+            hidden_channel = get_middle_channel(in_channel, out_channel)
             hidden_channels = [hidden_channel,] * (n - 1)
         channels = [in_channel,] + hidden_channels + [out_channel, ]
         building_blocks = []
@@ -191,9 +192,8 @@ class MultipleBuildingBlocks(nn.Module):
                                               out_channel = channels[i+1],
                                               **kwargs))
         self.building_blocks = SequentialT(*building_blocks)
-    def forward(self, x: torch.Tensor, t: torch.Tensor):
+    def forward(self, x, t):
         x = self.building_blocks(x, t)
-        # print('after multiple blocks:', x.shape)
         return x
         
 class DownSamplingBlock(nn.Module):
@@ -458,8 +458,7 @@ class OneHotEmbeddingBlock(nn.Module):
         self.num_classes = num_classes
         self.out_channel = out_channel
         self.apply_onehot = apply_onehot
-        middle_channel = min(int( max(self.num_classes, self.out_channel) / 2), 
-                              self.num_classes, self.out_channel)
+        middle_channel = get_middle_channel(num_classes, out_channel) 
         self.dense1 = DenseBlock(self.num_classes, middle_channel, activation=activation)
         self.dense2 = DenseBlock(middle_channel, self.out_channel, activation=None)
     def forward(self, x):

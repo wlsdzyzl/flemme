@@ -33,7 +33,7 @@ loader:
     data_suffix: .pts
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/shapenetcore_v0/03001627 
+    - /media/wlsdzyzl/DATA/datasets/shapenetcore_v0/03001627 
   batch_size: 8
   num_workers: 8
   shuffle: true

@@ -35,9 +35,9 @@ loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/biomed_3d_dataset/BraTS2021/fold1
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/biomed_3d_dataset/BraTS2021/fold2
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/biomed_3d_dataset/BraTS2021/fold3
+    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold1
+    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold2
+    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold3
   batch_size: 16
   num_workers: 8
   shuffle: true
@@ -69,7 +69,7 @@ val_loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/biomed_3d_dataset/BraTS2021/fold4
+    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold4
   batch_size: 16
   num_workers: 8
   shuffle: false

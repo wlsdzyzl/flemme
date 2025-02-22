@@ -1,5 +1,6 @@
 #pragma once
 #include <torch/extension.h>
+#include <vector>
 
-at::Tensor ball_query(at::Tensor new_xyz, at::Tensor xyz, const float radius,
+std::vector<at::Tensor> ball_query(at::Tensor new_xyz, at::Tensor xyz, const float radius,
                       const int nsample);

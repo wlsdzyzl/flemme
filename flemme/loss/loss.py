@@ -5,7 +5,7 @@ import torch.nn as nn
 from flemme.logger import get_logger
 from geomloss import SamplesLoss
 from .ssim import create_window, create_window_3D, _ssim, _ssim_3D
-from .sphere import icosphere
+
 logger = get_logger('loss')
 class TorchLoss(nn.Module):
     def __init__(self, torch_loss = nn.MSELoss, reduction = 'mean', channel_dim = 1):

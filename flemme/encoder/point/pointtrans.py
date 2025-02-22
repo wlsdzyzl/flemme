@@ -21,7 +21,7 @@ class PointTransEncoder(PointEncoder):
                  residual_attention = False, skip_connection = True,
                  z_count = 1, vector_embedding = True, 
                  last_activation = True,
-                 use_local = True, use_global = True, **kwargs):
+                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
                 time_channel = time_channel,
@@ -53,9 +53,7 @@ class PointTransEncoder(PointEncoder):
             trans_sequence = [LocalGraphLayer(k = self.num_neighbors_k, 
                                             in_channel = self.lf_path[i],
                                             out_channel = self.lf_path[i+1], 
-                                            BuildingBlock = self.BuildingBlock,
-                                            use_local = use_local,
-                                            use_global = use_global,                                            
+                                            BuildingBlock = self.BuildingBlock,                                          
                                             num_blocks = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
         else:    
             trans_sequence = [MultipleBuildingBlocks(in_channel=self.lf_path[i], 

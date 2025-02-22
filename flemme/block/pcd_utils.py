@@ -5,6 +5,21 @@ import warnings
 from torch.autograd import Function
 from typing import *
 import cpp_extension.pcd_ops as pcd_ops
+try:
+    from knn_cuda import KNN
+except:
+    KNN = None
+
+def knn_with_topk(x, k):
+    # x: B*N*D, inner: B*N*N
+    inner = 2*torch.matmul(x, x.transpose(1, 2))
+    # x^2: B*N*1
+    xx = torch.sum(x**2, dim=-1, keepdim=True)
+    # negative distance
+    pairwise_distance = -(xx.transpose(1, 2) - inner + xx)
+    # return the closest k indices, idx: B*N*K
+    idx = pairwise_distance.topk(k=k, dim=-1)[1] 
+    return idx
 
 class FurthestPointSampling(Function):
     @staticmethod
@@ -237,16 +252,14 @@ class BallQuery(Function):
         torch.Tensor
             (B, npoint, nsample) tensor with the indicies of the features that form the query balls
         """
-        output = pcd_ops.ball_query(new_xyz, xyz, radius, nsample)
-
+        output, dist = pcd_ops.ball_query(new_xyz, xyz, radius, nsample)
         ctx.mark_non_differentiable(output)
-
-        return output
+        ctx.mark_non_differentiable(dist)
+        return output, dist
 
     @staticmethod
-    def backward(ctx, grad_out):
+    def backward(ctx, grad_out, grad_dist):
         return ()
-    
 
 
 ball_query = BallQuery.apply
@@ -264,12 +277,18 @@ class QueryAndGroup(nn.Module):
         Maximum number of features to gather in the ball
     """
 
-    def __init__(self, radius, nsample, use_xyz=True):
+    def __init__(self, nsample, radius = 0.1, use_xyz=True, sorted_query=False, knn_query = None):
         # type: (QueryAndGroup, float, int, bool) -> None
         super(QueryAndGroup, self).__init__()
-        self.radius, self.nsample, self.use_xyz = radius, nsample, use_xyz
+        self.radius, self.nsample = radius, nsample,
+        self.use_xyz = use_xyz
+        self.sorted_query = sorted_query
+        self.knn = None
+        if knn_query and KNN is not None:
+            self.knn = KNN(k = self.nsample, transpose_mode=True)
+            self.knn_query = knn_query
 
-    def forward(self, xyz, xyz_embed, new_xyz, new_xyz_embed, features=None):
+    def forward(self, xyz, xyz_embed, new_xyz, new_xyz_embed, features=None, new_features = None):
         # type: (QueryAndGroup, torch.Tensor. torch.Tensor, torch.Tensor) -> Tuple[Torch.Tensor]
         r"""
         Parameters
@@ -286,9 +305,24 @@ class QueryAndGroup(nn.Module):
         new_features : torch.Tensor
             (B, 3 + C, npoint, nsample) tensor
         """
+        if self.knn is not None:
+            ## indices are all ready sorted.
+            if self.knn_query == 'xyz':
+                _, idx = self.knn(xyz, new_xyz)
+            elif self.knn_query == 'feature' and \
+                features is not None and \
+                new_features is not None:
+                _, idx = self.knn(features.transpose(1, 2), new_features.transpose(1, 2))
+            else:
+                _, idx = self.knn(xyz_embed, new_xyz_embed)
+            idx = idx.int()
+        else:
+            idx, dist = ball_query(self.radius, self.nsample, xyz, new_xyz)
+            if self.sorted_query:
+                _,  sorted_id = torch.sort(dist, dim = -1)
+                idx = torch.gather(idx, dim=-1,index = sorted_id)
 
-        idx = ball_query(self.radius, self.nsample, xyz, new_xyz)
-        xyz_embed_trans = xyz.transpose(1, 2).contiguous()
+        xyz_embed_trans = xyz_embed.transpose(1, 2).contiguous()
         grouped_xyz_emb = grouping_operation(xyz_embed_trans, idx)  # (B, 3, npoint, nsample)
         grouped_xyz_emb -= new_xyz_embed.transpose(1, 2).contiguous().unsqueeze(-1)
 

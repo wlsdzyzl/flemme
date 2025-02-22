@@ -2,44 +2,48 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from flemme.block import get_building_block, \
-    SamplingAndGroupingBlock as MSGBlock, FeaturePropogatingBlock as FPBlock 
+    SamplingAndGroupingBlock as MSGBlock, get_psmamba_block, get_scanners, \
+    MultipleBuildingBlocks, FeaturePropogatingBlock as FPBlock 
 from .pointnet2 import Point2Encoder, Point2Decoder
 from flemme.logger import get_logger
 logger = get_logger("encoder.point.pointmamba2")
         
 class PointMamba2Encoder(Point2Encoder):
     def __init__(self, point_dim = 3,
-                projection_channel = 64,
-                time_channel = 0,
-                num_fps_points = [1024, 512, 256, 64],
-                num_neighbors_k = 32,
-                neighbor_radius = [0.1, 0.2, 0.4, 0.8], 
-                fps_feature_channels = [128, 256, 512, 1024], 
-                num_blocks = 2,
-                num_scales = 2,
-                use_xyz = True,
-                dense_channels = [1024],
-                building_block = 'dense', 
-                normalization = 'group', num_norm_groups = 8, 
-                activation = 'lrelu', dropout = 0., 
-                vector_embedding = True, 
-                state_channel = 64, 
-                conv_kernel_size = 4, inner_factor = 2.0,  
-                head_channel = 64,
-                conv_bias=True, bias=False,
-                learnable_init_states = True, chunk_size=256,
-                dt_min=0.001, A_init_range=(1, 16),
-                dt_max=0.1, dt_init_floor=1e-4, 
-                dt_rank = None, dt_scale = 1.0,
-                skip_connection = True,
-                is_point2decoder = False,
-                use_local = True,
-                use_global = True,
-                z_count = 1, 
-                return_xyz = False,
-                last_activation = True,
-                pos_embedding = False,
-                 **kwargs):
+            projection_channel = 64,
+            time_channel = 0,
+            num_fps_points = [1024, 512, 256, 64],
+            num_neighbors_k = 32,
+            neighbor_radius = [0.1, 0.2, 0.4, 0.8], 
+            fps_feature_channels = [128, 256, 512, 1024], 
+            num_blocks = 2,
+            num_scales = 2,
+            use_xyz = True,
+            sorted_query = False,
+            knn_query = False,
+            dense_channels = [1024],
+            building_block = 'dense', 
+            scan_strategies = None,
+            flip_scan = False,
+            normalization = 'group', num_norm_groups = 8, 
+            activation = 'lrelu', dropout = 0., 
+            vector_embedding = True, 
+            state_channel = 64, 
+            conv_kernel_size = 4, inner_factor = 2.0,  
+            head_channel = 64,
+            conv_bias=True, bias=False,
+            learnable_init_states = True, chunk_size=256,
+            dt_min=0.001, A_init_range=(1, 16),
+            dt_max=0.1, dt_init_floor=1e-4, 
+            dt_rank = None, dt_scale = 1.0,
+            skip_connection = True,
+            is_point2decoder = False,
+            long_range_modeling = False,
+            z_count = 1, 
+            return_xyz = False,
+            last_activation = True,
+            pos_embedding = False,
+            **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
                 time_channel = time_channel,
@@ -50,6 +54,8 @@ class PointMamba2Encoder(Point2Encoder):
                 num_blocks = num_blocks,
                 num_scales = num_scales,
                 use_xyz = use_xyz,
+                sorted_query = sorted_query,
+                knn_query = knn_query,
                 dense_channels = dense_channels,
                 activation = activation, 
                 dropout = dropout,
@@ -69,18 +75,18 @@ class PointMamba2Encoder(Point2Encoder):
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
                                         dropout = dropout,
-                                        pos_embedding_channel = projection_channel if pos_embedding else point_dim,
                                         state_channel = state_channel, 
                                         conv_kernel_size = conv_kernel_size, 
                                         inner_factor = inner_factor,  
                                         head_channel = head_channel,
                                         conv_bias=conv_bias, bias=bias,
-                                        learnable_init_states = learnable_init_states, 
                                         chunk_size=chunk_size,
                                         dt_min=dt_min, A_init_range=A_init_range,
                                         dt_max=dt_max, dt_init_floor=dt_init_floor, 
                                         dt_rank = dt_rank, dt_scale = dt_scale,
-                                        skip_connection = skip_connection)
+                                        skip_connection = skip_connection, 
+                                        post_normalization = True)
+        # print(self.msg_path)
         msg_sequence = [MSGBlock(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
             num_fps_points = self.num_fps_points[fid],
@@ -88,11 +94,61 @@ class PointMamba2Encoder(Point2Encoder):
             radius = self.neighbor_radius[fid],
             num_blocks = self.num_blocks,
             use_xyz = self.use_xyz,
-            use_local = use_local,
-            use_global = use_global,
+            sorted_query = sorted_query,
+            knn_query = self.knn_query,
+            pos_embedding_channel = projection_channel if pos_embedding else point_dim,
             BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
         self.msg = nn.ModuleList(msg_sequence)
 
+        if long_range_modeling:
+            ### scan mamba block
+            self.scanners = get_scanners(scan_strategies)
+            if len(self.scanners) > 0:
+                self.flip_scan = flip_scan
+                num_scan = len(self.scanners)
+                if self.flip_scan: num_scan *= 2
+                PSMambaBlock = get_psmamba_block(building_block, 
+                                    time_channel = self.time_channel, 
+                                    num_scan = num_scan,
+                                    activation=activation, 
+                                    norm = normalization, 
+                                    num_norm_groups = num_norm_groups, 
+                                    dropout = dropout,
+                                    state_channel = state_channel, 
+                                    conv_kernel_size = conv_kernel_size, 
+                                    inner_factor = inner_factor,  
+                                    head_channel = head_channel,
+                                    conv_bias=conv_bias, bias=bias,
+                                    chunk_size=chunk_size,
+                                    learnable_init_states = learnable_init_states,
+                                    dt_min=dt_min, A_init_range=A_init_range,
+                                    dt_max=dt_max, dt_init_floor=dt_init_floor, 
+                                    dt_rank = dt_rank, dt_scale = dt_scale,
+                                    skip_connection = skip_connection, 
+                                    post_normalization = True)
+                lrm_sequence = [MultipleBuildingBlocks(in_channel = fps_feature_channels[fid], 
+                    out_channels = fps_feature_channels[fid],
+                    n = num_blocks,
+                    BuildingBlock = PSMambaBlock) for fid in range(self.fps_depth)]
+            else:
+                lrm_sequence = [MultipleBuildingBlocks(in_channel = fps_feature_channels[fid], 
+                    out_channels = fps_feature_channels[fid],
+                    n = num_blocks,
+                    BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
+            self.lrm = nn.ModuleList(lrm_sequence)
+            
+    def scan(self, xyz):
+        if hasattr(self, 'scanners') and len(self.scanners) > 0:
+            sorted_index_list = []
+            for s in self.scanners:
+                idx = s(xyz)
+                sorted_index_list.append(idx)
+            if self.flip_scan:
+                sorted_index_list = sorted_index_list + [ torch.flip(idx, dims=[-1]) for idx in sorted_index_list]
+            return sorted_index_list
+        else:
+            logger.error('No scanners.')
+            exit(1)
 class PointMamba2Decoder(Point2Decoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 ### provide by encoder
@@ -108,7 +164,7 @@ class PointMamba2Decoder(Point2Decoder):
                 conv_kernel_size = 4, inner_factor = 2.0,  
                 head_channel = 64,
                 conv_bias=True, bias=False,
-                learnable_init_states = True, chunk_size=256,
+                chunk_size=256,
                 dt_min=0.001, A_init_range=(1, 16),
                 dt_max=0.1, dt_init_floor=1e-4, 
                 dt_rank = None, dt_scale = 1.0,
@@ -138,7 +194,6 @@ class PointMamba2Decoder(Point2Decoder):
                                         inner_factor = inner_factor,  
                                         head_channel = head_channel,
                                         conv_bias=conv_bias, bias=bias,
-                                        learnable_init_states = learnable_init_states, 
                                         chunk_size=chunk_size,
                                         dt_min=dt_min, A_init_range=A_init_range,
                                         dt_max=dt_max, dt_init_floor=dt_init_floor, 

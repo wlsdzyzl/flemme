@@ -43,7 +43,7 @@ loader:
   dataset: 
     name: MNIST
   data_path_list: 
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/MNIST
+    - /media/wlsdzyzl/DATA/datasets/MNIST
   batch_size: 128
   num_workers: 8
   shuffle: true

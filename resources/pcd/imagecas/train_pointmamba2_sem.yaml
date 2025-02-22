@@ -14,8 +14,7 @@ model:
     num_neighbors_k: 16
     num_fps_points: [512, 256]
     neighbor_radius: [0.2, 0.4]
-    use_local: true
-    use_global: false
+    long_range_modeling: False
     fps_feature_channels: [256, 512]
     dense_channels: [1024]
     activation: relu

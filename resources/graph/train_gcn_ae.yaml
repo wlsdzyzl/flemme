@@ -19,7 +19,7 @@ model:
 loader:
   dataset: 
     name: GraphShapeNet
-    data_path: /media/wlsdzyzl/DATA/flemme-path/to/datasets/ShapeNet
+    data_path: /media/wlsdzyzl/DATA/datasets/ShapeNet
     pre_transform: 
       - name: FixedPoints
         num: 2048

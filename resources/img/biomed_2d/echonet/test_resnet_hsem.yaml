@@ -29,7 +29,7 @@ loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/Echonet/fold5/
+    - /media/wlsdzyzl/DATA/datasets/Echonet/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false

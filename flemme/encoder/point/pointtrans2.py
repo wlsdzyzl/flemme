@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import get_building_block, \
-    SamplingAndGroupingBlock as MSGBlock, FeaturePropogatingBlock as FPBlock 
+from flemme.block import get_building_block, FeaturePropogatingBlock as FPBlock,\
+    SamplingAndGroupingBlock as MSGBlock, MultipleBuildingBlocks
 from .pointnet2 import Point2Encoder, Point2Decoder
 from flemme.logger import get_logger
 logger = get_logger("encoder.point.pointtrans2")
@@ -18,6 +18,8 @@ class PointTrans2Encoder(Point2Encoder):
                  num_blocks = 2,
                  num_scales = 2,
                  use_xyz = True,
+                 sorted_query = False,
+                 knn_query = False,
                  dense_channels = [1024],
                  building_block = 'dense', 
                  normalization = 'group', num_norm_groups = 8, 
@@ -27,8 +29,7 @@ class PointTrans2Encoder(Point2Encoder):
                  residual_attention = False, skip_connection = True,
                  vector_embedding = True, 
                  is_point2decoder = False,
-                 use_local = True,
-                 use_global = True,
+                 long_range_modeling = False,
                  z_count = 1, 
                  return_xyz = False,
                  last_activation = True,
@@ -44,6 +45,8 @@ class PointTrans2Encoder(Point2Encoder):
                 num_blocks = num_blocks,
                 num_scales = num_scales,
                 use_xyz = use_xyz,
+                sorted_query = sorted_query,
+                knn_query = knn_query,
                 dense_channels = dense_channels,
                 activation = activation, 
                 dropout = dropout,
@@ -63,12 +66,12 @@ class PointTrans2Encoder(Point2Encoder):
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
                                         dropout = dropout,
-                                        pos_embedding_channel = projection_channel if pos_embedding else point_dim,
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                         atten_dropout = atten_dropout, 
                                         residual_attention = residual_attention,
-                                        skip_connection = skip_connection)
+                                        skip_connection = skip_connection,
+                                        post_normalization = True,)
         msg_sequence = [MSGBlock(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
             num_fps_points = self.num_fps_points[fid],
@@ -76,11 +79,17 @@ class PointTrans2Encoder(Point2Encoder):
             radius = self.neighbor_radius[fid],
             num_blocks = self.num_blocks,
             use_xyz = self.use_xyz,
-            use_local = use_local,
-            use_global = use_global,
+            sorted_query = self.sorted_query,
+            knn_query = self.knn_query,
+            pos_embedding_channel = projection_channel if pos_embedding else point_dim,
             BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
         self.msg = nn.ModuleList(msg_sequence)
-
+        if long_range_modeling:
+            lrm_sequence = [MultipleBuildingBlocks(in_channel = fps_feature_channels[fid], 
+                out_channels = fps_feature_channels[fid],
+                n = num_blocks,
+                BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
+            self.lrm = nn.ModuleList(lrm_sequence)
 class PointTrans2Decoder(Point2Decoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 ### provide by encoder

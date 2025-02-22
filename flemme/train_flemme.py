@@ -348,7 +348,7 @@ def main():
 
             ## if without validation, the loss and score are computed using training dataset
             is_best_loss, is_best_score = False, False
-            if loss < best_loss:
+            if loss <= best_loss:
                 best_loss = loss
                 is_best_loss = True
 
@@ -356,7 +356,7 @@ def main():
                 ### 'lower is better' score
                 if not higher_is_better:
                     eval_score = 1 - eval_score
-                if eval_score > best_score:
+                if eval_score >= best_score:
                     best_score = eval_score
                     is_best_score = True                
             logger.info('saving model to {}'.format(ckp_dir))

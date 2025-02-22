@@ -32,6 +32,7 @@ class PSNR:
         self.psnr = partial(psnr, data_range = self.data_range)
     def __call__(self, x, y):
         return self.psnr(x, y)
+        
 ### segmentation accuracy
 class ACC:
     def __init__(self, channel_dim = None):
@@ -69,7 +70,7 @@ class SegMetrics:
             multi_channel = True
         x, y = x > 0, y > 0
         if multi_channel:
-            if channel_dim == 0:
+            if not channel_dim == 0:
                 permute = list(range(x.ndim))
                 permute[channel_dim], permute[0] = permute[0], permute[channel_dim]
                 x, y = x.transpose(*permute), y.transpose(*permute)

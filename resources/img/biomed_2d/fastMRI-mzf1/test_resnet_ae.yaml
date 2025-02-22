@@ -30,7 +30,7 @@ loader:
     label_dir: esc
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/fastMRI/knee_single_png/fold5/
+    - /media/wlsdzyzl/DATA/datasets/fastMRI/knee_single_png/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false

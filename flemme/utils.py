@@ -41,9 +41,6 @@ def relabel(m):
     _, unique_labels = np.unique(m, return_inverse=True)
     m = unique_labels.reshape(m.shape)
     return m
-def get_coordinates(volume_size, dtype = float):
-    dimension = len(volume_size)
-    return np.stack(np.meshgrid(*[np.arange(0.0, size).astype(dtype) for size in volume_size], indexing='ij'), axis=-1).reshape(-1, dimension)
 
 def onehot_to_label(label, channel_dim = 0, keepdim = False):
     if torch.is_tensor(label):
@@ -269,6 +266,7 @@ def save_itk(filename, imageArray, origin = None, spacing = None):
 # from mhd to nii.gz
 def mhd2nii(mhd_file, nii_file):
     data, origin, spacing = load_itk(mhd_file)
+    # print(data)
     save_itk(nii_file, data, origin = origin, spacing = spacing)
 def nii2mhd(nii_file, mhd_file):
     data, origin, spacing = load_itk(nii_file)
@@ -289,7 +287,23 @@ def nii2nrrd(nii_file, nrrd_file):
     save_itk(nrrd_file, data, origin = origin, spacing = spacing)
 
 def load_img(input_path):
-    img = Image.open(input_path)
+    if input_path[-4:] == '.exr':
+        import OpenEXR
+        import Imath
+        exrFile = OpenEXR.InputFile(input_path)
+        pt = Imath.PixelType(Imath.PixelType.FLOAT)
+        dw = exrFile.header()['dataWindow']
+        width, height = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
+        # print(size)
+        channels = exrFile.channels(["R", "G", "B"], pt)
+        def to_numpy(channel):
+            return np.frombuffer(channel, dtype=np.float32).reshape(height, width)
+        np_img = np.stack([to_numpy (c) for c in channels], axis=-1)
+        np_img = np.clip(np_img, 0, 1)
+        np_img = (np_img * 255).astype(np.uint8)
+        img = Image.fromarray(np_img)
+    else:
+        img = Image.open(input_path)
     return img
 
 def load_img_as_numpy(input_path):
@@ -305,7 +319,10 @@ def load_img_as_numpy(input_path):
     # return img
 
 def save_img(img_path, img):
-    if isinstance(img, np.ndarray):
+    print(img)
+    if isinstance(img, Image.Image):
+        img.save(img_path)
+    elif isinstance(img, np.ndarray):
         if img.ndim == 3:
             img = img.transpose(1, 2, 0)
             if img.shape[2] == 1:
@@ -325,7 +342,6 @@ def rkdirs(dir):
     if os.path.isdir(dir):
         shutil.rmtree(dir)
     os.makedirs(dir)
-
 
 def get_coordinates(volume_size, dtype = float):
     dimension = len(volume_size)
@@ -420,8 +436,8 @@ if module_config['point-cloud'] or module_config['graph']:
     ## here we only focus on the coordinate information.
     ## later we can add more informations
     ## without edge features
-    def load_ply(inputfile, vertex_features = None, with_edges = False):
-        plydata = PlyData.read(inputfile)
+    def load_ply(inputfile, vertex_features = None, with_edges = False, with_faces = False):
+        plydata = PlyData.read(inputfile, known_list_len={'face': {'vertex_indices': 3}})
         vertex_feature_len = 0 if vertex_features is None else len(vertex_features)
         pcd = np.zeros((plydata['vertex'].count, 3 + vertex_feature_len ))
         pcd[:, 0] = plydata['vertex']['x']
@@ -429,20 +445,26 @@ if module_config['point-cloud'] or module_config['graph']:
         pcd[:, 2] = plydata['vertex']['z']
         if vertex_features is not None:
             for fid, fname in enumerate(vertex_features):
-                pcd[:, fid + 1] = plydata['vertex'][fname]
-        if not with_edges:
+                pcd[:, fid + 3] = plydata['vertex'][fname]
+        if not with_edges and not with_faces:
             return pcd
-        edges = None
-        if 'edge' in plydata._element_lookup:
-            edges = np.zeros((plydata['edge'].count, 2), dtype=np.int64)
-            ### read edges
-            edges[:, 0] = plydata['edge']['vertex1']
-            edges[:, 1] = plydata['edge']['vertex2']
-        if 'face' in plydata._element_lookup:
-            logger.warning('Currently, reading face is not implemented.')
-        ### currently, reading face is not implemented 
-        return pcd, edges     
-
+        if with_edges:
+            edges = None
+            if 'edge' in plydata._element_lookup:
+                edges = np.zeros((plydata['edge'].count, 2), dtype=np.int64)
+                ### read edges
+                edges[:, 0] = plydata['edge']['vertex1']
+                edges[:, 1] = plydata['edge']['vertex2']
+            return pcd, edges     
+        if with_faces:
+            faces = None
+            if 'face' in plydata._element_lookup:
+                faces = np.zeros((plydata['face'].count, 3), dtype=np.int64)
+                ### read edges
+                faces[:, 0] = plydata['face']['vertex_indices'][:, 0]
+                faces[:, 1] = plydata['face']['vertex_indices'][:, 1]
+                faces[:, 2] = plydata['face']['vertex_indices'][:, 2]
+            return pcd, faces
     def load_stl(inputfile, with_edges = False):
         stl_mesh = mesh.Mesh.from_file(inputfile)
         points = np.concatenate(np.split(stl_mesh.points, 3, axis=1), axis=0)
@@ -455,7 +477,7 @@ if module_config['point-cloud'] or module_config['graph']:
     ### save ply file, with points and colors
     ## here, the face information will be ignored
     ## We can use other packages or cpp program for mesh extraction from point cloud
-    def save_ply(filename, points):
+    def save_ply(filename, points, edges = None, faces = None):
         pcolors = None
         if type(points) == tuple:
             points, pcolors = points
@@ -475,7 +497,19 @@ if module_config['point-cloud'] or module_config['graph']:
             vertex = np.array(points, dtype = [('x', 'f4'), ('y', 'f4'), ('z', 'f4')])
 
         el = PlyElement.describe(vertex, 'vertex', comments = ['vertices'])
-        PlyData([el], text=True).write(filename)
+        res = [el, ]
+        if edges is not None:
+            edges = [(edges[i, 0], edges[i, 1]) for i in range(edges.shape[0])]
+            edges = np.array(edges, dtype=[('vertex1', 'i4'), ('vertex2', 'i4')])
+            el_edges = PlyElement.describe(edges, 'edge', comments = ['edges'])
+            res.append(el_edges)
+        if faces is not None:
+            faces = [([faces[i, 0], faces[i, 1], faces[i, 2]], ) for i in range(faces.shape[0])]
+            faces = np.array(faces, dtype=[('vertex_indices', 'i4', (3,))])
+            el_face = PlyElement.describe(faces, 'face', comments = ['faces'])
+            res.append(el_face)
+        
+        PlyData(res).write(filename)
 
     def save_xyz(filename, x):
         np.savetxt(filename, x)

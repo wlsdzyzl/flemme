@@ -30,7 +30,7 @@ loader:
     label_dir: masks
     data_suffix: jpg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/CVC-ClinicDB/fold5/
+    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false

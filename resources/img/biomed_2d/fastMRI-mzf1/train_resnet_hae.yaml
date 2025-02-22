@@ -30,9 +30,9 @@ loader:
     label_dir: esc
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/fastMRI/knee_single_png/fold1/
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/fastMRI/knee_single_png/fold2/
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/fastMRI/knee_single_png/fold3/
+    - /media/wlsdzyzl/DATA/datasets/fastMRI/knee_single_png/fold1/
+    - /media/wlsdzyzl/DATA/datasets/fastMRI/knee_single_png/fold2/
+    - /media/wlsdzyzl/DATA/datasets/fastMRI/knee_single_png/fold3/
   batch_size: 16
   num_workers: 8
   shuffle: true
@@ -56,7 +56,7 @@ val_loader:
     label_dir: esc
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA/flemme-path/to/datasets/fastMRI/knee_single_png/fold4/
+    - /media/wlsdzyzl/DATA/datasets/fastMRI/knee_single_png/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
