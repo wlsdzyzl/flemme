@@ -9,7 +9,9 @@ from matplotlib import pyplot as plt
 from sklearn.manifold import TSNE
 from flemme.logger import get_logger
 from flemme.color_table import color_table
+from functools import partial
 import shutil
+from tqdm import tqdm
 logger = get_logger('trainer_utils')
 
 def colorize_by_label(labels):
@@ -319,8 +321,10 @@ def append_results(results, x, y, c, res, data_form, path = None,
                 res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
             if 'cls_logits' in res:
                 res['cls'] = logits_to_onehot_label(res['cls_logits'], data_form)
+                results['cls_logits'].append(res['cls_logits'].cpu().detach().numpy())
             if 'seg_logits' in res:
                 res['seg'] = logits_to_onehot_label(res['seg_logits'], data_form)
+                results['seg_logits'].append(res['seg_logits'].cpu().detach().numpy())
             if 'latent' in res:
                 results['latent'].append(res['latent'].cpu().detach().numpy())
             if 'recon' in res:
@@ -363,6 +367,10 @@ def compact_results(results, data_form, additional_keys = []):
             results['cluster'] = np.concatenate(results['cluster'])
         if len(results['cls']) > 0:
             results['cls'] = np.concatenate(results['cls'])
+        if len(results['cls_logits']) > 0:
+            results['cls_logits'] = np.concatenate(results['cls_logits'])
+        if len(results['seg_logits']) > 0:
+            results['seg_logits'] = np.concatenate(results['seg_logits'])
         for k in additional_keys:
             if len(results[k]) > 0:
                 results[k] = np.concatenate(results[k])
@@ -399,7 +407,7 @@ def create_batch_evaluators(eval_metrics, data_form):
         evaluators['cls'] = cls_eval
     return evaluators
 
-def evaluate_results(results, evaluators, data_form):
+def evaluate_results(results, evaluators, data_form, verbose = False):
 
     sample_num = len(results['input'])
     if data_form == DataForm.GRAPH:
@@ -416,10 +424,13 @@ def evaluate_results(results, evaluators, data_form):
                     eval_res[eval_type][eval_metric] = eval_func(results['cluster'], results['target'])
             elif eval_type == 'cls':
                 for (eval_metric, eval_func) in evaluators[eval_type].items():
-                    eval_res[eval_type][eval_metric] = eval_func(results['cls'], results['target'])
+                    if 'Soft' in eval_metric or 'TopK' in eval_metric:
+                        eval_res[eval_type][eval_metric] = eval_func(results['cls_logits'], results['target'])
+                    else:
+                        eval_res[eval_type][eval_metric] = eval_func(results['cls'], results['target'])
             else:
                 for (eval_metric, eval_func) in evaluators[eval_type].items():
-                    eval_res[eval_type][eval_metric] = 0.0
+                    tmp_res = []
                     if eval_type == 'recon':
                         #### supervised
                         if len(results['target']) > 0:
@@ -428,10 +439,19 @@ def evaluate_results(results, evaluators, data_form):
                         else:
                             zipped = zip(results['recon'], results['input'])
                     elif eval_type == 'seg':
-                        zipped = zip(results['seg'], results['target'])
+                        if 'Soft' in eval_metric or 'TopK' in eval_metric:
+                            zipped = zip(results['seg_logits'], results['target'])
+                        else:
+                            zipped = zip(results['seg'], results['target'])
+                    if verbose:
+                        zipped = tqdm(zipped, desc=f"evaluating using {eval_metric}")
                     for pred, target in zipped:
-                        eval_res[eval_type][eval_metric] += eval_func(pred, target)
-                    eval_res[eval_type][eval_metric] /= sample_num
+                        tmp_res.append(eval_func(pred, target))
+                    tmp_res = sum(tmp_res) / sample_num
+                    
+                    if isinstance(tmp_res, np.ndarray):
+                        tmp_res = tmp_res.mean()
+                    eval_res[eval_type][eval_metric] = tmp_res
     return eval_res
 def process_input(t):
     x, y, c, p = None, None, None, None
@@ -464,40 +484,53 @@ def forward_pass(model, x, y, c):
     return res
 
 #### save tsne visualization
-def construct_tsne_vis(embeddings, labels = None, cluster_centers = None, vis_dim = 2):
-    c_end = 0
-    if cluster_centers is not None:
-        embeddings = np.concatenate([cluster_centers, embeddings])
-        c_end = cluster_centers.shape[0]
-        if labels is not None:
-            labels = np.concatenate([np.arange(c_end), labels])
+def construct_tsne_vis(embeddings, labels, vis_dim = 2, label_names = None, top_n = 10, title = 't-SNE Visualization'):
+    if top_n > 0:
+        unique_elements, counts = np.unique(labels, return_counts=True)
+        unique_elements = unique_elements[np.argsort(-counts)][:top_n]
+        # print(unique_elements, counts[np.argsort(-counts)][:top_n])
+        indices = (labels == unique_elements[0])
+        for i in range(1, len(unique_elements)):
+            indices = np.logical_or(indices, labels == unique_elements[i])
+        embeddings = embeddings[indices]
+        labels = labels[indices]
+        unique_elements, inverse = np.unique(labels, return_inverse=True)
+        labels = inverse.reshape(labels.shape)
+        if label_names:
+            label_names = [label_names[u] for u in unique_elements]
     kwargs = {}
-    center_kwargs = {}
-    if labels is not None:
-        kwargs = {'c':labels[c_end:], 
-            'cmap':plt.cm.get_cmap('jet', labels.max() + 1)}
-        center_kwargs = {'c':labels[:c_end], 
-            'cmap':plt.cm.get_cmap('jet', labels.max() + 1)}
+
     if embeddings.shape[1] > vis_dim:
         tsne = TSNE(n_components = vis_dim, random_state=42)
         compressed_vec = tsne.fit_transform(embeddings)
     else:
         compressed_vec = embeddings
+    # kwargs = {'c':labels, 
+    #     'cmap':plt.cm.get_cmap('jet', labels.max() + 1)}
+    # if label_names is not None:
+    #     kwargs['label'] = [label_names[l] for l in labels]
     if vis_dim == 2:
-        plt.figure(figsize=(10, 8))
-        plt.scatter(compressed_vec[c_end:, 0], compressed_vec[c_end:, 1], s = 10, alpha=0.3, **kwargs)
-        if c_end > 0:
-            plt.scatter(compressed_vec[:c_end, 0], compressed_vec[:c_end, 1], s = 50, marker='*',  **center_kwargs)
-        plt.colorbar()
+        label_count = labels.max() + 1
+        fig, ax = plt.subplots()
+        for l in range(label_count):
+            tmp_vec = compressed_vec[labels == l]
+            color = plt.cm.get_cmap('jet', labels.max() + 1)(l)
+            ln = label_names[l]
+            ax.scatter(tmp_vec[:, 0], tmp_vec[:, 1], s = 10, alpha=0.3, color = color, label = ln, **kwargs)
+        ax.legend(loc='best')        
     elif vis_dim == 3:
         fig = plt.figure()
         ax = fig.add_subplot(projection='3d')
-        ax.scatter(compressed_vec[c_end:, 0], compressed_vec[c_end:, 1], 
-                   compressed_vec[c_end:, 2], s = 10, **kwargs)
-        if c_end > 0:
-            ax.scatter(compressed_vec[:c_end, 0], compressed_vec[:c_end, 1], 
-                       compressed_vec[:c_end, 2], s = 50, marker='*', **center_kwargs)
-    plt.title('t-SNE Visualization of Embedding')
+        label_count = labels.max() + 1
+        for l in range(label_count):
+            tmp_vec = compressed_vec[labels == l]
+            color = plt.cm.get_cmap('jet', labels.max() + 1)(l)
+            ln = label_names[l]
+            ax.scatter(tmp_vec[:, 0], tmp_vec[:, 1], 
+                    tmp_vec[:, 2], s = 10, color = color, label = ln, **kwargs)
+        ax.legend(loc='best')
+    plt.title(title)
+    plt.tight_layout()
     return plt.gcf()        
 
 ### figs in batch form
@@ -544,7 +577,7 @@ def save_data(output, data_form, output_path, segmentation = False):
     else:
         raise NotImplementedError
 
-def get_load_function(suffix):
+def get_load_function(suffix, transpose = False):
     load_data = None
     data_type = 'img'
     if suffix.endswith('png') or suffix.endswith('jpg') or suffix.endswith('tif'):
@@ -565,4 +598,18 @@ def get_load_function(suffix):
     if load_data is None:
         logger.error('Unknown data type.')
         exit(1)
-    return load_data, data_type
+    def load_data_in_class(path, transpose_mode):
+        res = load_data(path)
+        if transpose_mode:
+            if type(res) == tuple:
+                tmp_res = []
+                for r in res:
+                    if type(r) == tuple or type(r) == list:
+                        tmp_res.append(type(r) (r[::-1]) )
+                    elif isinstance(r, np.ndarray):
+                        tmp_res.append(r.transpose())
+                    else:
+                        tmp_res.append(r)
+                res = tuple(tmp_res)
+        return res
+    return partial(load_data_in_class, transpose_mode = transpose), data_type

@@ -1,7 +1,6 @@
 from torch.utils.tensorboard import SummaryWriter
 import os
 import torch
-import math
 from torch.optim.lr_scheduler import ReduceLROnPlateau 
 from .trainer_utils import *
 from flemme.model import create_model
@@ -33,7 +32,8 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.manual_seed(rand_seed)
     if train_config.get('determinstic', False):
-        logger.info('Use determinstic algorithms, note that this may leads to performance decreasing.')
+        logger.warning('Use determinstic algorithms, note that this may leads to performance decreasing.')
+        logger.warning('You may need to set number of worker to 0 to avoid concurrent data loading.')
         if rand_seed is None:
             logger.warning('No random seed is specified, use 0 as random seed.')
             torch.manual_seed(0)
@@ -185,6 +185,8 @@ def main():
             'recon':[], 
             'seg':[], 
             'cls':[],
+            'cls_logits':[],
+            'seg_logits':[],
             'cluster':[]}
         for t in data_loader:
             x, y, c, _ = process_input(t)
@@ -288,6 +290,8 @@ def main():
                         'recon':[], 
                         'seg':[], 
                         'cls':[],
+                        'cls_logits':[],
+                        'seg_logits':[],
                         'cluster':[]}
                     val_losses = torch.zeros(len(loss_names))
                     val_n = 0

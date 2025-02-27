@@ -1,15 +1,14 @@
 ### this file is just a tool to select samples that fully supported your conclusion.
 import sys, getopt
 import os
-import random
-import shutil
-import math
 from glob import glob
 from flemme.logger import get_logger
 from flemme.utils import rkdirs, get_boundingbox, save_img
 from flemme.trainer_utils import colorize_img_by_label, save_data, get_load_function
 from flemme.metrics import get_metrics
 import numpy as np
+from tqdm import tqdm
+
 logger = get_logger('scripts')
 ## tmp file
 #### python select_samples.py --result_path path/to/results/seg/CVC-ClinicDB --sub_dirs ResNet,ResNet_HSeg,UNet,UNet_HSeg,UNet_Atten,UNet_Atten_HSeg,SwinU,SwinU_HSeg,MambaU,MambaU_HSeg --suffix .png --target_path path/to/results/seg/CVC-ClinicDB/target --target_suffix _tar.png --conditions '0<1,2>3,4>5,6>7,8>9' --eval Dice
@@ -30,17 +29,18 @@ def main(argv):
     conditions = ['']
     eval_config = {'name':'mIoU'}
     minimum_ratio = 0.05
+    score_margin = 0.01
     ## for better visualization
     compute_middle_for_3d = False
-    opts, _ = getopt.getopt(argv, "h", ['help', 'result_path=', 'sub_dirs=', 'suffix=', 'target_path=',  'target_sub_dirs=', 'target_suffix=', 'input_path=', 'output_dir=', 'input_sub_dirs=', 'input_suffix=', 'conditions=', 'eval=', 'compute_middle_for_3d', 'minimum_ratio='])
+    opts, _ = getopt.getopt(argv, "h", ['help', 'result_path=', 'sub_dirs=', 'suffix=', 'target_path=',  'target_sub_dirs=', 'target_suffix=', 'input_path=', 'output_dir=', 'input_sub_dirs=', 'input_suffix=', 'conditions=', 'eval=', 'compute_middle_for_3d', 'minimum_ratio=', 'score_margin='])
     ### move is faster, but with higher risk for losing data.
     if len(opts) == 0:
-        logger.info('unknow options, usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=.> --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None> --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05>')
+        logger.info('unknow options, usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=.> --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None> --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05> --score_margin <score_margin=0.01>')
         sys.exit()
     for opt, arg in opts:
-        # print(arg)
+        # logger.info(arg)
         if opt in ('-h', '--help'):
-            logger.info('usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=\'\'>  --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None>  --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05>')
+            logger.info('usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=\'\'>  --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None>  --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05> --score_margin <score_margin=0.01>')
             sys.exit()
         if opt in ('--result_path',):
             result_path = arg
@@ -70,6 +70,8 @@ def main(argv):
             compute_middle_for_3d = True
         elif opt in ('--minimum_ratio', ):
             minimum_ratio = float(arg)
+        elif opt in ('--score_margin', ):
+            score_margin = float(arg)
     if result_path is None:
         logger.error('result_path is required.')
         sys.exit()
@@ -78,7 +80,7 @@ def main(argv):
         sys.exit()
     if input_path is None:
         logger.info('There is no input_path, selected samples will not be colorized.')
-        sys.exit()
+        # sys.exit()
     eval_func = get_metrics(eval_config)
     if len(suffix) == 1:
         suffix = suffix * len(sub_dirs)
@@ -108,9 +110,8 @@ def main(argv):
 
     target_files = [[file.replace(result_path + '/' + sub_dirs[idx], target_path + '/' + target_sub_dirs[idx]).replace(suffix[idx], target_suffix[idx]) for file in files ]
         for idx, files in enumerate(result_files)]
-
-    # print(result_path + '/' + sub_dirs[0], target_path + '/' + target_sub_dirs[0])
-    # print(target_files)
+    # logger.info(result_path + '/' + sub_dirs[0], target_path + '/' + target_sub_dirs[0])
+    # logger.info(target_files)
     ### sample ids
     load_data, label_type = get_load_function(suffix[0])
     load_target_data, _ = get_load_function(target_suffix[0])
@@ -118,7 +119,7 @@ def main(argv):
     selected_samples = list(range(len(target_files[0])))
     selected_slices = [None for _ in selected_samples]
     for cond in conditions:
-        print('processing the first condition:', cond)
+        logger.info(f'processing the first condition: {cond}')
         assert '>' in cond or '<' in cond, 'conditions should be \'>\' or \'<\''
         if '>' in cond:
             result_ids = cond.split('>')
@@ -128,7 +129,7 @@ def main(argv):
         result_ids = [int(r) for r in result_ids]
         new_selected_samples = []
         new_selected_slices = []
-        for idx, sample_id in enumerate(selected_samples):
+        for idx, sample_id in tqdm(enumerate(selected_samples), desc="Searching"):
             res1 = load_data(result_files[result_ids[0]][sample_id])
             res2 = load_data(result_files[result_ids[1]][sample_id])
             tar1 = load_target_data(target_files[result_ids[0]][sample_id])
@@ -158,14 +159,15 @@ def main(argv):
                     old_selected_slices = list(range(z))
                 for slice_id in old_selected_slices:
                     sres1, sres2, star1, star2 = res1[slice_id], res2[slice_id], tar1[slice_id], tar2[slice_id]
-                    # print(sres1.sum() / sres1.size)
+                    # logger.info(sres1.sum() / sres1.size)
                     if sres1.sum() / sres1.size <= minimum_ratio or \
                         sres2.sum() / sres2.size <= minimum_ratio or \
                         star1.sum() / star1.size <= minimum_ratio or \
                         star2.sum() / star2.size <= minimum_ratio: 
                         continue
                     score1, score2 = eval_func(star1, sres1), eval_func(star2, sres2)
-                    if score1 >= score2:
+                    score1, score2 = score1.mean(), score2.mean()
+                    if score1-score2>score_margin:
                         tmp_selected_slices.append(slice_id)
                 if len(tmp_selected_slices) > 0:
                     new_selected_samples.append(sample_id)
@@ -177,26 +179,34 @@ def main(argv):
                     tar2.sum() / tar2.size <= minimum_ratio: 
                     continue
                 score1, score2 = eval_func(tar1, res1), eval_func(tar2, res2)
-                if score1 >= score2:
+                # print(res1.min(), res2)
+                # print(score1.shape)
+                # print(res1.shape)
+                score1 = score1[score1 < 1]
+                score2 = score2[score2 < 1]
+                
+                score1, score2 = score1.mean(), score2.mean()
+
+                if score1-score2>score_margin:
                     new_selected_samples.append(sample_id)
 
         selected_samples = new_selected_samples
         selected_slices = new_selected_slices
         if len(selected_samples) == 0: break
     sample_name = [os.path.basename(target_files[0][sid]) for sid in selected_samples]
-    print(f'selected {len(sample_name)} samples from {len(target_files[0])} samples')
-    print(sample_name)
+    logger.info(f'selected {len(sample_name)} samples from {len(target_files[0])} samples')
+    logger.info(sample_name)
 
     
-    if input_path is not None and len(sample_name) > 0:
-        assert output_dir is not None, 'output dir is not specified.'
+    if input_path is not None and len(sample_name) > 0 and output_dir is not None:
+        # assert output_dir is not None, 'output dir is not specified.'
         load_input_data, _ = get_load_function(input_suffix[0])
         input_files = [[file.replace(result_path + '/' + sub_dirs[idx], input_path + '/' + input_sub_dirs[idx]).replace(suffix[idx], input_suffix[idx]) for file in files ]
             for idx, files in enumerate(result_files)]
         for group_id in range(len(result_files)):
             output_subdir = os.path.join(output_dir, sub_dirs[group_id])
             rkdirs(output_subdir)
-            print(f'colorizing selected samples for the {group_id}-th group ...')
+            logger.info(f'colorizing selected samples for the {group_id}-th group ...')
             for idx, sample_id in enumerate(selected_samples):        
                 res = load_data(result_files[group_id][sample_id])
                 tar = load_target_data(target_files[group_id][sample_id])

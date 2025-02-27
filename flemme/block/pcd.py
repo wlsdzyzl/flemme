@@ -185,7 +185,7 @@ class LocalGraphLayer(nn.Module):
                 in_channel, 
                 out_channel, 
                 BuildingBlock, 
-                num_blocks = 1,
+                num_blocks = 2,
                 hidden_channels = None,
                 **kwargs):
         super().__init__()
@@ -270,7 +270,7 @@ class SamplingAndGroupingBlock(nn.Module):
     # out_channel: out_channel of output featuress
     def __init__(self, in_channel, out_channels, 
             num_fps_points, k, 
-            BuildingBlock, radius = 0.1, num_blocks = 1, 
+            BuildingBlock, radius = 0.1, num_blocks = 2, 
             hidden_channels = None, use_xyz = True, 
             sorted_query = False,
             knn_query = False,
@@ -347,18 +347,29 @@ class SamplingAndGroupingBlock(nn.Module):
         center_embed = None
         features_trans = channel_recover(features) if features is not None else None
         center_features_trans = None
+        sample_ids = None
         if self.num_fps_points > 0:
             sample_ids = furthest_point_sample(xyz, self.num_fps_points)
-            centers = channel_transfer(gather_operation(
-                    channel_recover(xyz), sample_ids
-                ))
-            center_embed = channel_transfer(gather_operation(
-                    channel_recover(xyz_embed), sample_ids
-                ))
+            centers = gather_features(xyz, index = sample_ids, 
+                channel_dim = -1, gather_dim = 1)
+            center_embed = gather_features(xyz_embed, index = sample_ids, 
+                channel_dim = -1, gather_dim = 1)
+            
             if features_trans is not None:
-                center_features_trans = gather_operation(
-                        features_trans, sample_ids
-                    )
+                center_features_trans = gather_features(features_trans, 
+                    index = sample_ids, channel_dim = 1,
+                    gather_dim = -1)
+            ### PointNet ++ implementation
+            # channel_transfer(gather_features(
+            #         channel_recover(xyz), sample_ids
+            #     ))
+            # center_embed = channel_transfer(gather_features(
+            #         channel_recover(xyz_embed), sample_ids
+            #     ))
+            # if features_trans is not None:
+            #     center_features_trans = gather_features(
+            #             features_trans, sample_ids
+            #         )
             # print(center_embed.shape, xyz_embed.shape, centers.shape)
         ## None center indicates we will group all the points.
         
@@ -378,7 +389,7 @@ class SamplingAndGroupingBlock(nn.Module):
             
             center_feature_list.append(center_features)
         
-        return centers, center_embed, torch.cat(center_feature_list, dim = -1)
+        return centers, center_embed, torch.cat(center_feature_list, dim = -1), sample_ids
 
 
 ### Propagates the features of one set to another
@@ -388,8 +399,7 @@ class FeaturePropogatingBlock(nn.Module):
 
     """
     def __init__(self, in_channel_known, in_channel_unknown, 
-        out_channel, BuildingBlock, num_blocks = 1, hidden_channels = None):
-        # type: (PointnetFPModule, List[int], bool) -> None
+        out_channel, BuildingBlock, num_blocks = 2, hidden_channels = None):
         super().__init__()
         self.bb = MultipleBuildingBlocks(in_channel = in_channel_known + in_channel_unknown, 
                 out_channel = out_channel, 
@@ -443,3 +453,51 @@ class FeaturePropogatingBlock(nn.Module):
         new_features = self.bb(new_features, t)
 
         return new_features
+
+
+class SampledFeatureCatBlock(nn.Module):
+    def __init__(self, in_channels,
+                out_channel, 
+                num_blocks = 2,
+                hidden_channels = None,
+                time_channel = 0, 
+                norm = None, 
+                num_norm_groups = 0, 
+                activation = 'relu', 
+                dropout=None, 
+                order="ln"):
+        super().__init__()
+        self.in_channels = in_channels
+        self.mlp = MultiLayerPerceptionBlock(in_channel = sum(in_channels), 
+                            out_channel=out_channel,
+                            n = num_blocks,
+                            hidden_channels=hidden_channels,
+                            time_channel=time_channel,
+                            norm=norm,
+                            num_norm_groups=num_norm_groups,
+                            activation=activation,
+                            dropout=dropout,
+                            order=order,
+                            final_activation=False)
+    def forward(self, feature_list, sample_id_list, t = None):
+        assert len(feature_list) - len(sample_id_list) == 1, \
+            'Unmatched lengths of feature_list and sample_id_list.'
+        assert len(feature_list) == len(self.in_channels) and sum( [ ic == tensor.shape[-1] for ic, tensor in zip(self.in_channels, feature_list)]),\
+            f'input features are not consistent with in_channels: {self.in_channels}'
+        feature_list = feature_list[::-1]
+        sample_id_list = sample_id_list[::-1]
+        gathered_feature_list = [feature_list[0]]
+
+        sample_ids = None
+        for i in range(len(sample_id_list)):
+            if i > 0:
+                sample_ids = torch.gather(sample_id_list[i], dim = -1, index=sample_ids.long())
+            else:
+                sample_ids = sample_id_list[0]
+            features = gather_features(
+                    feature_list[i+1], index = sample_ids, 
+                    channel_dim = -1, gather_dim = 1)
+            gathered_feature_list.append(features)
+        gathered_feature = torch.concat(gathered_feature_list[::-1], dim = -1)
+        return self.mlp(gathered_feature, t = t)
+        

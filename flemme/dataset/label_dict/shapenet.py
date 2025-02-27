@@ -14,4 +14,6 @@ shapenet_cls_label = {'Airplane': 1,
     'Rocket': 14,
     'Skateboard': 15,
     'Table': 16}
+shapenet_label_cls = dict((v,k) for k,v in shapenet_cls_label.items())
+
 # 'Airplane','Bag','Cap','Car','Chair','Earphone','Guitar','Knife','Lamp','Laptop','Motorbike','Mug','Pistol','Rocket','Skateboard','Table'

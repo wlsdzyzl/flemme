@@ -5,9 +5,10 @@ import torch.nn.functional as F
 from .trainer_utils import *
 from flemme.model import create_model
 from flemme.dataset import create_loader
+
 from flemme.logger import get_logger
 from flemme.sampler import create_sampler
-
+from tqdm import tqdm
 ## if we want to train pcd or image, 
 ## make sure that the image size from data loader and image size from the model parameters are identical
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -31,7 +32,8 @@ def main():
             if torch.cuda.is_available():
                 torch.cuda.manual_seed(rand_seed)
         if test_config.get('determinstic', False):
-            logger.info('Use determinstic algorithms, note that this may leads to performance decreasing.')
+            logger.warning('Use determinstic algorithms, note that this may leads to performance decreasing.')
+            logger.warning('You may need to set number of worker to 0 to avoid concurrent data loading.')
             if rand_seed is None:
                 logger.warning('No random seed is specified, use 0 as random seed.')
                 torch.manual_seed(0)
@@ -67,6 +69,7 @@ def main():
         save_input = test_config.get('save_input', False)
         save_colorized = test_config.get('save_colorized', True)
         verbose = test_config.get('verbose', False)
+        channel_dim = -1 if model.data_form == DataForm.PCD else 0
         if save_target:
             logger.info('Save target for reconstruction and segmentation tasks.')
         if save_input:
@@ -85,11 +88,13 @@ def main():
                     'recon':[], 
                     'seg':[], 
                     'cls':[],
+                    'cls_logits':[],
+                    'seg_logits':[],
                     'cluster':[],
                     'path':[]}
             logger.info('Finish loading data.')
             iter_id = 0
-            for t in data_loader:
+            for t in tqdm(data_loader, desc="Predicting"):
                 ### split x, y, path in later implementation.
                 x, y, c, path = process_input(t)
                 x  = x.to(device).float() 
@@ -118,11 +123,31 @@ def main():
             if eval_metrics is not None:
                 logger.info('evaluating the prediction accuracy ...')   
                 evaluators = create_batch_evaluators(eval_metrics, model.data_form)
-                eval_res = evaluate_results(results, evaluators, data_form = model.data_form)
+                eval_res = evaluate_results(results, evaluators, data_form = model.data_form, verbose = True)
                 if len(eval_res) > 0:
                     for eval_type, eval in eval_res.items():
                         logger.info(f'{eval_type} evaluation: {eval}')
-            
+            tsne_config = test_config.get('tsne_visualization', None)
+            if tsne_config:
+                label_names = tsne_config.get('label_names', None)
+                if type(label_names) == str:
+                    from flemme.dataset.label_dict import get_label_cls
+                    label_names = list(get_label_cls(label_names).values())
+                    tsne_config['label_names'] = label_names
+                if not len(results['latent']):
+                    logger.warning('There is no latent for tsne visualization.')
+                elif not results['latent'].ndim == 2:
+                    logger.warning('TSNE only supports to visualize vector embeddings.')
+                else:
+                    labels = onehot_to_label(results['target'], channel_dim=channel_dim)
+                    if not labels.ndim == 1:
+                        labels = onehot_to_label(results['condition'], channel_dim=channel_dim)
+                    if not len(labels) or not labels.ndim == 1:
+                        logger.warning('There is no label for tsne visualization.')
+                    else:
+                        tsne_fig = construct_tsne_vis(results['latent'], labels = labels, **tsne_config)
+                        save_img('tsne.png', tsne_fig)
+
             ### saving results of reconstruction and segmentation
             recon_dir = test_config.get('recon_dir', None)
 
@@ -157,7 +182,6 @@ def main():
                     else:
                         filename = 'sample_{:03d}'.format(idx)
                     output_path = os.path.join(seg_dir, filename)
-                    channel_dim = -1 if model.data_form == DataForm.PCD else 0
                     
                     ### transfer onehot to normal label for non-binary segmentation
                     seg = onehot_to_label(seg, channel_dim=channel_dim, keepdim=True) if seg.shape[channel_dim] > 1 else seg

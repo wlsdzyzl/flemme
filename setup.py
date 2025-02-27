@@ -42,6 +42,7 @@ if install_pcd_modules:
         ),
     ]
     ext_kwargs["cmdclass"] = {"build_ext": BuildExtension}
+
 os.environ["TORCH_CUDA_ARCH_LIST"] = "5.0;6.0;6.1;7.0;7.5;8.0;8.6+PTX"
 
 setup(

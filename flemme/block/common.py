@@ -366,7 +366,8 @@ class DenseBlock(NormBlock):
         return False
 ## Multi Layer Perception block
 class MultiLayerPerceptionBlock(nn.Module):
-    def __init__(self, in_channel, out_channel, hidden_channels, 
+    def __init__(self, in_channel, out_channel, 
+                n = 1, hidden_channels = None, 
                 time_channel = 0, norm = None, num_norm_groups = 0, 
                 activation = 'relu', dropout=None, 
                 order="ln", final_activation = True,
@@ -374,6 +375,11 @@ class MultiLayerPerceptionBlock(nn.Module):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
+        assert n is not None and n >= 1 or type(hidden_channels) == list, \
+            "Number of layers is not specified."
+        if not type(hidden_channels) == list:
+            hidden_channel = get_middle_channel(in_channel, out_channel)
+            hidden_channels = [hidden_channel,] * (n - 1)
         channels = [in_channel, ] + hidden_channels + [out_channel, ]
         module_sequence = [DenseBlock( in_channel = channels[idx], 
                     out_channel = channels[idx+1], time_channel = time_channel, norm = norm,
@@ -458,7 +464,10 @@ class OneHotEmbeddingBlock(nn.Module):
         self.num_classes = num_classes
         self.out_channel = out_channel
         self.apply_onehot = apply_onehot
-        middle_channel = get_middle_channel(num_classes, out_channel) 
+        # middle_channel = get_middle_channel(num_classes, out_channel) 
+        #### old
+        middle_channel = min(int( max(self.num_classes, self.out_channel) / 2), 
+                              self.num_classes, self.out_channel)
         self.dense1 = DenseBlock(self.num_classes, middle_channel, activation=activation)
         self.dense2 = DenseBlock(middle_channel, self.out_channel, activation=None)
     def forward(self, x):

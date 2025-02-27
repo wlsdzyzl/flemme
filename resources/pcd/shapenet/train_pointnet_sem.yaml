@@ -11,13 +11,12 @@ model:
     out_channel: 4
     point_num: 2048
     building_block: dense
-    num_neighbors_k: 20
+    # num_neighbors_k: 20
     # folding_times: 2
-    local_feature_channels: [64, 64, 128, 256, 512]
-    dense_channels: [1024]
-    decoder_dense_channels: [512, 256]
+    local_feature_channels: [128, 256, 512, 1024]
+    dense_channels: [1024, 1024, 512, 256, 128]
     activation: lrelu
-    normalization: group
+    normalization: batch
     vector_embedding: False
   ### loss function
   # loss_reduction: sum
@@ -33,7 +32,7 @@ loader:
     data_suffix: .pts
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/shapenetcore_v0/03001627 
+    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0/segmentation/Airplane/
   batch_size: 8
   num_workers: 8
   shuffle: true
@@ -52,7 +51,7 @@ loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/03001627/PointNet_Seg
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/Airplane/PointNet_Seg
 ### parameter for optimizer
 optimizer:
   name: Adam

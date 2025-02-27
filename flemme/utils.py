@@ -18,7 +18,7 @@ import argparse
 import yaml
 from flemme.block import channel_recover
 import shutil
-from stl import mesh
+
 logger = get_logger('utils')
 
 class DataForm(Enum):
@@ -115,7 +115,32 @@ def logits_to_onehot_label(logits, data_form):
             return logits > 0.5
         return label_to_onehot(logits.argmax(axis = channel_dim),
         channel_dim = channel_dim, num_classes = c)
-
+def topk(array, k, axis=-1, sorted=True):
+    # Use np.argpartition is faster than np.argsort, but do not return the values in order
+    # We use array.take because you can specify the axis
+    partitioned_ind = (
+        np.argpartition(array, -k, axis=axis)
+        .take(indices=range(-k, 0), axis=axis)
+    )
+    # We use the newly selected indices to find the score of the top-k values
+    partitioned_scores = np.take_along_axis(array, partitioned_ind, axis=axis)
+    
+    if sorted:
+        # Since our top-k indices are not correctly ordered, we can sort them with argsort
+        # only if sorted=True (otherwise we keep it in an arbitrary order)
+        sorted_trunc_ind = np.flip(
+            np.argsort(partitioned_scores, axis=axis), axis=axis
+        )
+        
+        # We again use np.take_along_axis as we have an array of indices that we use to
+        # decide which values to select
+        ind = np.take_along_axis(partitioned_ind, sorted_trunc_ind, axis=axis)
+        scores = np.take_along_axis(partitioned_scores, sorted_trunc_ind, axis=axis)
+    else:
+        ind = partitioned_ind
+        scores = partitioned_scores
+    
+    return scores, ind
 ### normalize to [-1, 1] with min-max or mean
 def normalize(data, channel_dim = None, 
               scaling_per_channel = False, 
@@ -288,8 +313,12 @@ def nii2nrrd(nii_file, nrrd_file):
 
 def load_img(input_path):
     if input_path[-4:] == '.exr':
-        import OpenEXR
-        import Imath
+        try:
+            import OpenEXR
+            import Imath
+        except:
+            logger.error('cannot find openexr and imath.')
+            exit(1)
         exrFile = OpenEXR.InputFile(input_path)
         pt = Imath.PixelType(Imath.PixelType.FLOAT)
         dw = exrFile.header()['dataWindow']
@@ -319,7 +348,6 @@ def load_img_as_numpy(input_path):
     # return img
 
 def save_img(img_path, img):
-    print(img)
     if isinstance(img, Image.Image):
         img.save(img_path)
     elif isinstance(img, np.ndarray):
@@ -432,6 +460,7 @@ def crop_boundingbox(data = None, margin = (0, 0, 0), background = 0, follows = 
 
 if module_config['point-cloud'] or module_config['graph']:
     from plyfile import PlyData,PlyElement
+    from stl import mesh
     ##### load ply file for training
     ## here we only focus on the coordinate information.
     ## later we can add more informations

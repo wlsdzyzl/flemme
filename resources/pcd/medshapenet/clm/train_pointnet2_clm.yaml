@@ -21,7 +21,7 @@ model:
     activation: lrelu
     normalization: group
     # pos_embedding: True 
-    knn_query: feature
+    # knn_query: feature
   classification_losses: 
     - name: CE
 loader:
@@ -70,8 +70,7 @@ val_loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedShapeNet/PointNet2/PointNet2_CLS_test
-pretrained: /media/wlsdzyzl/DATA/flemme-path/to/checkpoint/MedShapeNet/PointNet2/PointNet2_CLS/ckp_last.pth
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedShapeNet/PointNet2/PointNet2_CLS
 ### parameter for optimizer
 optimizer:
   name: Adam

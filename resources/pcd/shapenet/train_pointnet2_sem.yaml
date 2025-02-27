@@ -14,9 +14,11 @@ model:
     num_neighbors_k: 32
     num_fps_points: [1024, 512, 256, 64]
     fps_feature_channels: [128, 256, 512, 1024]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.8]
     dense_channels: [1024]
     activation: relu
     normalization: batch
+    final_concat: true
     vector_embedding: False
   ### loss function
   # loss_reduction: sum
@@ -32,7 +34,7 @@ loader:
     data_suffix: .pts
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0/03001627
+    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0/segmentation/Airplane/
   batch_size: 8
   num_workers: 8
   shuffle: true
@@ -51,7 +53,7 @@ loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/03001627/PointNet2_Seg
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/Airplane/PointNet2_Seg
 ### parameter for optimizer
 optimizer:
   name: Adam
@@ -66,6 +68,6 @@ evaluation_metrics:
     - name: Dice
     - name: ACC
     - name: mIoU
-max_epoch: 1000
+max_epoch: 100
 write_after_iters: 20
 save_after_epochs: 5

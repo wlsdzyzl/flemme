@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch import nn
 from flemme.block import get_building_block, \
     SamplingAndGroupingBlock as MSGBlock, get_psmamba_block, get_scanners, \
-    MultipleBuildingBlocks, FeaturePropogatingBlock as FPBlock 
+    MultipleBuildingBlocks, FeaturePropogatingBlock as FPBlock
 from .pointnet2 import Point2Encoder, Point2Decoder
 from flemme.logger import get_logger
 logger = get_logger("encoder.point.pointmamba2")
@@ -42,6 +42,7 @@ class PointMamba2Encoder(Point2Encoder):
             z_count = 1, 
             return_xyz = False,
             last_activation = True,
+            final_concat = False,
             pos_embedding = False,
             **kwargs):
         super().__init__(point_dim=point_dim, 
@@ -64,6 +65,7 @@ class PointMamba2Encoder(Point2Encoder):
                 z_count = z_count, 
                 vector_embedding = vector_embedding, 
                 is_point2decoder = is_point2decoder,
+                final_concat = final_concat,
                 pos_embedding=pos_embedding,
                 return_xyz = return_xyz,
                 last_activation = last_activation)
@@ -99,7 +101,6 @@ class PointMamba2Encoder(Point2Encoder):
             pos_embedding_channel = projection_channel if pos_embedding else point_dim,
             BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
         self.msg = nn.ModuleList(msg_sequence)
-
         if long_range_modeling:
             ### scan mamba block
             self.scanners = get_scanners(scan_strategies)
@@ -136,7 +137,6 @@ class PointMamba2Encoder(Point2Encoder):
                     n = num_blocks,
                     BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
             self.lrm = nn.ModuleList(lrm_sequence)
-            
     def scan(self, xyz):
         if hasattr(self, 'scanners') and len(self.scanners) > 0:
             sorted_index_list = []

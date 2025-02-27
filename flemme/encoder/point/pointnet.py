@@ -117,7 +117,7 @@ class PointNetEncoder(PointEncoder):
                  time_channel = 0,
                  num_neighbors_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
-                 num_blocks = 1,
+                 num_blocks = 2,
                  dense_channels = [256, 256],
                  building_block = 'dense', 
                  normalization = 'group', num_norm_groups = 8, 

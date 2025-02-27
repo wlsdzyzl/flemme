@@ -4,8 +4,10 @@ from flemme.utils import load_ply, load_img, save_img
 from flemme.color_table import color_table
 import os
 def standardize_bbox(pcl, points_per_object, pcl_color = None):
-    pt_indices = np.random.choice(pcl.shape[0], points_per_object, replace=False)
-    np.random.shuffle(pt_indices)
+    if points_per_object > 0:
+        pt_indices = np.random.choice(pcl.shape[0], points_per_object, replace=False)
+    else:
+        pt_indices = np.arange(pcl.shape[0])
     pcl = pcl[pt_indices] # n by 3
     mins = np.amin(pcl, axis=0)
     maxs = np.amax(pcl, axis=0)
@@ -27,7 +29,7 @@ xml_head = \
         <float name="farClip" value="100"/>
         <float name="nearClip" value="0.1"/>
         <transform name="toWorld">
-            <lookat origin="0,-5,2" target="0,0,0" up="0,0,1"/>
+            <lookat origin="2.5,-5,2" target="0,0,0" up="0,0,1"/>
         </transform>
         <float name="fov" value="25"/>
         
@@ -94,16 +96,17 @@ def colormap(x,y,z):
     # norm = np.sqrt(np.sum(vec**2))
     # vec /= norm
     # return [vec[0], vec[1], vec[2]]
+    # return [color_table[11][0], color_table[11][1], color_table[11][2]]
     return [color_table[1][0], color_table[1][1], color_table[1][2]]
 
 xml_segments = [xml_head]
 
 # pcl = load_ply("/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/segmentation/fold2/colorized_pcd/024165.ply", vertex_features = ['red', 'green', 'blue'])
-
+# pcl = load_ply("/media/wlsdzyzl/DATA/flemme-results/seg/medshapenet/036881_colorized_tar.ply", vertex_features = ['red', 'green', 'blue'])
 # heart
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1/heart/s0808.ply')
 # heart partial
-pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/completion/fold1/heart/partial/s0808.ply')
+# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/completion/fold1/heart/partial/s0808.ply')
 # liver
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1/liver/019541.ply')
 # liver partial
@@ -112,22 +115,24 @@ pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/completion/fold
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1/stomach/s0075.ply')
 # stomach partial
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/completion/fold1/stomach/partial/s0075.ply')
+pcl = load_ply("/media/wlsdzyzl/DATA/flemme-results/cpl/medshapenet/s0300_colon_ours.ply")
+# spleen
 pcl_color = None
 if pcl.shape[1] == 6:
     pcl_color = pcl[..., 3:6] / 255.0
     pcl = pcl[..., :3]
 # print(pcl.shape)
 # print(pcl_color)
-pcl, pcl_color = standardize_bbox(pcl, 4096, pcl_color)
+pcl, pcl_color = standardize_bbox(pcl, -1, pcl_color)
 
 # heart
-pcl = pcl[:,[1, 2, 0]]
+# pcl = pcl[:,[1, 2, 0]]
 
 # # liver
 # pcl[:,1] *= -1
 # pcl[:,2] *= -1
 
-# ## stomach
+## stomach
 # pcl = pcl[:,[0, 2, 1]]
 # pcl[:,0] *= -1
 # pcl[:,1] *= -1
@@ -138,8 +143,12 @@ pcl = pcl[:,[1, 2, 0]]
 # pcl[:,1] *= -1
 # pcl[:,2] *= -1
 
-# pcl[:,2] +=0.2
-pcl[:,2] +=0.05
+## whole body
+# pcl[:,1] *= -1
+# pcl[:,2] *= -1
+# pcl[:,2] +=0.15
+
+pcl[:,2] +=0.1
 if pcl_color is not None:
     for i in range(pcl.shape[0]):
         xml_segments.append(xml_ball_segment.format(pcl[i,0],pcl[i,1],pcl[i,2], 

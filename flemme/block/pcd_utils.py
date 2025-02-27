@@ -55,40 +55,48 @@ class FurthestPointSampling(Function):
 furthest_point_sample = FurthestPointSampling.apply
 
 
-class GatherOperation(Function):
-    @staticmethod
-    def forward(ctx, features, idx):
-        # type: (Any, torch.Tensor, torch.Tensor) -> torch.Tensor
-        r"""
 
-        Parameters
-        ----------
-        features : torch.Tensor
-            (B, C, N) tensor
+# class GatherOperation(Function):
+#     @staticmethod
+#     def forward(ctx, features, idx):
+#         # type: (Any, torch.Tensor, torch.Tensor) -> torch.Tensor
+#         r"""
 
-        idx : torch.Tensor
-            (B, npoint) tensor of the features to gather
+#         Parameters
+#         ----------
+#         features : torch.Tensor
+#             (B, C, N) tensor
 
-        Returns
-        -------
-        torch.Tensor
-            (B, C, npoint) tensor
-        """
+#         idx : torch.Tensor
+#             (B, npoint) tensor of the features to gather
 
-        ctx.save_for_backward(idx, features)
+#         Returns
+#         -------
+#         torch.Tensor
+#             (B, C, npoint) tensor
+#         """
 
-        return pcd_ops.gather_points(features, idx)
+#         ctx.save_for_backward(idx, features)
 
-    @staticmethod
-    def backward(ctx, grad_out):
-        idx, features = ctx.saved_tensors
-        N = features.size(2)
+#         return pcd_ops.gather_points(features, idx)
 
-        grad_features = pcd_ops.gather_points_grad(grad_out.contiguous(), idx, N)
-        return grad_features, None
+#     @staticmethod
+#     def backward(ctx, grad_out):
+#         idx, features = ctx.saved_tensors
+#         N = features.size(2)
+
+#         grad_features = pcd_ops.gather_points_grad(grad_out.contiguous(), idx, N)
+#         return grad_features, None
 
 
-gather_operation = GatherOperation.apply
+# gather_features = GatherOperation.apply
+### reimplemented with pytorch
+def gather_features(features, index, channel_dim, gather_dim):
+    index = index.unsqueeze(channel_dim)
+    expend_shape = [-1,] * features.ndim
+    expend_shape[channel_dim] = features.shape[channel_dim]
+    index = index.expand(*expend_shape) 
+    return torch.gather(features, dim = gather_dim, index = index.long())
 
 
 class ThreeNN(Function):
@@ -354,7 +362,7 @@ class GroupAll(nn.Module):
         super(GroupAll, self).__init__()
         self.use_xyz = use_xyz
 
-    def forward(self, xyz, xyz_embed, new_xyz, new_xyz_embed, features=None):
+    def forward(self, xyz, xyz_embed, new_xyz, new_xyz_embed, features=None, new_features=None):
         # type: (GroupAll, torch.Tensor, torch.Tensor, torch.Tensor) -> Tuple[torch.Tensor]
         r"""
         Parameters

@@ -5,7 +5,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, \
-    SamplingAndGroupingBlock as MSGBlock, FeaturePropogatingBlock as FPBlock 
+    SamplingAndGroupingBlock as MSGBlock, FeaturePropogatingBlock as FPBlock, \
+    SampledFeatureCatBlock as SFCBlock
 from flemme.logger import get_logger
 import copy
 logger = get_logger("encoder.point.pointnet2")
@@ -50,6 +51,7 @@ class Point2Encoder(nn.Module):
                  is_point2decoder,
                  return_xyz,
                  last_activation,
+                 final_concat,
                  pos_embedding,
                  **kwargs):
         super().__init__()
@@ -77,6 +79,9 @@ class Point2Encoder(nn.Module):
         self.knn_query = knn_query
         if knn_query:
             assert knn_query in ['xyz', 'xyz_embed', 'feature'], "Unsupported KNN query space, shouled be one of ['xyz', 'xyz_embed', 'feature']."
+            logger.info(f'Perform KNN query on {knn_query} space.')
+        else:
+            logger.info(f'Perform ball query on xyz space.')
         self.return_xyz = return_xyz
         if pos_embedding:
             self.pos_embed = nn.Linear(point_dim, projection_channel)
@@ -135,7 +140,12 @@ class Point2Encoder(nn.Module):
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
         self.out_channels = self.msg_path + [self.out_channel, ]
-
+        if final_concat:
+            logger.info('This encoder will process a final concatenation of the sampled features from all previous MSG layers')
+            self.final_concat = SFCBlock(in_channels = self.msg_path, out_channel = fps_feature_channels[-1],
+                                        num_blocks = self.num_blocks, time_channel = self.time_channel,
+                                        activation = self.activation, dropout=self.dropout, 
+                                        norm = normalization, num_norm_groups=num_norm_groups)
     def forward(self, xyz, t = None):
         if self.msg is None:
             raise NotImplementedError
@@ -148,8 +158,9 @@ class Point2Encoder(nn.Module):
             xyz_embed = xyz
         xyz = xyz[...,0:3]
         xyz_list, feature_list = [xyz], [features]
+        sample_id_list = []
         for lid, msg in enumerate(self.msg):
-            xyz, xyz_embed, features = msg(xyz, xyz_embed, features = features, t = t)
+            xyz, xyz_embed, features, sample_ids = msg(xyz, xyz_embed, features = features, t = t)
             if hasattr(self, 'lrm'):
                 if hasattr(self, 'scanners') and len(self.scanners) > 0: 
                     sorted_index_list = self.scan(xyz)
@@ -158,7 +169,9 @@ class Point2Encoder(nn.Module):
                     features = self.lrm[lid](features, t)
             xyz_list.append(xyz)
             feature_list.append(features)
-
+            sample_id_list.append(sample_ids)
+        if hasattr(self, 'final_concat'):
+            features = self.final_concat(feature_list, sample_id_list, t)
         ## max and average pooling to get global feature
         f_max = F.adaptive_max_pool1d(features.transpose(1, 2), 1).transpose(1, 2)
         f_avg = F.adaptive_avg_pool1d(features.transpose(1, 2), 1).transpose(1, 2)
@@ -269,7 +282,7 @@ class PointNet2Encoder(Point2Encoder):
                  num_neighbors_k = 32,
                  neighbor_radius = [0.1, 0.2, 0.4, 0.8], 
                  fps_feature_channels = [128, 256, 512, 1024], 
-                 num_blocks = 1,
+                 num_blocks = 2,
                  num_scales = 2,
                  use_xyz = True,
                  sorted_query = False,
@@ -283,6 +296,7 @@ class PointNet2Encoder(Point2Encoder):
                  z_count = 1, 
                  return_xyz = False,
                  last_activation = True,
+                 final_concat = False,
                  pos_embedding = False,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
@@ -307,6 +321,7 @@ class PointNet2Encoder(Point2Encoder):
                 is_point2decoder = is_point2decoder,
                 return_xyz = return_xyz, 
                 last_activation = last_activation,
+                final_concat = final_concat,
                 pos_embedding=pos_embedding)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
@@ -328,13 +343,17 @@ class PointNet2Encoder(Point2Encoder):
             pos_embedding_channel = projection_channel if pos_embedding else point_dim,
             BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
         self.msg = nn.ModuleList(msg_sequence)
+        # if final_concat:
+            
+        #     self.final_concat = SFCBlock(in_channels = self.msg_path, out_channel = fps_feature_channels[-1],
+        #     num_blocks = self.num_blocks, BuildingBlock = self.BuildingBlock)
 
 class PointNet2Decoder(Point2Decoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 ### provide by encoder
                 in_channels= [1024, 1024, 512, 256, 128], 
                 time_channel = 0,
-                num_blocks = 1,
+                num_blocks = 2,
                 fp_channels = [512, 512, 256, 128], 
                 dense_channels = [],
                 building_block = 'dense',  

@@ -4,6 +4,7 @@ from mamba_ssm import Mamba, Mamba2
 from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
 from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined
 from einops import rearrange, repeat
+from .pcd_utils import gather_features
 
 def zsort(xyz):
     z = xyz[:, :, 2]
@@ -186,8 +187,10 @@ class PointScanMambaBaseBlock(NormBlock):
         sorted_feature_list = []
         # B, C, L
         for idx in sorted_index_list:
-            index = idx.unsqueeze(1).expand(-1, c, -1)
-            sorted_feature = torch.gather(xyz_features, dim = -1, index = index)
+            # index = idx.unsqueeze(1).expand(-1, c, -1)
+            # sorted_feature = torch.gather(xyz_features, dim = -1, index = index)
+            sorted_feature = gather_features(xyz_features, index = idx, 
+                        channel_dim = 1, gather_dim = -1)
             sorted_feature_list.append(sorted_feature)
 
         # B C L -> B K C L
@@ -200,8 +203,10 @@ class PointScanMambaBaseBlock(NormBlock):
         c = new_feature.shape[2]
         for idx, sorted_idx in enumerate(sorted_index_list):
             rsidx = resort(sorted_idx)
-            index = rsidx.unsqueeze(1).expand(-1, c, -1)
-            recovered_feature = torch.gather( new_feature[:, idx, ...], dim = -1,  index = index)
+            # index = rsidx.unsqueeze(1).expand(-1, c, -1)
+            # recovered_feature = torch.gather( new_feature[:, idx, ...], dim = -1,  index = index)
+            recovered_feature = gather_features(new_feature[:, idx, ...], index = rsidx,
+                channel_dim = 1, gather_dim = -1)
             res.append(recovered_feature)
         y = sum(res)
         return y

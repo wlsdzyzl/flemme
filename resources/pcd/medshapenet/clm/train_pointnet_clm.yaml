@@ -27,7 +27,7 @@ loader:
     - /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1
     - /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold2
     - /media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold3
-  batch_size: 64
+  batch_size: 16
   num_workers: 8
   shuffle: true
   data_transforms:

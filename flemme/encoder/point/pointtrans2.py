@@ -33,6 +33,7 @@ class PointTrans2Encoder(Point2Encoder):
                  z_count = 1, 
                  return_xyz = False,
                  last_activation = True,
+                 final_concat = False,
                  pos_embedding = False,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
@@ -57,6 +58,7 @@ class PointTrans2Encoder(Point2Encoder):
                 is_point2decoder = is_point2decoder,
                 return_xyz = return_xyz,
                 last_activation = last_activation,
+                final_concat = final_concat,
                 pos_embedding= pos_embedding)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
@@ -90,6 +92,7 @@ class PointTrans2Encoder(Point2Encoder):
                 n = num_blocks,
                 BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
             self.lrm = nn.ModuleList(lrm_sequence)
+
 class PointTrans2Decoder(Point2Decoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 ### provide by encoder
