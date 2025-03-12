@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, \
-    FoldingLayer, LocalGraphLayer, MultipleBuildingBlocks
+    FoldingLayer, LocalGraphLayer, MultipleBuildingBlocks, MultiLayerPerceptionBlock
 from flemme.logger import get_logger
 from .sphere3d import icosphere, uvsphere
 import copy
@@ -173,6 +173,8 @@ class PointNetDecoder(nn.Module):
                 activation = 'lrelu', dropout = 0., 
                 folding_times = 0, 
                 base_shape_config = {},
+                num_blocks = 2,
+                final_channels = [512, 512],
                 folding_hidden_channels = [512, 512],
                 vector_embedding = True, **kwargs):
         super().__init__()
@@ -258,13 +260,22 @@ class PointNetDecoder(nn.Module):
             folding_channels = [self.dense_path[-1] + self.base_shape_dim, ] + [ self.dense_path[-1] + point_dim] * (folding_times - 1)
             folding_sequence = [FoldingLayer(in_channel = fc, out_channel = point_dim,
                                     hidden_channels = folding_hidden_channels,
+                                    n = num_blocks,
                                     time_channel = self.time_channel,
                                     norm = normalization, num_norm_groups=num_norm_groups, 
                                     activation = activation, dropout=dropout) for fc in folding_channels]
             self.fold = SequentialT(*folding_sequence)
         else:
             final_out_channel = point_dim * point_num if self.vector_embedding else self.point_dim
-            self.final = nn.Linear(dense_channels[-1], final_out_channel)
+            # nn.Linear(dense_channels[-1], final_out_channel)
+            self.final = MultiLayerPerceptionBlock(in_channel=dense_channels[-1], 
+                                            out_channel=final_out_channel,
+                                            n = num_blocks, 
+                                            hidden_channels = final_channels,
+                                            time_channel = self.time_channel,
+                                            norm = normalization, num_norm_groups=num_norm_groups, 
+                                            activation = activation, dropout=dropout,
+                                            final_activation = False)
 
     def __str__(self):
         _str = ''
@@ -292,7 +303,7 @@ class PointNetDecoder(nn.Module):
             x = self.fold(shape, x, t)
             # x = self.final(x)
         else:
-            x = self.final(x)
+            x = self.final(x, t)
             if self.vector_embedding:
                 x = x.reshape(-1, self.point_num, self.point_dim)
         return x

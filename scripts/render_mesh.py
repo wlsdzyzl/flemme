@@ -76,11 +76,11 @@ xml_tail = \
     
     <shape type="rectangle">
         <transform name="toWorld">
-            <scale x="1" y="1" z="1"/>
-            <lookat origin="4, -1.5, 20" target="0,0,0" up="0,0,1"/>
+            <scale x="6" y="6" z="1"/>
+            <lookat origin="4, -1.5, 10" target="0,0,0" up="0,0,1"/>
         </transform>
         <emitter type="area">
-            <rgb name="radiance" value="500"/>
+            <rgb name="radiance" value="7"/>
         </emitter>
     </shape>
 </scene>
@@ -89,13 +89,14 @@ xml_tail = \
 
 xml_segments = [xml_head]
 
-mesh_file = './example_mesh.ply'
+mesh_file = '/media/wlsdzyzl/DATA/datasets/siqi/mesh_to_skeleton/TreeDiffusion/mesh/imagecas_recon_test/recon_12081656_overfitted_model_fine.ply'
 pcl, faces = load_ply(mesh_file, with_faces= True)
 
 pcl = pcl[:,[2, 1, 0]]
+# pcl[:, 1] = -pcl[:, 1]
 faces = faces[:, [2, 1, 0]]
 pcl = standardize_bbox(pcl)
-pcl[:, 2] += 0.05
+pcl[:, 2] += 0.0
 
 save_ply('./normalized_mesh.ply', pcl, faces = faces)
 color = [color_table[6][0], color_table[6][1], color_table[6][2]]

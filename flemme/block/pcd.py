@@ -225,7 +225,8 @@ class FoldingLayer(MultiLayerPerceptionBlock):
 
     def __init__(self, in_channel, 
                 out_channel, 
-                hidden_channels,
+                n = 1,
+                hidden_channels = [],
                 time_channel = 0, 
                 norm = None, 
                 num_norm_groups = 0, 
@@ -236,6 +237,7 @@ class FoldingLayer(MultiLayerPerceptionBlock):
                 
         super().__init__(in_channel=in_channel,
                             out_channel=out_channel,
+                            n = n,
                             hidden_channels=hidden_channels,
                             time_channel=time_channel,
                             norm=norm,

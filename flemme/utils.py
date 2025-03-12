@@ -488,11 +488,7 @@ if module_config['point-cloud'] or module_config['graph']:
         if with_faces:
             faces = None
             if 'face' in plydata._element_lookup:
-                faces = np.zeros((plydata['face'].count, 3), dtype=np.int64)
-                ### read edges
-                faces[:, 0] = plydata['face']['vertex_indices'][:, 0]
-                faces[:, 1] = plydata['face']['vertex_indices'][:, 1]
-                faces[:, 2] = plydata['face']['vertex_indices'][:, 2]
+                faces = np.array([ f.astype(np.int64) for f in plydata['face']['vertex_indices']])
             return pcd, faces
     def load_stl(inputfile, with_edges = False):
         stl_mesh = mesh.Mesh.from_file(inputfile)

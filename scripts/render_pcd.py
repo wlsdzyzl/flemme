@@ -37,8 +37,8 @@ xml_head = \
             <integer name="sampleCount" value="256"/>
         </sampler>
         <film type="hdrfilm">
-            <integer name="width" value="1600"/>
-            <integer name="height" value="1200"/>
+            <integer name="width" value="320"/>
+            <integer name="height" value="240"/>
             <rfilter type="gaussian"/>
             <boolean name="banner" value="false"/>
             <string name="file_format" value="openexr"/>
@@ -97,16 +97,16 @@ def colormap(x,y,z):
     # vec /= norm
     # return [vec[0], vec[1], vec[2]]
     # return [color_table[11][0], color_table[11][1], color_table[11][2]]
-    return [color_table[1][0], color_table[1][1], color_table[1][2]]
+    return [color_table[6][0], color_table[6][1], color_table[6][2]]
 
 xml_segments = [xml_head]
 
 # pcl = load_ply("/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/segmentation/fold2/colorized_pcd/024165.ply", vertex_features = ['red', 'green', 'blue'])
 # pcl = load_ply("/media/wlsdzyzl/DATA/flemme-results/seg/medshapenet/036881_colorized_tar.ply", vertex_features = ['red', 'green', 'blue'])
 # heart
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1/heart/s0808.ply')
+# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1/heart/s0455.ply')
 # heart partial
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/completion/fold1/heart/partial/s0808.ply')
+# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/completion/fold1/heart/partial/s0455.ply')
 # liver
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1/liver/019541.ply')
 # liver partial
@@ -115,8 +115,18 @@ xml_segments = [xml_head]
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1/stomach/s0075.ply')
 # stomach partial
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/completion/fold1/stomach/partial/s0075.ply')
-pcl = load_ply("/media/wlsdzyzl/DATA/flemme-results/cpl/medshapenet/s0300_colon_ours.ply")
+# pcl = load_ply("/media/wlsdzyzl/DATA/flemme-results/cpl/medshapenet/s0300_colon_ours.ply")
+# kidney
+# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1/kidney/s0212.ply')
+# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/completion/fold1/kidney/partial/s0212.ply')
 # spleen
+
+
+# brain
+pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1/brain/017214.ply')
+
+# brain
+pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD/classification/fold1/iliacartery/s0157.ply')
 pcl_color = None
 if pcl.shape[1] == 6:
     pcl_color = pcl[..., 3:6] / 255.0
@@ -126,7 +136,7 @@ if pcl.shape[1] == 6:
 pcl, pcl_color = standardize_bbox(pcl, -1, pcl_color)
 
 # heart
-# pcl = pcl[:,[1, 2, 0]]
+# pcl = pcl[:,[0, 2, 1]]
 
 # # liver
 # pcl[:,1] *= -1
@@ -148,7 +158,7 @@ pcl, pcl_color = standardize_bbox(pcl, -1, pcl_color)
 # pcl[:,2] *= -1
 # pcl[:,2] +=0.15
 
-pcl[:,2] +=0.1
+pcl[:,2] +=0.05
 if pcl_color is not None:
     for i in range(pcl.shape[0]):
         xml_segments.append(xml_ball_segment.format(pcl[i,0],pcl[i,1],pcl[i,2], 

@@ -377,7 +377,7 @@ class MultiLayerPerceptionBlock(nn.Module):
             logger.debug("redundant parameters:{}".format(kwargs))
         assert n is not None and n >= 1 or type(hidden_channels) == list, \
             "Number of layers is not specified."
-        if not type(hidden_channels) == list:
+        if not type(hidden_channels) == list or len(hidden_channels) == 0:
             hidden_channel = get_middle_channel(in_channel, out_channel)
             hidden_channels = [hidden_channel,] * (n - 1)
         channels = [in_channel, ] + hidden_channels + [out_channel, ]
