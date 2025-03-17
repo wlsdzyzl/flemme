@@ -10,6 +10,7 @@ from functools import partial
 # image segmentation dataloader
 # there might be other type of image dataset, such as image classification dataset or pure image generation dataset.
 logger = get_logger('image_dataset')
+
 class ImgDataset(Dataset):
     def __init__(self, data_path, dim = 2, data_transform = None, 
                  mode = 'train', data_dir = '', 
@@ -43,9 +44,8 @@ class ImgClsDataset(Dataset):
                 data_transform = None, 
                 label_transform = None,
                 mode = 'train', 
-                data_suffix = '.ply',
+                data_suffix = '.png',
                 pre_shuffle = True,
-                class_dirs = [],  
                 cls_label = {},
                 **kwargs):
         super().__init__()
@@ -58,6 +58,7 @@ class ImgClsDataset(Dataset):
         self.label_transform = label_transform
         self.img_path_list = []
         self.labels = []
+        class_dirs = list(cls_label.keys())
         for cls_dir in class_dirs:
             sub_path_list = sorted(glob.glob(os.path.join(data_path + '/' + cls_dir,  "*" + data_suffix)))
             self.img_path_list = self.img_path_list + sub_path_list

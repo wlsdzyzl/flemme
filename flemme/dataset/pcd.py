@@ -41,7 +41,6 @@ class PcdClsDataset(Dataset):
                 mode = 'train', 
                 pre_shuffle = True,
                 data_suffix = '.ply',
-                class_dirs = None,  
                 cls_label = {},
                 **kwargs):
         super().__init__()
@@ -53,8 +52,7 @@ class PcdClsDataset(Dataset):
         self.label_transform = label_transform
         self.pcd_path_list = []
         self.labels = []
-        if class_dirs == None:
-            class_dirs = list(cls_label.keys())
+        class_dirs = list(cls_label.keys())
         for cls_dir in class_dirs:
             sub_path_list = sorted(glob.glob(os.path.join(data_path + '/' + cls_dir,  "*" + data_suffix)))
             self.pcd_path_list = self.pcd_path_list + sub_path_list
@@ -131,11 +129,10 @@ class PcdReconWithClassLabelDataset(Dataset):
                  label_transform = None, 
                  target_transform = None,
                  mode = 'train', 
-                 data_dir = 'pcd', 
+                 data_dir = 'partial', 
                  target_dir = 'label', 
                  data_suffix = '.ply', 
                  target_suffix='.ply', 
-                 class_dirs = None,  
                  cls_label = {},
                  pre_shuffle = True,
                  **kwargs):
@@ -150,8 +147,8 @@ class PcdReconWithClassLabelDataset(Dataset):
         self.pcd_path_list = []
         self.target_path_list = []
         self.labels = []
-        if class_dirs == None:
-            class_dirs = list(cls_label.keys())
+
+        class_dirs = list(cls_label.keys())
 
         for cls_dir in class_dirs:
             sub_path_list = sorted(glob.glob(os.path.join(data_path, cls_dir, data_dir,  "*" + data_suffix)))

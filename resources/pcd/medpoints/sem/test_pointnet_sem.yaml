@@ -1,0 +1,62 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: test
+determinstic: True
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: PointNet
+    in_channel: 3
+    out_channel: 46
+    point_num: 4096
+    building_block: dense
+    # num_neighbors_k: 20
+    local_feature_channels: [64, 64, 128, 256, 512]
+    dense_channels: [1024]
+    decoder_dense_channels: [512, 512, 256, 256, 128]
+    activation: lrelu
+    normalization: group
+    vector_embedding: False
+  segmentation_losses:
+    - name: Dice
+      normalization: softmax
+    - name: CE
+loader:
+  dataset: 
+    name: PcdSegDataset
+    data_dir: pcd
+    label_dir: coarse_label
+    data_suffix: .ply
+    label_suffix: .seg
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold5
+  batch_size: 32
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 4096
+    - name: ToTensor
+      dtype: float
+  label_transforms:
+    - name: FixedPoints
+      num: 4096
+    - name: ToOneHot
+      num_classes: 47
+      ignore_background: true
+    - name: ToTensor
+      dtype: float
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointNet/PointNet_SEG/ckp_best_loss.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/seg/MedPointS/PointNet_SEG/
+evaluation_metrics:
+  seg:
+    - name: ACC
+    - name: TopKACC
+    - name: mIoU
+    - name: Dice
+    - name: SoftDice
+
+

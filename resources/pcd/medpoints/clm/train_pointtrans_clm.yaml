@@ -3,14 +3,14 @@
 mode: train
 model:
   # can be AE, VAE, SeM and DDPM
-  name: CLM
+  name: ClM
   # encoder config
   encoder:
-    name: PointNet
+    name: PointTrans
     in_channel: 3
     out_channel: 46
-    point_num: 1024
-    building_block: dense
+    point_num: 2048
+    building_block: pct_oa
     # num_neighbors_k: 20
     local_feature_channels: [64, 64, 128, 256, 512]
     dense_channels: [1024, 512, 256]
@@ -27,13 +27,13 @@ loader:
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold2
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold3
-  batch_size: 32
+  batch_size: 6
   num_workers: 8
   shuffle: true
   data_transforms:
     - name: Normalize
     - name: FixedPoints
-      num: 1024
+      num: 2048
     - name: ToTensor
       dtype: float
   label_transforms:
@@ -49,13 +49,13 @@ val_loader:
     cls_label: MedPointS
   data_path_list: 
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold4
-  batch_size: 32
+  batch_size: 4
   num_workers: 8
   shuffle: true
   data_transforms:
     - name: Normalize
     - name: FixedPoints
-      num: 1024
+      num: 2048
     - name: ToTensor
       dtype: float
   label_transforms:
@@ -64,17 +64,22 @@ val_loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointNet/PointNet_CLS
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointTrans/PointTrans_CLS
 ### parameter for optimizer
 optimizer:
   name: Adam
   lr: 0.0001
   weight_decay: 0.00000001
+evaluation_metrics:
+  cls:
+    - name: ACC
+score_metric:
+  name: ACC
 ### scheduler for learning rate
 lr_scheduler: 
   name: LinearLR
   start_factor: 1.0
   end_factor: 0.01
-max_epoch: 250
+max_epoch: 100
 write_after_iters: 20
-save_after_epochs: 10
+save_after_epochs: 1

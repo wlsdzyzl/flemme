@@ -4,15 +4,20 @@
 ## Overview
 Flemme is a flexible and modular learning platform for medical images. In Flemme, we separate encoders from the model architectures, enabling fast model construction via different combinations for medical image segmentation, reconstruction and generation. In addition, a general hierarchical architecture with a pyramid loss is proposed for vertical feature refinement and integration. Please see [documentation of Flemme](https://flemme-docs.readthedocs.io/en/latest/) for more information.
 
-We are also working on Flemme to support point cloud modeling.
 
 ![](./images/overview.png)
 
+We are also working on Flemme to support *point cloud* modeling. An illustration of models built with `PointMamba2Encoder` is presented in the following figure:
+
+![](./images/pointmamba2.png)
+
 ### Supported architectures
+
 ![](./images/archis.png)
+
 ### Hierarchical architecture with a pyramid Loss (H-SeM + UNet)
 <p align="center">
-<img src=./images/pyramid.png width=60%/>
+<img src=./images/pyramid.png width=80%/>
 </p>
 
 ## Get started with Flemme
@@ -86,13 +91,14 @@ test_flemme --config path/to/test_config.yaml
 ```
 **Supported encoders**: 
 - [CNN, UNet, ViT, ViTU, Swin, SwinU, VMamba, VMambaU] for 2D/3D image 
-- [PointWise, PointNet, PointTrans, PointMamba] for point cloud.
+- [PointNet, PointTrans, PointMamba, PointNet2, PointTrans2, PointMamba2] for point cloud.
 
 *A encoder named as XXU indicates it's a U-shaped encoder.*
 
 *UNet is an alias of CNNU.*
 
 **Supported Architectures**: 
+- [ClM, ] for classification,
 - [SeM, HSeM] for segmentation, 
 - [AE, HAE, SDM] for reconstruction, 
 - [VAE, DDPM, DDIM, LDM] for generation. 
@@ -107,18 +113,37 @@ A detailed instruction of supported encoders, context embeddings, model architec
 
 ## Results
 
+### 2D/3D Image
+
 For segmentation, we evaluate our methods on six public datasets: **CVC-ClinicDB, Echonet, ISIC, TN3K, BraTS21 (3D), ImageCAS (3D)**.
 
 For reconstruction, we evaluate our methods on **FastMRI**.
 
 Configuration files are in `resources/img/biomed_2d` and `resources/img/biomed_3d`.
 
-### Segmentation results
+#### Segmentation results
 
 ![](./images/seg_res.png)
-### Reconstruction & Generation results
+
+#### Reconstruction & Generation results
 
 ![](./images/recon_res.png)
+
+### Point Cloud
+
+#### Completion & Segemntation results
+
+![](./images/pcd_result.png)
+
+## *MedPointS* Dataset
+
+MedPointS is a large-scale medical point cloud dataset based on MedShapeNet for anatomy classification, completion, and segmentation.
+
+An overview of MedPointS is presented int the following figure:
+
+![](./images/medpoints.png)
+
+You can download *MedPointS* from this [link](https://pan.baidu.com/s/1OKiglb6FtGmBLNwhVQXz9Q?pwd=cs27).
 
 ## Play with Flemme
 #### Toy Example for Diffusion model
@@ -144,7 +169,8 @@ Configuration files are in `resources/img/cifar10`
 **Denoising Diffusion Probabilistic Model (conditional)**
 ![](./images/cddpm_cifar10.png)
 ## BibTeX
-If you find our project helpful, please cite:
+If you find our project helpful, please consider to cite the following works:
+
 ```
 @misc{zhang2024flemmeflexiblemodularlearning,
       title={Flemme: A Flexible and Modular Learning Platform for Medical Images}, 
@@ -157,4 +183,5 @@ If you find our project helpful, please cite:
 }
 ```
 ## Acknowledgement
-Thanks to [mamba](https://github.com/state-spaces/mamba), [swin-transformer](https://github.com/microsoft/Swin-Transformer), [diffusion model](https://github.com/lucidrains/denoising-diffusion-pytorch) for their wonderful works.
+Thanks to [mamba](https://github.com/state-spaces/mamba), [swin-transformer](https://github.com/microsoft/Swin-Transformer), [diffusion model](https://github.com/lucidrains/denoising-diffusion-pytorch), and
+[pointnet2](https://github.com/erikwijmans/Pointnet2_PyTorch) for their wonderful works.

@@ -8,3 +8,5 @@ results/
 *.pyc
 __pycache__
 path/
+log/
+tmp_img/

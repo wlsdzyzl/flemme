@@ -144,31 +144,41 @@ def main():
     start_epoch = 1
     ## load model from check points
     pretrained = train_config.get('pretrained', None)
-    resume = train_config.get('resume', None)
+    resume = train_config.get('resume', False)
 
-    if pretrained is not None and resume is not None:
+    if pretrained and resume:
         logger.error('Only one of pretrained and resume can be specified.')
         exit(1)
 
-    if pretrained is not None:
+    if pretrained:
         logger.info(f'Using pre-trained model: {pretrained}')
-        load_checkpoint(pretrained, model, ignore_mismatched_keys = ignore_mismatched_keys)
-
-    if resume is not None:
-        logger.info(f'Resume from last pth: {resume}')
-        state = load_checkpoint(resume, model, optimizer=optimizer, scheduler=lr_scheduler, 
-                            ignore_mismatched_keys = ignore_mismatched_keys)
-        if state is not None:
-            best_loss = state['best_loss']
-            logger.info(f'previous best loss: {best_loss}')
-            best_score = state['best_score']
-            if score_metric:
-                logger.info(f'previous best score: {best_score}')
-            start_epoch = state['epoch'] + 1
-            iter_id = (start_epoch - 1) * len(data_loader)
+        if os.path.isfile(pretrained):
+            load_checkpoint(pretrained, model, ignore_mismatched_keys = ignore_mismatched_keys)
         else:
-            logger.warning('Cannot read the information needed for resume, use loaded model as pre-trained')
-    
+            logger.warning('Pretrained model doesn\'t exist. Model will be trained from scratch.')
+    if resume:
+        if isinstance(resume, str):
+            resume_pth = resume
+        else:
+            resume_pth = os.path.join(ckp_dir, "ckp_last.pth")
+        if os.path.isfile(resume_pth):
+            logger.info(f'Resume from old pth: {resume_pth}')
+            state = load_checkpoint(resume_pth, model, optimizer=optimizer, scheduler=lr_scheduler, 
+                                ignore_mismatched_keys = ignore_mismatched_keys)
+            if state is not None:
+                best_loss = state['best_loss']
+                logger.info(f'previous best loss: {best_loss}')
+                best_score = state['best_score']
+                if score_metric:
+                    logger.info(f'previous best score: {best_score}')
+                start_epoch = state['epoch'] + 1
+                iter_id = (start_epoch - 1) * len(data_loader)
+            else:
+                logger.warning('Cannot read the information needed for resume training, use loaded model as pre-trained')
+        else:
+            if resume == resume_pth:
+                logger.warning('Input checkpoint doesn\'t exist.')
+            logger.info('Model will be trained from scratch.')
     sampler = None
     sampler_config = train_config.get('sampler', None)
     if model.is_generative and sampler_config is not None:

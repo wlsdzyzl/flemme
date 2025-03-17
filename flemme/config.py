@@ -10,5 +10,4 @@ module_config = {
     'graph': False,
     'logger_level': logging.INFO,
     'color_map': 'Scannet'
-
 }

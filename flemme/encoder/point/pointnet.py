@@ -225,9 +225,13 @@ class PointNetDecoder(nn.Module):
                 np_grid = np.stack(np.meshgrid(xx, yy, zz), axis=-1)   # (grid_len, grid_len, grid_len, 3)
                 self.base_shape = torch.Tensor(np_grid).view(-1, 3)
             elif base_shape == 'icosphere':
+                radius = base_shape_config.get('radius', 1.0)
                 self.base_shape = torch.from_numpy(icosphere(point_num))
+                self.base_shape = self.base_shape * radius
             elif base_shape == 'uvsphere':
+                radius = base_shape_config.get('radius', 1.0)
                 self.base_shape = torch.from_numpy(uvsphere(point_num))
+                self.base_shape = self.base_shape * radius
             elif base_shape == 'cylinder':
                 self.base_shape_dim = 3
                 c_len = int(point_num**0.5) * 2

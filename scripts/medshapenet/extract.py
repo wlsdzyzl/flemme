@@ -1,8 +1,8 @@
 import os
 ### by organ to by number
-dataset_path = "/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/"
+dataset_path = "/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/"
 selected_numbers = []
-with open(os.path.join(dataset_path, 'MedShapeNetDataset.txt'), 'r') as f:
+with open(os.path.join(dataset_path, 'MedPointSDataset.txt'), 'r') as f:
     lines = f.readlines()
 for l in lines:
     if 'vertebrae_T9' in l or 'vertebraeT9' in l:

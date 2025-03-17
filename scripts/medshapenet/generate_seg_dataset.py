@@ -2,10 +2,10 @@ import os
 from glob import glob
 from flemme.utils import load_pcd, save_pcd
 import numpy as np
-from flemme.dataset.label_dict.medshapenet import fine_labels, coarse_labels
+from flemme.dataset.label_dict.MedPointS import fine_labels, coarse_labels
 from flemme.color_table import color_table
-dataset_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet'
-output_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNetPCD'
+dataset_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedPointS'
+output_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedPointS'
 selected_number_paths = glob(os.path.join(dataset_path, 'by_number/*')) 
 sample_num = 65536
 broken_stls = []
