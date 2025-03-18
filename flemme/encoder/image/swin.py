@@ -5,7 +5,7 @@ from torch import nn
 import math
 from flemme.block import PatchConstructionBlock, PatchRecoveryBlock,\
     PatchExpansionBlock, PatchMergingBlock, \
-    SequentialT, get_building_block, MultipleBuildingBlocks, DenseBlock
+    get_building_block, MultipleBuildingBlocks, DenseBlock, get_ca
 from flemme.logger import get_logger
 import copy
 logger = get_logger("encoder.image.swin")
@@ -24,7 +24,9 @@ class SwinEncoder(nn.Module):
                  abs_pos_embedding = False,
                  last_activation = True,
                  return_feature_list = False,
-                 z_count = 1, **kwargs):
+                 z_count = 1, 
+                 channel_attention = None,
+                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -92,6 +94,15 @@ class SwinEncoder(nn.Module):
                                                      out_channel = down_channels[i+1],
                                                      norm = normalization, 
                                                      num_norm_groups = num_norm_groups)  for i in range(self.d_depth)])
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = self.dim, channel = down_channels[i+1], channel_dim = -1, **channel_attention) 
+                           for i in range(len(down_channels) - 1)]
+            self.dca = nn.ModuleList(ca_sequence)
         self.down_path = [self.image_channel, ] + down_channels
         dense_channels = [ middle_channels[-1], ] + dense_channels
         self.dense_path = dense_channels.copy()
@@ -100,7 +111,7 @@ class SwinEncoder(nn.Module):
             middle_channels = [mc * self.z_count for mc in middle_channels]
         ### middle transformers
         middle_channels = [down_channels[-1], ] + middle_channels
-        self.middle = SequentialT(*[MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
+        self.middle = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         num_heads = middle_num_heads[i],
                                                         in_channel = middle_channels[i],
                                                         out_channel = middle_channels[i+1],
@@ -110,7 +121,15 @@ class SwinEncoder(nn.Module):
                                                                        "drop_path": [self.drop_path[(i + self.d_depth)*self.num_blocks + ni] 
                                                                                      for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.m_depth) ])
-
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = self.dim, channel = middle_channels[i+1], channel_dim = -1, **channel_attention) 
+                           for i in range(self.m_depth)]
+            self.mca = nn.ModuleList(ca_sequence)
         ### fully connected layers
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *dense_channels[0])
@@ -133,11 +152,17 @@ class SwinEncoder(nn.Module):
         res = []
         if self.absolute_pos_embed is not None:
             x = x + self.absolute_pos_embed
-        for d_trans, down in zip(self.d_trans, self.down):
+        for did, (d_trans, down) in enumerate(zip(self.d_trans, self.down)):
             x = d_trans(x, t)
+            if hasattr(self, 'dca'):
+                x = self.dca[did](x)
             res = res + [x,]
             x = down(x)
-        x = self.middle(x, t)
+
+        for mid, m_trans in enumerate(self.middle):
+            x = m_trans(x, t)
+            if hasattr(self, 'mca'):
+                x = self.mca[mid](x)
         ### The last dimension is feature channel
         if self.vector_embedding:
             x = x.reshape(x.shape[0], -1)
@@ -183,7 +208,8 @@ class SwinDecoder(nn.Module):
                  dropout=0., atten_dropout=0., drop_path=0.1, 
                  normalization = 'group', num_norm_groups = 8, 
                  num_blocks = 2, activation = 'silu', 
-                 return_feature_list = False, **kwargs):
+                 return_feature_list = False, 
+                 channel_attention = None, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -258,9 +284,18 @@ class SwinDecoder(nn.Module):
                                                                        "drop_path": [self.drop_path[i*self.num_blocks + ni] for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.u_depth) ])
         self.up_path = up_channels
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = self.dim, channel = up_channels[i+1], channel_dim = -1, **channel_attention) 
+                           for i in range(len(up_channels) - 1)]
+            self.uca = nn.ModuleList(ca_sequence)
 
         final_channels = [up_channels[-1]] + final_channels
-        self.final = SequentialT(*[MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
+        self.final = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         num_heads = final_num_heads[i],
                                                         in_channel = final_channels[i],
                                                         out_channel = final_channels[i+1],
@@ -270,6 +305,16 @@ class SwinDecoder(nn.Module):
                                                                        "drop_path": [self.drop_path[(i + self._depth)*self.num_blocks + ni] 
                                                                                      for ni in range(self.num_blocks) ] }
                                                         ) for i in range(self.f_depth) ])
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = self.dim, channel = final_channels[i+1], channel_dim = -1, **channel_attention) 
+                           for i in range(len(final_channels) - 1)]
+            self.fca = nn.ModuleList(ca_sequence)
+
         ### from patch to image: up_sample
         self.patch_recov = PatchRecoveryBlock(dim = self.dim, 
                                                 patch_size = self.patch_size,
@@ -306,10 +351,15 @@ class SwinDecoder(nn.Module):
             x = self.dense(x)
             x = x.reshape(*self.view_shape)
         res = []
-        for up, u_trans in zip(self.up, self.u_trans):
+        for uid, (up, u_trans) in enumerate(zip(self.up, self.u_trans)):
             x = u_trans(up(x), t)
+            if hasattr(self, 'uca'):
+                x = self.uca[uid](x)
             res = res + [x,]
-        x = self.final(x, t)
+        for fid, f_trans in enumerate(self.final):
+            x = f_trans(x, t)
+            if hasattr(self, 'fca'):
+                x = self.fca[fid](x)
         x = self.patch_recov(x)
         if self.return_feature_list:
             return x, res

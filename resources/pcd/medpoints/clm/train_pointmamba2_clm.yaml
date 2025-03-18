@@ -22,6 +22,7 @@ model:
     scan_strategies: [z_order, center_dist]
     sorted_query: True
     flip_scan: True
+    channel_attention: eca-ns
   classification_losses: 
     - name: CE
 loader:
@@ -33,7 +34,7 @@ loader:
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold2
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold3
-  batch_size: 4
+  batch_size: 2
   num_workers: 8
   shuffle: true
   data_transforms:

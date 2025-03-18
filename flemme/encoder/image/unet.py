@@ -19,7 +19,7 @@ class UNetEncoder(CNNEncoder):
                  building_block='res_t', normalization = 'group', num_norm_groups = 8, cn_order = 'cn',
                  activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 abs_pos_embedding = False, **kwargs):
+                 abs_pos_embedding = False, channel_attention = None, **kwargs):
         '''
         ## check down channels and middle channels
         ## each value in down channels corresponds to a downsample layer and a convolution layer
@@ -34,7 +34,8 @@ class UNetEncoder(CNNEncoder):
             num_norm_groups = num_norm_groups, cn_order = cn_order, activation = activation, dropout = dropout,
             num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
             abs_pos_embedding=abs_pos_embedding, atten_dropout = atten_dropout,
-            z_count = 1, dense_channels = [], return_feature_list = True)
+            z_count = 1, dense_channels = [], return_feature_list = True,
+            channel_attention = channel_attention)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
     
@@ -48,7 +49,8 @@ class UNetDecoder(CNNDecoder):
                  activation = 'relu', dropout = 0., 
                  num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 return_feature_list = False, **kwargs):
+                 return_feature_list = False, 
+                 channel_attention = None, **kwargs):
         super().__init__(image_size = image_size, image_channel = image_channel, 
             in_channel = in_channel, time_channel = time_channel, patch_size=patch_size,
             up_channels = up_channels, up_attens = up_attens, 
@@ -58,7 +60,8 @@ class UNetDecoder(CNNDecoder):
             num_norm_groups = num_norm_groups, cn_order = cn_order, activation = activation, dropout = dropout,
             num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
             return_feature_list = return_feature_list, 
-            atten_dropout = atten_dropout, dense_channels = [])
+            atten_dropout = atten_dropout, dense_channels = [],
+            channel_attention=channel_attention)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
         up_channels = [in_channel, ] + up_channels
@@ -75,8 +78,13 @@ class UNetDecoder(CNNDecoder):
         res = []
         for i, (up, u_conv) in enumerate(zip(self.up, self.u_conv)):
             x = u_conv(torch.cat((x_features[i], up(x)), dim = 1), t)
+            if hasattr(self, 'uca'):
+                x = self.uca[i](x)
             res = res + [x,]
-        x = self.final(x, t)
+        for fid, f_conv in enumerate(self.final):
+            x = f_conv(x, t)
+            if hasattr(self, 'fca'):
+                x = self.fca[fid](x)
         x = self.image_back_proj(x)
         if self.return_feature_list:
             return x, res
@@ -97,6 +105,7 @@ if module_config['transformer']:
                     normalization = 'group', num_norm_groups = 8, 
                     num_blocks = 2, activation = 'silu', 
                     abs_pos_embedding = False,
+                    channel_attention = None, 
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 patch_size = patch_size, patch_channel = patch_channel, time_channel = time_channel,
@@ -107,7 +116,9 @@ if module_config['transformer']:
                 normalization = normalization, num_norm_groups = num_norm_groups, 
                 num_blocks = num_blocks, activation = activation, 
                 abs_pos_embedding = abs_pos_embedding, 
-                z_count = 1, dense_channels = [], return_feature_list = True)
+                z_count = 1, dense_channels = [], 
+                return_feature_list = True,
+                channel_attention = channel_attention)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class ViTUNetDecoder(ViTDecoder):
@@ -121,7 +132,8 @@ if module_config['transformer']:
                     dropout=0., atten_dropout=0., drop_path=0.1, 
                     normalization = 'group', num_norm_groups = 8, 
                     num_blocks = 2, activation = 'silu', 
-                    return_feature_list = False, **kwargs):
+                    return_feature_list = False, 
+                    channel_attention = None, **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 patch_size = patch_size, in_channel = in_channel, time_channel = time_channel,
                 building_block = building_block, mlp_hidden_ratio = mlp_hidden_ratio, qkv_bias = qkv_bias,
@@ -130,7 +142,8 @@ if module_config['transformer']:
                 dropout = dropout, atten_dropout = atten_dropout, drop_path = drop_path,
                 normalization = normalization, num_norm_groups = num_norm_groups, 
                 num_blocks = num_blocks, activation = activation, dense_channels = [],
-                return_feature_list = return_feature_list)
+                return_feature_list = return_feature_list,
+                channel_attention = channel_attention)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
@@ -156,8 +169,13 @@ if module_config['transformer']:
             for i, (up, u_trans) in enumerate(zip(self.up, self.u_trans)):
                 ### channel information 
                 x = u_trans(torch.cat((x_features[i], up(x)), dim = -1), t)
+                if hasattr(self, 'uca'):
+                    x = self.uca[i](x)
                 res = res + [x, ]
-            x = self.final(x, t)
+            for fid, f_trans in enumerate(self.final):
+                x = f_trans(x, t)
+                if hasattr(self, 'fca'):
+                    x = self.fca[fid](x)
             x = self.patch_recov(x)
             if self.return_feature_list:
                 return x, res
@@ -174,6 +192,7 @@ if module_config['transformer']:
                     normalization = 'group', num_norm_groups = 8, 
                     num_blocks = 2, activation = 'silu', 
                     abs_pos_embedding = False,
+                    channel_attention = None,
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 window_size = window_size, time_channel = time_channel,
@@ -185,7 +204,8 @@ if module_config['transformer']:
                 normalization = normalization, num_norm_groups = num_norm_groups, 
                 num_blocks = num_blocks, activation = activation, 
                 abs_pos_embedding = abs_pos_embedding, 
-                z_count = 1, dense_channels = [], return_feature_list = True)
+                z_count = 1, dense_channels = [], return_feature_list = True,
+                channel_attention = channel_attention)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class SwinUNetDecoder(SwinDecoder):
@@ -199,7 +219,8 @@ if module_config['transformer']:
                     dropout=0., atten_dropout=0., drop_path=0.1, 
                     normalization = 'group', num_norm_groups = 8, 
                     num_blocks = 2, activation = 'silu', 
-                    return_feature_list = False, **kwargs):
+                    return_feature_list = False, 
+                    channel_attention = None, **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 window_size = window_size, time_channel = time_channel,
                 patch_size = patch_size, in_channel = in_channel,
@@ -209,7 +230,8 @@ if module_config['transformer']:
                 dropout = dropout, atten_dropout = atten_dropout, drop_path = drop_path,
                 normalization = normalization, num_norm_groups = num_norm_groups, 
                 num_blocks = num_blocks, activation = activation, dense_channels = [],
-                return_feature_list = return_feature_list)
+                return_feature_list = return_feature_list,
+                channel_attention = channel_attention)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
@@ -236,8 +258,13 @@ if module_config['transformer']:
             for i, (up, u_trans) in enumerate(zip(self.up, self.u_trans)):
                 ### channel information 
                 x = u_trans(torch.cat((x_features[i], up(x)), dim = -1), t)
+                if hasattr(self, 'uca'):
+                    x = self.uca[i](x)
                 res = res + [x, ]
-            x = self.final(x, t)
+            for fid, f_trans in enumerate(self.final):
+                x = f_trans(x, t)
+                if hasattr(self, 'fca'):
+                    x = self.fca[fid](x)
             x = self.patch_recov(x)
             if self.return_feature_list:
                 return x, res
@@ -265,6 +292,7 @@ if module_config['mamba']:
                     head_channel = 64, 
                     learnable_init_states = True, 
                     chunk_size=256,
+                    channel_attention = None,
                     **kwargs):
             super().__init__(image_size, image_channel = image_channel, 
                     time_channel = time_channel,
@@ -287,7 +315,8 @@ if module_config['mamba']:
                     scan_mode = scan_mode, flip_scan=flip_scan, 
                     abs_pos_embedding = abs_pos_embedding,
                     z_count = 1, dense_channels = [],
-                    return_feature_list = True)
+                    return_feature_list = True,
+                    channel_attention = channel_attention)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class VMambaUNetDecoder(VMambaDecoder):
@@ -311,7 +340,9 @@ if module_config['mamba']:
                     normalization = 'group', num_norm_groups = 8, 
                     num_blocks = 2, activation = 'silu', 
                     scan_mode = 'single', flip_scan = True, 
-                    return_feature_list = False, **kwargs):
+                    return_feature_list = False, 
+                    channel_attention = None, 
+                    **kwargs):
             super().__init__(image_size, image_channel = image_channel, 
                     patch_size = patch_size, in_channel = in_channel,
                     time_channel = time_channel,
@@ -331,7 +362,8 @@ if module_config['mamba']:
                     normalization = normalization, num_norm_groups = num_norm_groups, 
                     num_blocks = num_blocks, activation = activation, 
                     scan_mode = scan_mode, flip_scan=flip_scan, 
-                    dense_channels = [], return_feature_list = return_feature_list)
+                    dense_channels = [], return_feature_list = return_feature_list,
+                    channel_attention = channel_attention)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
             ### use patch expansion block for up sampling
@@ -356,8 +388,13 @@ if module_config['mamba']:
             for i, (up, u_ssm) in enumerate(zip(self.up, self.u_ssm)):
                 ### channel information 
                 x = u_ssm(torch.cat((x_features[i], up(x)), dim = -1), t)
+                if hasattr(self, 'uca'):
+                    x = self.uca[i](x)
                 res = res + [x,]
-            x = self.final(x, t)
+            for fid, f_ssm in enumerate(self.final):
+                x = f_ssm(x, t)
+                if hasattr(self, 'fca'):
+                    x = self.fca[fid](x)
             x = self.patch_recov(x)
             if self.return_feature_list:
                 return x, res

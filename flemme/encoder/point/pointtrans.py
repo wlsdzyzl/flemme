@@ -21,6 +21,7 @@ class PointTransEncoder(PointEncoder):
                  residual_attention = False, skip_connection = True,
                  z_count = 1, vector_embedding = True, 
                  last_activation = True,
+                 channel_attention = None,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -33,7 +34,8 @@ class PointTransEncoder(PointEncoder):
                 num_norm_groups = num_norm_groups,
                 activation = activation, dropout = dropout, 
                 z_count = z_count, vector_embedding = vector_embedding,
-                last_activation = last_activation)
+                last_activation = last_activation,
+                channel_attention = channel_attention)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 

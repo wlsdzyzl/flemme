@@ -3,8 +3,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 import math
-from flemme.block import DenseBlock, DownSamplingBlock, UpSamplingBlock, SequentialT,\
-    get_building_block, MultipleBuildingBlocks
+from flemme.block import DenseBlock, DownSamplingBlock, UpSamplingBlock, \
+    get_building_block, MultipleBuildingBlocks, get_ca
 from flemme.logger import get_logger
 import copy
 logger = get_logger("encoder.image.cnn")
@@ -31,6 +31,7 @@ class CNNEncoder(nn.Module):
                  activation = 'relu', z_count = 1, dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  abs_pos_embedding = False, last_activation = True, return_feature_list = False,
+                 channel_attention = None,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -76,6 +77,16 @@ class CNNEncoder(nn.Module):
                                                         dim=self.dim, in_channel=down_channels[i], 
                                                         out_channel=down_channels[i+1], 
                                                         atten=down_attens[i]) for i in range(len(down_channels) - 1) ])
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = self.dim, channel = down_channels[i+1], channel_dim = 1, **channel_attention) 
+                           for i in range(len(down_channels) - 1)]
+            self.dca = nn.ModuleList(ca_sequence)
+
         self.down_path = [self.image_channel, ] + down_channels
 
 
@@ -92,9 +103,17 @@ class CNNEncoder(nn.Module):
                                           out_channel=middle_channels[i+1], 
                                           atten = middle_attens[i]) for i in range(len(middle_channels) - 1)]
         
-        self.middle = SequentialT(*module_sequence)
+        self.middle = nn.ModuleList(module_sequence)
         
-        
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = self.dim, channel = middle_channels[i+1], channel_dim = 1, **channel_attention) 
+                           for i in range(len(middle_channels) - 1)]
+            self.mca = nn.ModuleList(ca_sequence)
         ### fully connected layers
         
         if self.vector_embedding:
@@ -145,12 +164,16 @@ class CNNEncoder(nn.Module):
         if self.absolute_pos_embed is not None:
             x = x + self.absolute_pos_embed
         if self.d_depth > 0:
-            for d_conv, down in zip(self.d_conv, self.down):
+            for did, (d_conv, down) in enumerate(zip(self.d_conv, self.down)):
                 x = d_conv(x, t)
+                if hasattr(self, 'dca'):
+                    x = self.dca[did](x)
                 res = res + [x,]
                 x = down(x)
-        
-        x = self.middle(x, t)
+        for mid, m_conv in enumerate(self.middle):
+            x = m_conv(x, t)
+            if hasattr(self, 'mca'):
+                x = self.mca[mid](x)
 
         if self.vector_embedding:
             x = x.reshape(x.shape[0], -1)
@@ -183,7 +206,8 @@ class CNNDecoder(nn.Module):
                  normalization = 'group', num_norm_groups = 8, cn_order = 'cn', 
                  num_blocks = 2, activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 return_feature_list = False, **kwargs):
+                 return_feature_list = False, 
+                 channel_attention = None, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -238,14 +262,31 @@ class CNNDecoder(nn.Module):
                                                         atten=up_attens[i]) for i in range(len(up_channels) - 1) ])
       
         self.up_path = up_channels
-
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = self.dim, channel = up_channels[i+1], channel_dim = 1, **channel_attention) 
+                           for i in range(len(up_channels) - 1)]
+            self.uca = nn.ModuleList(ca_sequence)
         ## final convolution layer
         final_channels = [up_channels[-1],] + final_channels
         module_sequence = [MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                           dim=self.dim, in_channel=final_channels[i], 
                                           out_channel=final_channels[i+1], 
                                           atten = final_attens[i]) for i in range(len(final_channels) - 1) ]
-        self.final = SequentialT(*module_sequence)
+        self.final = nn.ModuleList(module_sequence)
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = self.dim, channel = final_channels[i+1], channel_dim = 1, **channel_attention) 
+                           for i in range(len(final_channels) - 1)]
+            self.fca = nn.ModuleList(ca_sequence)
         self.image_back_proj = UpSamplingBlock(dim = self.dim, scale_factor=patch_size, in_channel=final_channels[-1], 
                                                        out_channel=self.image_channel, func=usample_function)
         self.final_path = final_channels + [self.image_channel]
@@ -283,10 +324,15 @@ class CNNDecoder(nn.Module):
         
         res = []
         if self.u_depth > 0:
-            for up, u_conv in zip(self.up, self.u_conv):
+            for uid, (up, u_conv) in enumerate(zip(self.up, self.u_conv)):
                 x = u_conv(up(x), t)
+                if hasattr(self, 'uca'):
+                    x = self.uca[uid](x)
                 res = res + [x,]
-        x = self.final(x, t)
+        for fid, f_conv in enumerate(self.final):
+            x = f_conv(x, t)
+            if hasattr(self, 'fca'):
+                x = self.fca[fid](x)
         x = self.image_back_proj(x)
         if self.return_feature_list:
             return x, res

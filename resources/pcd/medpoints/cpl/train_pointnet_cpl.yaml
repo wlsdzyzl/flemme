@@ -19,6 +19,9 @@ model:
     normalization: group
     vector_embedding: True
     folding_times: 2
+    channel_attention:
+      method: eca
+      kernel_size: 3
   is_supervised: True
   condition_embedding:
     combine_condition: add

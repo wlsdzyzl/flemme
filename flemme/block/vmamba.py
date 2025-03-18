@@ -205,7 +205,7 @@ class MBaseBlock(nn.Module):
         out = shortcut + self.drop_path(out)
         out = self.dense(out) + self.drop_path(self.mlp(out))
         return out
-    
+
 class VMambaBlock(MBaseBlock):
     def __init__(
         self, dim, in_channel, out_channel = None, time_channel = 0, 
@@ -375,7 +375,7 @@ class DoubleVMambaBlock(nn.Module):
             x = x + expand_as(self.time_emb(t), x, channel_dim=-1)
         x = self.mamba2(x)
         return x
-    
+
 class ResVMambaBlock(nn.Module):
     def __init__(
         self, dim, in_channel, out_channel = None, time_channel = 0, 
@@ -419,7 +419,7 @@ class ResVMambaBlock(nn.Module):
         h = self.mamba2(h)
         out = self.act(h + self.shortcut(x))
         return out
-    
+
 class VMamba2Block(MBaseBlock):
     def __init__(
         self, dim, in_channel, out_channel = None, 
@@ -591,7 +591,7 @@ class DoubleVMamba2Block(nn.Module):
             x = x + expand_as(self.time_emb(t), x, channel_dim=-1)
         x = self.mamba2(x)
         return x
-    
+
 class ResVMamba2Block(nn.Module):
     def __init__(
         self, dim, in_channel, out_channel = None, time_channel = 0, 

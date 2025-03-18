@@ -35,6 +35,7 @@ class PointTrans2Encoder(Point2Encoder):
                  last_activation = True,
                  final_concat = False,
                  pos_embedding = False,
+                 channel_attention = None,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -59,7 +60,8 @@ class PointTrans2Encoder(Point2Encoder):
                 return_xyz = return_xyz,
                 last_activation = last_activation,
                 final_concat = final_concat,
-                pos_embedding= pos_embedding)
+                pos_embedding= pos_embedding,
+                channel_attention = channel_attention)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
@@ -107,6 +109,7 @@ class PointTrans2Decoder(Point2Decoder):
                 num_heads = 4, d_k = None, 
                 qkv_bias = True, qk_scale = None, atten_dropout = None, 
                 residual_attention = False, skip_connection = True,
+                channel_attention = None,
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
@@ -118,7 +121,8 @@ class PointTrans2Decoder(Point2Decoder):
                 normalization = normalization, 
                 num_norm_groups = num_norm_groups, 
                 activation = activation, 
-                dropout = dropout)
+                dropout = dropout,
+                channel_attention = channel_attention)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 

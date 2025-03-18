@@ -107,6 +107,17 @@ def get_norm(norm_name, norm_channel, dim = -1, num_norm_groups = 0):
             return get_in(dim, norm_channel), Norm.INSTANCE
         else:
             return nn.Identity(), Norm.NONE 
+def get_ca(method, **kwargs):
+    
+    if method == 'ca':
+        return CABlock(**kwargs)
+    elif method == 'eca':
+        return ECABlock(**kwargs)
+    elif method == 'eca-ns':
+        return ECANSBlock(**kwargs)
+    else:
+        logger.error(f'Unrecognized channel attention method: {method}, should be one of [ca, eca, eca-ns].')
+        exit(1)
 def get_middle_channel(in_channel, out_channel, unit_channel = 16):
     tmp_channel = int(max(max(in_channel, out_channel) // 2, min(in_channel, out_channel)))
     return int(math.ceil(tmp_channel / unit_channel) * unit_channel)
@@ -430,6 +441,9 @@ class DoubleDenseBlock(nn.Module):
             x = x + expand_as(self.time_emb(t), x, channel_dim=-1)
         x = self.dense2(x)
         return x
+    @staticmethod
+    def is_sequence_modeling():
+        return False
 class ResDenseBlock(nn.Module):
     def __init__(self, in_channel, out_channel, time_channel, norm = None,
         num_norm_groups = 0, activation = 'relu', dropout=None, 
@@ -457,6 +471,9 @@ class ResDenseBlock(nn.Module):
         h = self.dense2(h)
         out = self.act(h + self.shortcut(x))
         return out
+    @staticmethod
+    def is_sequence_modeling():
+        return False
 ## transfer class label to one-hot vector which is encoded through FC block.
 class OneHotEmbeddingBlock(nn.Module):
     def __init__(self, num_classes, out_channel, activation, apply_onehot = True):
@@ -645,6 +662,114 @@ class FFTAttenBlock(nn.Module):
         x = self.atten(x)
         x = torch.view_as_complex(x.contiguous())
         return self.ifft(x)
+class CABlock(nn.Module):
+    """Constructs a ECA module.
+
+    Args:
+        channel: Number of channels of the input feature map
+        k: Adaptive selection of kernel size
+    """
+    def __init__(self, dim, channel_dim = 1, **kwargs):
+        super().__init__()
+        if dim == 1:
+            self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        elif dim == 2:
+            self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        elif dim == 3:
+            self.avg_pool = nn.AdaptiveAvgPool3d(1)
+        self.dim = dim
+        self.atten = SelfAttentionBlock(in_channel=1, channel_dim=-1, **kwargs)
+        self.sigmoid = nn.Sigmoid()
+        self.channel_dim = channel_dim
+        assert channel_dim == 1 or channel_dim == -1, "Channel dim should be 1 or -1."
+    def forward(self, x):
+        if self.channel_dim == -1:
+            x = channel_recover(x)
+        # feature descriptor on the global spatial information
+        B, C = x.shape[0], x.shape[1]
+
+        y = self.avg_pool(x)
+        y = y.reshape(B, C, 1)
+        # Two different branches of ECA module
+        y = self.atten(y).squeeze(-1)
+        # Multi-scale information fusion
+        y = self.sigmoid(y)
+        x = x * expand_as(y, x, channel_dim=1)
+        if self.channel_dim == -1:
+            x = channel_transfer(x)
+        return x
+## efficient channel attention from ECANet (https://arxiv.org/pdf/1910.03151)
+class ECABlock(nn.Module):
+    """Constructs a ECA module.
+
+    Args:
+        channel: Number of channels of the input feature map
+        k: Adaptive selection of kernel size
+    """
+    def __init__(self, dim, kernel_size=3, channel_dim = 1, **kwargs):
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters:{}".format(kwargs))
+        if dim == 1:
+            self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        elif dim == 2:
+            self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        elif dim == 3:
+            self.avg_pool = nn.AdaptiveAvgPool3d(1)
+        self.dim = dim
+        self.conv = nn.Conv1d(1, 1, kernel_size=kernel_size, padding=(kernel_size - 1) // 2, bias=False) 
+        self.sigmoid = nn.Sigmoid()
+        self.channel_dim = channel_dim
+        assert channel_dim == 1 or channel_dim == -1, "Channel dim should be 1 or -1."
+    def forward(self, x):
+        # feature descriptor on the global spatial information
+        if self.channel_dim == -1:
+            x = channel_recover(x)
+        B, C = x.shape[0], x.shape[1]
+
+        y = self.avg_pool(x)
+        y = y.reshape(B, C, 1)
+        # Two different branches of ECA module
+        y = self.conv(y.transpose(-1, -2)).squeeze(1)
+        # Multi-scale information fusion
+        y = self.sigmoid(y)
+        x = x * expand_as(y, x, channel_dim=1)
+        if self.channel_dim == -1:
+            x = channel_transfer(x)
+        return x
+## eca-ns, convolution only processed in k neighbor channel
+class ECANSBlock(nn.Module):
+    def __init__(self, dim, channel, kernal_size = 3, channel_dim = 1, **kwargs):
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters:{}".format(kwargs))
+        if dim == 1:
+            self.avg_pool = nn.AdaptiveAvgPool1d(1)
+        elif dim == 2:
+            self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        elif dim == 3:
+            self.avg_pool = nn.AdaptiveAvgPool3d(1)
+        self.dim = dim
+        self.k = kernal_size
+        self.conv = nn.Conv1d(channel, channel, kernel_size=kernal_size, bias=False, groups=channel)
+        self.sigmoid = nn.Sigmoid()
+        self.channel_dim = channel_dim
+        assert channel_dim == 1 or channel_dim == -1, "Channel dim should be 1 or -1."
+        self.unfold=partial(nn.functional.unfold, kernel_size=(self.k,), padding=((self.k - 1) // 2, ))
+    def forward(self, x):
+        if self.channel_dim == -1:
+            x = channel_recover(x)
+        B, C = x.shape[0], x.shape[1]
+        y = self.avg_pool(x)
+        y = y.reshape(B, C, 1, 1)
+        # print(y.shape, self.k)
+        y = nn.functional.unfold(y.transpose(-1, -3), kernel_size=(1, self.k), padding=(0, (self.k - 1) // 2 ))
+        y = self.conv(y.transpose(-1, -2)).squeeze(-1)
+        y = self.sigmoid(y)
+        x = x * expand_as(y, x, channel_dim=1)
+        if self.channel_dim == -1:
+            x = channel_transfer(x)
+        return x
 
 ##### convolution block and its variations
 class ConvBlock(NormBlock):
@@ -758,6 +883,7 @@ class DoubleConvBlock(nn.Module):
         # Second convolution layer
         x = self.conv2(x)
         return x 
+
 # residual double convolution
 class ResConvBlock(nn.Module):
     def __init__(self, dim, in_channel, out_channel, 
@@ -810,7 +936,7 @@ class ResConvBlock(nn.Module):
         _x = self.conv2(_x)
         out = self.act( _x + self.shortcut(x))
         return out
-    
+
 
 ## Combine inputs with different shapes
 class CombineLayer(nn.Module):

@@ -422,6 +422,7 @@ class VisionTransformerBlock(nn.Module):
         return x
 
 
+
 ## swin transformer block doesn't channge the input channel
 class SwinTransformerBlock(VisionTransformerBlock):
     r""" Swin Transformer Block.
@@ -613,6 +614,7 @@ class DoubleSwinTransformerBlock(nn.Module):
             x = x + expand_as(self.time_emb(t), x, channel_dim=-1)
         x = self.st2(x)
         return x
+
     
 class ResSwinTransformerBlock(nn.Module):
     def __init__(self, patch_image_size, in_channel, out_channel = None, time_channel = 0, 

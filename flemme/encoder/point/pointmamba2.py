@@ -44,6 +44,7 @@ class PointMamba2Encoder(Point2Encoder):
             last_activation = True,
             final_concat = False,
             pos_embedding = False,
+            channel_attention = None,
             **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -68,7 +69,8 @@ class PointMamba2Encoder(Point2Encoder):
                 final_concat = final_concat,
                 pos_embedding=pos_embedding,
                 return_xyz = return_xyz,
-                last_activation = last_activation)
+                last_activation = last_activation,
+                channel_attention = channel_attention)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
@@ -169,6 +171,7 @@ class PointMamba2Decoder(Point2Decoder):
                 dt_max=0.1, dt_init_floor=1e-4, 
                 dt_rank = None, dt_scale = 1.0,
                 skip_connection = True,
+                channel_attention = None,
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
@@ -180,7 +183,8 @@ class PointMamba2Decoder(Point2Decoder):
                 normalization = normalization, 
                 num_norm_groups = num_norm_groups, 
                 activation = activation, 
-                dropout = dropout)
+                dropout = dropout,
+                channel_attention = channel_attention)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 

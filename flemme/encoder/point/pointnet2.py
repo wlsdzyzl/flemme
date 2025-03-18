@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import DenseBlock, SequentialT, get_building_block, \
+from flemme.block import DenseBlock, SequentialT, get_building_block, get_ca,\
     SamplingAndGroupingBlock as MSGBlock, FeaturePropogatingBlock as FPBlock, \
     SampledFeatureCatBlock as SFCBlock
 from flemme.logger import get_logger
@@ -53,6 +53,7 @@ class Point2Encoder(nn.Module):
                  last_activation,
                  final_concat,
                  pos_embedding,
+                 channel_attention,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -117,6 +118,17 @@ class Point2Encoder(nn.Module):
 
         self.msg_path = [projection_channel,] + fps_feature_channels
         self.msg = None
+
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = 1, channel = self.msg_path[i+1], channel_dim = -1, **channel_attention) 
+                           for i in range(len(self.msg_path) - 1)]
+            self.ca = nn.ModuleList(ca_sequence)
+
         self.vector_embedding = vector_embedding
         assert len(dense_channels) > 0, "Point2 encoder need to have fully connected layers!"
         dense_channels = [fps_feature_channels[-1] * 2, ] + dense_channels
@@ -167,6 +179,9 @@ class Point2Encoder(nn.Module):
                     features = self.lrm[lid](features, (sorted_index_list, t))
                 else:
                     features = self.lrm[lid](features, t)
+            if hasattr(self, 'ca'):
+                self.ca[lid](features)
+
             xyz_list.append(xyz)
             feature_list.append(features)
             sample_id_list.append(sample_ids)
@@ -223,6 +238,7 @@ class Point2Decoder(nn.Module):
                 fp_channels, 
                 dense_channels, normalization, 
                 num_norm_groups, activation, dropout, 
+                channel_attention,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -250,6 +266,17 @@ class Point2Decoder(nn.Module):
         assert len(in_channels) == len(fp_channels) + 1, 'The number of feature propagation layers is ambiguous .'
         self.unknow_feature_channels = in_channels[-2:-len(in_channels) - 1:-1]
         self.known_feature_channels = [in_channels[-1],] + fp_channels[:-1]
+
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = 1, channel = self.fp_path[fid + 1], channel_dim = -1, **channel_attention) 
+                           for fid in range(self.fp_depth)]
+            self.ca = nn.ModuleList(ca_sequence)
+
     def forward(self, features_xyz, t = None):
         feature_list, xyz_list = features_xyz
         if self.fp is None:
@@ -298,6 +325,7 @@ class PointNet2Encoder(Point2Encoder):
                  last_activation = True,
                  final_concat = False,
                  pos_embedding = False,
+                 channel_attention = None,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -322,7 +350,8 @@ class PointNet2Encoder(Point2Encoder):
                 return_xyz = return_xyz, 
                 last_activation = last_activation,
                 final_concat = final_concat,
-                pos_embedding=pos_embedding)
+                pos_embedding=pos_embedding,
+                channel_attention = channel_attention)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 

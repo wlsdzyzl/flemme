@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import DenseBlock, SequentialT, get_building_block, \
+from flemme.block import DenseBlock, SequentialT, get_building_block, get_ca, \
     FoldingLayer, LocalGraphLayer, MultipleBuildingBlocks, MultiLayerPerceptionBlock
 from flemme.logger import get_logger
 from .sphere3d import icosphere, uvsphere
@@ -21,6 +21,7 @@ class PointEncoder(nn.Module):
                  normalization, num_norm_groups,  
                  z_count, vector_embedding, 
                  last_activation,
+                 channel_attention,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -66,6 +67,15 @@ class PointEncoder(nn.Module):
         self.lf_path = [projection_channel,] + local_feature_channels
         self.lf = None
 
+        if channel_attention is not None:
+            if isinstance(channel_attention, str):
+                channel_attention = {'method': channel_attention}
+            else:
+                assert type(channel_attention) == dict and len(channel_attention) > 0, "Channel attention should be a str or non-empty dict."
+            logger.info(f'Using channel attention: {channel_attention}')
+            ca_sequence = [get_ca(dim = 1, channel = self.lf_path[i+1], channel_dim = -1, **channel_attention) 
+                           for i in range(len(self.lf_path) - 1)]
+            self.ca = nn.ModuleList(ca_sequence)
     def forward(self, x, t = None):
         if self.lf is None:
             raise NotImplementedError
@@ -73,12 +83,17 @@ class PointEncoder(nn.Module):
         ## N * Np * d
         res = []
         x = self.point_proj(x)
-        for lf in self.lf[:-1]:
+        for lid, lf in enumerate(self.lf[:-1]):
             x = lf(x, t)
+            if hasattr(self, 'ca'):
+                self.ca[lid](x)
             res.append(x)
+
         x = torch.concat(res, dim=-1)
         
         pf = self.lf[-1](x)
+        if hasattr(self, 'ca'):
+            pf = self.ca[-1](pf)
         ## max and average pooling to get global feature
         x1 = F.adaptive_max_pool1d(pf.transpose(1, 2), 1).transpose(1, 2)
         x2 = F.adaptive_avg_pool1d(pf.transpose(1, 2), 1).transpose(1, 2)
@@ -123,7 +138,8 @@ class PointNetEncoder(PointEncoder):
                  normalization = 'group', num_norm_groups = 8, 
                  activation = 'lrelu', dropout = 0., 
                  z_count = 1, vector_embedding = True, 
-                 last_activation = True, **kwargs):
+                 last_activation = True, 
+                 channel_attention = None, **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
                 time_channel = time_channel,
@@ -135,7 +151,8 @@ class PointNetEncoder(PointEncoder):
                 num_norm_groups = num_norm_groups,
                 activation = activation, dropout = dropout, 
                 z_count = z_count, vector_embedding = vector_embedding, 
-                last_activation = last_activation)
+                last_activation = last_activation,
+                channel_attention = channel_attention)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 
@@ -152,17 +169,18 @@ class PointNetEncoder(PointEncoder):
                                             in_channel = self.lf_path[i],
                                             out_channel = self.lf_path[i+1], 
                                             BuildingBlock = self.BuildingBlock,
-                                            num_blocks = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
+                                            num_blocks = self.num_blocks,
+                                            ) for i in range(len(self.lf_path) - 2) ]
         ## local feature, similar to pointnet
         else:    
             lf_sequence = [MultipleBuildingBlocks(in_channel=self.lf_path[i], 
                                             out_channel=self.lf_path[i+1], 
                                             BuildingBlock = self.BuildingBlock,
-                                            num_blocks = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
-            
+                                            num_blocks = self.num_blocks,
+                                            channel_dim=-1) for i in range(len(self.lf_path) - 2) ]
+        
         lf_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
                                         out_channel=self.lf_path[-1]))
-
         self.lf = nn.ModuleList(lf_sequence)
 
 class PointNetDecoder(nn.Module):

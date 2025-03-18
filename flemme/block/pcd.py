@@ -331,7 +331,8 @@ class SamplingAndGroupingBlock(nn.Module):
                         hidden_channels = hidden_channels[sid],
                         BuildingBlock = partial(
                             GroupSeqModelingLayer,
-                            BuildingBlock = BuildingBlock)))
+                            BuildingBlock = BuildingBlock),
+                        ))
     def forward(self, xyz, xyz_embed, features = None, t = None):
         r"""
         Parameters
