@@ -1,14 +1,14 @@
 #### This file is a script, and the code style sucks. 
-import os
-import torch
-import torch.nn.functional as F
 from .trainer_utils import *
+import torch.nn.functional as F
 from flemme.model import create_model
 from flemme.dataset import create_loader
 
 from flemme.logger import get_logger
 from flemme.sampler import create_sampler
 from tqdm import tqdm
+
+
 ## if we want to train pcd or image, 
 ## make sure that the image size from data loader and image size from the model parameters are identical
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -74,14 +74,17 @@ def main():
             logger.info('Save target for reconstruction and segmentation tasks.')
         if save_input:
             logger.info('Save input for reconstruction and segmentation tasks.')
+        dataset_name = None
         if loader_config is not None:
             if not 'mode' in loader_config:
                 loader_config['mode'] = mode
+            dataset_name = loader_config.get('dataset').get('name')
             loader = create_loader(loader_config)
             assert model.data_form == loader['data_form'], 'Inconsistent data forms for model and loader.'
             
             data_loader = loader['data_loader']
-            
+            logger.info('Finish loading data.')
+
             results = {'input':[], 'target':[], 
                     'condition':[], 
                     'latent':[], 
@@ -92,7 +95,15 @@ def main():
                     'seg_logits':[],
                     'cluster':[],
                     'path':[]}
-            logger.info('Finish loading data.')
+
+            custom_save_results = test_config.get('custom_save_results', [])
+            custom_res_names = []
+            custom_res_dirs = []
+            for res in custom_save_results:
+                custom_res_names.append(res.get('name'))
+                custom_res_dirs.append(res.get('dir'))
+
+            
             iter_id = 0
             for t in tqdm(data_loader, desc="Predicting"):
                 ### split x, y, path in later implementation.
@@ -116,9 +127,12 @@ def main():
                     append_results(results=results, x = x, y = y, c = c,
                                             path = path, res = res, data_form = model.data_form,
                                             is_supervised=is_supervised,
-                                            is_conditional=is_conditional)
+                                            is_conditional=is_conditional,
+                                            additional_keys = custom_res_names)
                 else: break
-            results = compact_results(results, data_form = model.data_form)    
+            results = compact_results(results, data_form = model.data_form,
+                                    additional_keys = custom_res_names)    
+
             eval_metrics = test_config.get('evaluation_metrics', None)
             if eval_metrics is not None:
                 logger.info('evaluating the prediction accuracy ...')   
@@ -161,7 +175,19 @@ def main():
                         filename = os.path.basename(origin_path).split('.')[0]
                     else:
                         filename = 'sample_{:03d}'.format(idx)
-                    output_path = os.path.join(recon_dir, filename)
+                    class_name = None
+                    if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
+                        if is_supervised:
+                            class_name = origin_path.split('/')[-3]
+                        else:
+                            class_name = origin_path.split('/')[-2]
+                    if class_name:
+                        output_dir = os.path.join(recon_dir, class_name)
+                        if not os.path.exists(output_dir):
+                            os.makedirs(output_dir)
+                        output_path = os.path.join(output_dir, filename)
+                    else:
+                        output_path = os.path.join(recon_dir, filename)
                     save_data(recon, data_form=model.data_form, output_path=output_path)
                     if save_target:
                         target = results['target'][idx]
@@ -215,6 +241,30 @@ def main():
                                 save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
                             if save_input:
                                 save_data(raw_img, data_form=model.data_form, output_path=output_path + '_input')
+
+            for res_name, res_dir in zip(custom_res_names, custom_res_dirs):
+                res_name = res.get('name')
+                res_dir = res.get('dir', None)
+                save_input = res.get('save_input', False)
+                save_target = res.get('save_target', False)
+                if res_dir is not None and len(results[res_name]) > 0:
+                    logger.info(f'Saving {res_name} results to {res_dir} ...')
+                    if not os.path.exists(res_dir):
+                        os.makedirs(res_dir)
+                    for idx, res_data in enumerate(results[res_name]):
+                        origin_path = results['path'][idx]
+                        if origin_path != '':
+                            filename = os.path.basename(origin_path).split('.')[0]
+                        else:
+                            filename = 'sample_{:03d}'.format(idx)
+                        output_path = os.path.join(res_dir, filename)
+                        save_data(res_data, data_form=model.data_form, output_path=output_path)
+                        if save_target and len(results['target']) > 0:
+                            target = results['target'][idx]
+                            save_data(target, data_form=model.data_form, output_path=output_path+'_tar')
+                        if save_input and len(results['input']) > 0:
+                            input_x = results['input'][idx]
+                            save_data(input_x, data_form=model.data_form, output_path=output_path+'_input')
             cond = y[0] if is_conditional else (x[0] if is_supervised else None)
         else:
             logger.warning('loader_config is None, reconstruction, segmentation, conditional generation and interpolation will be ignored.')

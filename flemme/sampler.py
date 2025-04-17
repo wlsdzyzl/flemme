@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from flemme.model import AE, VAE, DDPM, DDIM, LDPM, LDIM, SDPM, SDIM
+from flemme.model import DDPM, DDIM
 from flemme.logger import get_logger
 from flemme.config import module_config
 logger = get_logger('sampler')
@@ -25,7 +25,6 @@ class NormalSampler:
         assert model.is_generative, \
                     "NormalSampler can only be constructed with generative model."
         self.is_conditional = model.is_conditional or model.is_supervised
-        self.model_type = type(self.model)
         self.device = model.device
         if rand_seed is not None:
             torch.manual_seed(rand_seed)
@@ -39,12 +38,13 @@ class NormalSampler:
                 "Number of sample steps cannot be greater than num_steps."
         
     def sample(self, z, c = None):
-        if self.model_type in [DDPM, LDPM, SDPM]:
-            return self.model.sample(z, end_step=self.num_sample_steps - 1, c = c,
-                                        clipped=self.clipped, clip_range=self.clip_range)
-        elif self.model_type in [DDIM, LDIM, SDIM]:
+        if isinstance(self.model, DDIM):
             return self.model.sample(z, c = c, clipped=self.clipped,
                                 clip_range=self.clip_range)
+        elif isinstance(self.model, DDPM):
+            return self.model.sample(z, end_step=self.num_sample_steps - 1, c = c,
+                                        clipped=self.clipped, clip_range=self.clip_range)
+
         ### AE, VAE and so on.
         return self.model.decode(z, c)
     

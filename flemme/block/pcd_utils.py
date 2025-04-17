@@ -273,6 +273,39 @@ class BallQuery(Function):
 ball_query = BallQuery.apply
 
 
+class BatchBallQuery(Function):
+    @staticmethod
+    def forward(ctx, radius, nsample, xyz, new_xyz):
+        # type: (Any, float, int, torch.Tensor, torch.Tensor) -> torch.Tensor
+        r"""
+
+        Parameters
+        ----------
+        radius : (B, N)
+            radius of the balls
+        nsample : int
+            maximum number of features in the balls
+        xyz : torch.Tensor
+            (B, N, 3) xyz coordinates of the features
+        new_xyz : torch.Tensor
+            (B, npoint, 3) centers of the ball query
+
+        Returns
+        -------
+        torch.Tensor
+            (B, npoint, nsample) tensor with the indicies of the features that form the query balls
+        """
+        output, dist = pcd_ops.batch_ball_query(new_xyz, xyz, radius, nsample)
+        ctx.mark_non_differentiable(output)
+        ctx.mark_non_differentiable(dist)
+        return output, dist
+
+    @staticmethod
+    def backward(ctx, grad_out, grad_dist):
+        return ()
+
+batch_ball_query = BatchBallQuery.apply
+
 class QueryAndGroup(nn.Module):
     r"""
     Groups with a ball query of radius

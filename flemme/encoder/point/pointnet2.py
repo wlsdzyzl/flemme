@@ -388,6 +388,7 @@ class PointNet2Decoder(Point2Decoder):
                 building_block = 'dense',  
                 normalization = 'group', num_norm_groups = 8, 
                 activation = 'lrelu', dropout = 0., 
+                channel_attention = None,
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
@@ -399,7 +400,8 @@ class PointNet2Decoder(Point2Decoder):
                 normalization = normalization, 
                 num_norm_groups = num_norm_groups, 
                 activation = activation, 
-                dropout = dropout)
+                dropout = dropout,
+                channel_attention = channel_attention)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 

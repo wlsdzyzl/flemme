@@ -7,6 +7,7 @@ from itertools import repeat
 from flemme.utils import label_to_onehot, normalize
 from functools import partial
 from .hilbert_sort import HilbertSort3D
+import fpsample
 #### transfoms for point cloud
 ## modified from diffusion-point-cloud
 class ToTensor(object):
@@ -44,21 +45,28 @@ class FixedPoints(object):
             minimum. (default: :obj:`True`)
     """
 
-    def __init__(self, num, replace=True):
+    def __init__(self, num, replace=True, method = 'random', kdtree_height = 5):
         self.num = num
         self.replace = replace
-
+        self.fpsampler = None
+        if method == 'fps':
+            self.fpsampler = partial(fpsample.fps_sampling, n_samples = self.num)
+        elif method == 'qfps':
+            self.fpsampler = partial(fpsample.bucket_fps_kdline_sampling, n_samples = self.num, h = kdtree_height)
+        else:
+            assert method == 'random', f'Unsupported sample strategy: {method}'
     def __call__(self, data):
         point_num = len(data)
-
-        if self.replace:
-            choice = np.random.choice(point_num, self.num, replace=True)
+        if point_num < self.num or self.fpsampler is None:
+            if self.replace:
+                choice = np.random.choice(point_num, self.num, replace=True)
+            else:
+                choice = torch.cat([
+                    torch.randperm(point_num)
+                    for _ in range(math.ceil(self.num / point_num))
+                ], dim=0)[:self.num]
         else:
-            choice = torch.cat([
-                torch.randperm(point_num)
-                for _ in range(math.ceil(self.num / point_num))
-            ], dim=0)[:self.num]
-        
+            choice = self.fpsampler(data)
         data = data[choice]
         return data
 

@@ -1,17 +1,14 @@
 ## define some functions about load and save data
 from flemme.config import module_config
-import numpy as np
-# import sys, getopt
 import os
-# import glob
-# import imageio
-# import mcubes
+os.environ["TORCH_CUDA_ARCH_LIST"] = module_config['cuda_arch_list']
 from PIL import Image
 import SimpleITK as sitk
 from enum import Enum, auto
 import nibabel as nb
 from matplotlib import figure as mpl_figure
 from flemme.logger import get_logger
+import numpy as np
 import torch
 import torch.nn.functional as F
 import argparse

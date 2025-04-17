@@ -36,7 +36,7 @@ mamba-ssm (CUDA version >= 11.6)
 ```
 #### For point cloud:
 ```
-POT plyfile KNN-CUDA
+POT plyfile KNN-CUDA fpsample
 ```
 #### For graph:
 ```

@@ -481,10 +481,10 @@ class OneHotEmbeddingBlock(nn.Module):
         self.num_classes = num_classes
         self.out_channel = out_channel
         self.apply_onehot = apply_onehot
-        # middle_channel = get_middle_channel(num_classes, out_channel) 
+        middle_channel = get_middle_channel(num_classes, out_channel) 
         #### old
-        middle_channel = min(int( max(self.num_classes, self.out_channel) / 2), 
-                              self.num_classes, self.out_channel)
+        # middle_channel = min(int( max(self.num_classes, self.out_channel) / 2), 
+        #                       self.num_classes, self.out_channel)
         self.dense1 = DenseBlock(self.num_classes, middle_channel, activation=activation)
         self.dense2 = DenseBlock(middle_channel, self.out_channel, activation=None)
     def forward(self, x):

@@ -1,0 +1,62 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: train
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: VAE
+  # encoder config
+  encoder:
+    name: PointTrans
+    in_channel: 3
+    point_num: 256
+    building_block: pct_oa
+    num_neighbors_k: 20
+    local_feature_channels: [64, 128, 256, 512]
+    dense_channels: [512]
+    activation: lrelu
+    normalization: group
+    channel_attention: eca
+    vector_embedding: true
+  decoder:
+    name: PointNet
+    dense_channels: [512, 256, 128]
+  reconstruction_losses: 
+    - name: CD
+    - name: Sinkhorn
+  distribution_loss:
+    name: KL
+    weight: 0.0001
+loader:
+  dataset: 
+    name: PcdDataset
+    data_dir: skeleton
+    data_suffix: ply
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/vcg-results/skeleton/imagecas/lrply/mask/left/sknet_pointtrans_topo
+  batch_size: 16
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      method: qfps
+      num: 256
+    - name: ToTensor
+      dtype: float
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/imagecas/left/PointTrans_VAE_Skeleton
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0001
+  weight_decay: 0.00000001
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+sampler:
+  name: NormalSampler
+max_epoch: 100
+write_after_iters: 10
+write_sample_num: 4
+save_after_epochs: 10

@@ -1,9 +1,11 @@
 import glob
 import os
+from flemme.config import module_config
+os.environ["TORCH_CUDA_ARCH_LIST"] = module_config['cuda_arch_list']
 import os.path as osp
 from setuptools import setup, find_packages
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
-from flemme.config import module_config
+
 exec(open('flemme/__version__.py').read())
 install_pcd_modules = module_config['point-cloud']
 ext_kwargs = {}

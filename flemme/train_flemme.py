@@ -1,13 +1,12 @@
-from torch.utils.tensorboard import SummaryWriter
-import os
-import torch
-from torch.optim.lr_scheduler import ReduceLROnPlateau 
 from .trainer_utils import *
+from torch.utils.tensorboard import SummaryWriter
+from torch.optim.lr_scheduler import ReduceLROnPlateau 
 from flemme.model import create_model
 from flemme.dataset import create_loader
 from flemme.logger import get_logger
 from flemme.sampler import create_sampler
 from datetime import datetime
+
 
 logger = get_logger('train_flemme')
 ## if we want to train pcd or image, 
@@ -53,7 +52,7 @@ def main():
     ckp_dir = train_config.get('check_point_dir', '.')
     #### use writer to visualize the training process
     writer = SummaryWriter(log_dir = os.path.join(ckp_dir, 'logs'))
-
+    custom_write_results = train_config.get('custom_write_results', [])
     #### create model
     model = create_model(model_config)
 
@@ -152,8 +151,11 @@ def main():
 
     if pretrained:
         logger.info(f'Using pre-trained model: {pretrained}')
+        pretrained_components = train_config.get('pretrained_components', None)
         if os.path.isfile(pretrained):
-            load_checkpoint(pretrained, model, ignore_mismatched_keys = ignore_mismatched_keys)
+            load_checkpoint(pretrained, model, 
+                            ignore_mismatched_keys = ignore_mismatched_keys, 
+                            specified_model_componets = pretrained_components)
         else:
             logger.warning('Pretrained model doesn\'t exist. Model will be trained from scratch.')
     if resume:
@@ -262,7 +264,8 @@ def main():
                             res['condition'] = y
 
                     write_data(writer=writer, formatter=formatter, data_form = model.data_form, 
-                                input_map=res, iter_id=epoch, prefix='train')
+                                input_map=res, iter_id=epoch, prefix='train',
+                                additional_keys = custom_write_results)
         ### evaluate after each epoch
         ### write evaluation
         if evaluators is not None:
@@ -346,7 +349,8 @@ def main():
                         elif is_conditional:
                             vres['condition'] = vy
                         write_data(writer=writer, formatter=formatter, data_form = model.data_form, 
-                                input_map=vres, iter_id=epoch, prefix='val')
+                                input_map=vres, iter_id=epoch, prefix='val',
+                                additional_keys = custom_write_results)
                     ### evaluation on val datasets
                     if evaluators is not None:
                         vresults = compact_results(vresults, data_form = model.data_form)

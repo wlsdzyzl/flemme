@@ -216,8 +216,15 @@ if module_config['point-cloud']:
             super().__init__()
             self.loss = SamplesLoss("sinkhorn", blur = blur, scaling = scaling)
             self.reduction = reduction
-        def forward(self, x, y):
-            loss = self.loss(x, y)
+        def forward(self, x, y, x_weight = None, y_weight = None):
+            if not x_weight is  None or not y_weight is None:
+                if x_weight is None:
+                    x_weight = torch.ones((x.shape[0], x.shape[1])).to(x.device).type(x.dtype) / x.shape[1]
+                if y_weight is None:
+                    y_weight = torch.ones((y.shape[0], y.shape[1])).to(y.device).type(y.dtype) / y.shape[1]
+                loss = self.loss(x_weight, x, y_weight, y)
+            else:
+                loss = self.loss(x, y)
             if self.reduction == 'sum':
                 return loss.sum()
             elif self.reduction == 'mean':

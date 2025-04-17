@@ -21,7 +21,6 @@ import numpy as np
 import torch
 from torch import nn
 from torch.autograd import Function
-import os
 import cpp_extension.emd as emd
 import cpp_extension.cd as cd
 
@@ -72,6 +71,7 @@ class ChamferDistanceFunction(torch.autograd.Function):
 class ChamferDistance(torch.nn.Module):
     def forward(self, xyz1, xyz2, return_idx = False):
         dist1, dist2, idx1, idx2 = ChamferDistanceFunction.apply(xyz1, xyz2)
+        dist1, dist2 = dist1**0.5, dist2**0.5
         if return_idx:
             return dist1, dist2, idx1, idx2
         return dist1, dist2
@@ -85,8 +85,8 @@ class emdFunction(Function):
         batchsize, n, _ = xyz1.size()
         _, m, _ = xyz2.size()
 
-        assert(n == m), f"point clouds should have the same dimensions, get {n} and {m}"
-        assert(xyz1.size()[0] == xyz2.size()[0]), "{} and {} should be the same.".format(xyz1.size()[0], xyz2.size()[0])
+        assert(n == m), f"point clouds should have the same sizes, get {n} and {m}"
+        assert(xyz1.size()[0] == xyz2.size()[0]), "Batch size ({} and {}) should be the same.".format(xyz1.size()[0], xyz2.size()[0])
         assert(n % 1024 == 0), "number of points should be divided by 1024"
         assert(batchsize <= 512)
 
@@ -137,6 +137,7 @@ def test_cd():
     cd = ChamferDistance()
     start_time = time.perf_counter()
     d1, d2 = cd(x1, x2) # 0.005, 50 for training 
+    print("Runtime: %lfs" % (time.perf_counter() - start_time))
     print("Input_size: ", x1.shape)
     print('distance size:', d1.shape, d2.shape)
 

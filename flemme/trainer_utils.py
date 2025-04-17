@@ -1,9 +1,6 @@
-import os
-import numpy as np
-import torch
 import importlib
-from torch import optim
 from flemme.utils import *
+from torch import optim
 from .metrics import get_metrics
 from matplotlib import pyplot as plt
 from sklearn.manifold import TSNE
@@ -12,6 +9,7 @@ from flemme.color_table import color_table
 from functools import partial
 import shutil
 from tqdm import tqdm
+
 logger = get_logger('trainer_utils')
 
 def colorize_by_label(labels):
@@ -266,9 +264,9 @@ def save_checkpoint(ckp_dir, model, optimizer = None,
     if is_best_score:
         shutil.copyfile(path, "{}/ckp_best_score.pth".format(ckp_dir))
     
-def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None, ignore_mismatched_keys = []):
+def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None, ignore_mismatched_keys = [], specified_model_componets = None):
     logger.info('load model from {}'.format(ckp_path))
-    state_dict = torch.load(ckp_path, map_location='cpu')
+    state_dict = torch.load(ckp_path, map_location='cpu', weights_only=False)
     if 'trained_model' in state_dict:
         trained_model_state_dict = state_dict.pop('trained_model')
         if len(ignore_mismatched_keys) > 0:
@@ -278,7 +276,22 @@ def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None, ignore_
                 ignored = sum([ imk in k for imk in ignore_mismatched_keys]) > 0
                 if ignored:
                     trained_model_state_dict[k] = model_state_dict[k]
-        model.load_state_dict(trained_model_state_dict)
+        if specified_model_componets is None:
+            model.load_state_dict(trained_model_state_dict)
+        else:
+            if type(specified_model_componets) == str:
+                specified_model_componets = [specified_model_componets, ]
+            assert type(specified_model_componets) == list or type(specified_model_componets) == tuple, \
+                'specified_model_components should be a string, list or tuple.'
+            for smc in specified_model_componets:
+                assert hasattr(model, smc), f"{smc} is not an attribute of the model."
+                # print(trained_model_state_dict.keys())
+                specifed_keys = list(trained_model_state_dict.keys())
+                specifed_keys = [k for k in specifed_keys if k.startswith(smc)]
+                specifed_dict = { k[len(smc)+1:]: trained_model_state_dict[k] for k in specifed_keys}
+                assert len(specifed_dict) > 0, f"{smc} is not in the loaded model dict."
+                logger.info(f'loading "{smc}" from model dict.')
+                getattr(model, smc).load_state_dict(specifed_dict)
         if optimizer is not None:
             optimizer.load_state_dict(state_dict.pop('optimizer'))
         if scheduler is not None:
@@ -286,6 +299,7 @@ def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None, ignore_
         return state_dict
     else:
         model.load_state_dict(state_dict)
+
 
 def freeze(model):
     for param in model.parameters():
@@ -474,13 +488,13 @@ def compute_loss(model, x, y, c, **kwargs):
     else:
         losses, res = model.compute_loss(x, **kwargs)
     return losses, res
-def forward_pass(model, x, y, c):
+def forward_pass(model, x, y, c, **kwargs):
     if model.is_supervised and model.is_conditional:
-        res = model(x, c = c)
+        res = model(x, c = c, **kwargs)
     elif model.is_conditional:
-        res = model(x, c = y)
+        res = model(x, c = y, **kwargs)
     else:
-        res = model(x)
+        res = model(x, **kwargs)
     return res
 
 #### save tsne visualization

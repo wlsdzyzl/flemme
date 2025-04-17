@@ -18,7 +18,7 @@ def main(argv):
     method = shutil.copy
     mn = 'copy'
     separately = False
-    ### move is faster, but with higher risk for losing data.
+    ### move is faster, but with higher risk of losing data.
     if len(opts) == 0:
         logger.info('unknow options, usage: random_split_k_fold.py -p <dataset_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> -o <output_dir=.> -k <kfold=5> --method <method=copy>')
         sys.exit()

@@ -22,7 +22,7 @@ __global__ void group_points_kernel(int b, int c, int n, int npoints,
     const int j = i % npoints;
     for (int k = 0; k < nsample; ++k) {
       int ii = idx[j * nsample + k];
-      out[(l * npoints + j) * nsample + k] = points[l * n + ii];
+      if(ii >= 0) out[(l * npoints + j) * nsample + k] = points[l * n + ii];
     }
   }
 }

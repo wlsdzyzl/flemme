@@ -23,13 +23,17 @@ def create_ae_model(ae_config):
 class LatentDiffusionProbabilistic(DDPM):
 
     def __init__(self, model_config):
+        ae_config = model_config.pop('ae_model', None)
+        ae_path = model_config.get('ae_path', None)
+        self.freezed_ae = model_config.get('freezed_ae', True)
+
         super().__init__(model_config)
-        ae_config = model_config.get('ae_model', None)
+        
         assert ae_config is not None, 'LDM needs a pre-trained \
             auto-encoder to get the embedding of input data.'
         self.ae_model, self.ae_model_name = create_ae_model(ae_config)
-        self.freezed_ae = model_config.get('freezed_ae', True)
-        ae_path = model_config.get('ae_path', None)
+        
+        
         if ae_path is not None:
             load_checkpoint(ae_path, self.ae_model)
             logger.info('Using pre-trained AE model.')
@@ -85,7 +89,7 @@ class LatentDiffusionProbabilistic(DDPM):
         if not self.freeze_ae:
             loss_names += self.ae_model.get_loss_name()
         return loss_names
-    def compute_loss(self, x0, c = None, **kwargs):
+    def compute_loss(self, x0, c = None):
         ac, ec = None, None
         if self.ae_model.is_conditional:
             ac = c 
@@ -164,7 +168,7 @@ class LatentDiffusionImplicit(DDIM):
         if not self.freeze_ae:
             loss_names += self.ae_model.get_loss_name()
         return loss_names
-    def compute_loss(self, x0, c = None, **kwargs):
+    def compute_loss(self, x0, c = None):
         ac, ec = None, None
         if self.ae_model.is_conditional:
             ac = c 

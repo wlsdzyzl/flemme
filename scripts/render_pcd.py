@@ -37,8 +37,8 @@ xml_head = \
             <integer name="sampleCount" value="256"/>
         </sampler>
         <film type="hdrfilm">
-            <integer name="width" value="320"/>
-            <integer name="height" value="240"/>
+            <integer name="width" value="1600"/>
+            <integer name="height" value="1200"/>
             <rfilter type="gaussian"/>
             <boolean name="banner" value="false"/>
             <string name="file_format" value="openexr"/>
@@ -97,7 +97,7 @@ def colormap(x,y,z):
     # vec /= norm
     # return [vec[0], vec[1], vec[2]]
     # return [color_table[11][0], color_table[11][1], color_table[11][2]]
-    return [color_table[6][0], color_table[6][1], color_table[6][2]]
+    return [color_table[1][0], color_table[1][1], color_table[1][2]]
 
 xml_segments = [xml_head]
 
@@ -115,7 +115,7 @@ xml_segments = [xml_head]
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/stomach/s0075.ply')
 # stomach partial
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1/stomach/partial/s0075.ply')
-# pcl = load_ply("/media/wlsdzyzl/DATA/flemme-results/cpl/MedPointS/s0300_colon_ours.ply")
+pcl = load_ply("/media/wlsdzyzl/DATA/flemme-results/cpl/medshapenet/s0300_colon_ours.ply")
 # kidney
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/kidney/s0212.ply')
 # pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1/kidney/partial/s0212.ply')
@@ -123,10 +123,10 @@ xml_segments = [xml_head]
 
 
 # brain
-pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/brain/017214.ply')
+# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/brain/017214.ply')
 
 # brain
-pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/iliacartery/s0157.ply')
+# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/iliacartery/s0157.ply')
 pcl_color = None
 if pcl.shape[1] == 6:
     pcl_color = pcl[..., 3:6] / 255.0

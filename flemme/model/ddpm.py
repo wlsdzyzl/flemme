@@ -121,6 +121,7 @@ class DiffusionProbabilistic(nn.Module):
         _str = "********************* DiffusionProbabilistic *********************\n{}"\
             .format(self.eps_model.__str__())
         return _str
+    
     @torch.no_grad()
     def denoise(self, xt, t, c = None, clipped = None, clip_range = None):
         """
@@ -211,7 +212,7 @@ class DiffusionProbabilistic(nn.Module):
         if isinstance(self.eps_model, HBase):
             return [self.eps_loss_name, 'hierarchical_' + self.eps_loss_name]
         return [self.eps_loss_name,]
-    def compute_loss(self, x0: torch.Tensor, c = None, **kwargs):
+    def compute_loss(self, x0: torch.Tensor, c = None):
         """
         #### Simplified Loss
 
@@ -230,11 +231,12 @@ class DiffusionProbabilistic(nn.Module):
         if self.eps_model.is_conditional and c is not None and \
             self.classifier_free and torch.rand(1).item() < self.condition_dropout:
             c = None
-        eps_theta = self.eps_model(xt, t = t, c = c)
-
+        eps_theta = self.eps_model(xt, t = t, c = c) 
+        ### eps loss
         # MSE loss
+        losses = []
         if not type(eps_theta) == tuple:
-            return [self.eps_loss(eps_theta, eps)], None
+            losses += [self.eps_loss(eps_theta, eps), ]
         else:
             #### h-base model
             loss = self.eps_loss(eps_theta[0], eps)
@@ -242,7 +244,9 @@ class DiffusionProbabilistic(nn.Module):
             for h_x in eps_theta[1]:
                 h_eps = F.interpolate(eps, size = h_x.shape[2:], mode = self.eps_model.inter_mode)
                 sublosses.append(self.eps_loss(h_x, h_eps))
-            return [loss, sum(sublosses) / len(sublosses)], None
+            losses += [loss, sum(sublosses) / len(sublosses)]
+        ### recon loss
+        return losses, None
     ### run diffusion and reversed diffusion
     ## input: raw data
     ## return: reconstructed data

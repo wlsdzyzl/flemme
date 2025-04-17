@@ -39,7 +39,7 @@ class SupervisedDiffusionProbabilistic(DDPM):
         ### return the mean map of samples
         return {'recon': sum(sampled_recons) / len(sampled_recons) }
     
-    def compute_loss(self, x, y, **kwargs):
+    def compute_loss(self, x, y):
         return super().compute_loss(x0 = y, c = x)
     
 class SupervisedDiffusionImplicit(DDIM):
@@ -74,5 +74,5 @@ class SupervisedDiffusionImplicit(DDIM):
         ### return the mean map of samples
         return {'recon': sum(sampled_recons) / len(sampled_recons) }
     
-    def compute_loss(self, x, y, **kwargs):
+    def compute_loss(self, x, y):
         return super().compute_loss(x0 = y, c = x)

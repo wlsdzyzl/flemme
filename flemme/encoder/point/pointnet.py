@@ -30,6 +30,8 @@ class PointEncoder(nn.Module):
         self.z_count = z_count
         self.activation = activation
         self.num_neighbors_k = num_neighbors_k
+        if self.num_neighbors_k > 0:
+            logger.info('This encoder will construct local neighbor graph for dynamic feature extraction.')
         self.dropout = dropout
         self.vector_embedding = vector_embedding
         self.normalization = normalization

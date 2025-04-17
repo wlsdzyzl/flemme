@@ -6,15 +6,49 @@ from torchvision.transforms import Compose
 from flemme.augment import get_transforms, select_label_transforms, check_random_transforms
 from flemme.logger import get_logger
 from .label_dict import get_cls_label
+
+
+
+logger = get_logger('dataset')
+img_dataset_dict = {
+    'ImgDataset': ImgDataset,
+    'ImgClsDataset': ImgClsDataset,
+    'ImgSegDataset': ImgSegDataset,
+    'ImgReconDataset': ImgReconDataset,
+    'MultiModalityImgSegDataset': MultiModalityImgSegDataset,
+    'MNIST': MNISTWrapper,
+    'CIFAR10': CIFAR10Wrapper,
+    'CelebA': CelebAWrapper,
+    }
+pcd_dataset_dict = {}
+vec_dataset_dict = {}
+graph_dataset_dict = {}
+
+process_label_datasets = [ImgSegDataset, MultiModalityImgSegDataset]
+process_target_datasets = [ImgReconDataset, ]
+
 if module_config['point-cloud']:
     from .pcd import *
     from .point import PointDataset, ToyDataset
+    pcd_dataset_dict = {
+        'PcdDataset': PcdDataset,
+        'PcdClsDataset': PcdClsDataset,
+        'PcdSegDataset': PcdSegDataset,
+        'PcdReconDataset': PcdReconDataset,
+        'PcdReconWithClassLabelDataset': PcdReconWithClassLabelDataset,
+        }
+    vec_dataset_dict = {
+        'PointDataset': PointDataset,
+        'ToyDataset': ToyDataset,
+    }
+    
+    process_label_datasets.append(PcdSegDataset)
+    process_target_datasets += [PcdReconDataset, PcdReconWithClassLabelDataset]
 if module_config['graph']:
     from .graph import *
     from torch_geometric.loader import DataLoader as GraphLoader
-
-logger = get_logger('dataset')
-
+    graph_dataset_dict = {'GraphDataset': GraphDataset,
+        'GraphShapeNet': GraphShapeNetWrapper,}
 
 
 def create_loader(loader_config):
@@ -45,58 +79,24 @@ def create_loader(loader_config):
     if data_suffix_list is not None:
         assert type(data_suffix_list) == list and len(data_suffix_list) == len(data_path_list), \
             "If suffix is provided in loader config, it should be a list and has the equal length to the data_path_list."
-    if dataset_cls_str == 'ImgDataset':
-        dataset_class = ImgDataset
-    if dataset_cls_str == 'ImgClsDataset':
-        dataset_class = ImgClsDataset
-    elif dataset_cls_str == 'ImgSegDataset':
-        dataset_class = ImgSegDataset
-        process_label = True
-    elif dataset_cls_str == 'ImgReconDataset':
-        dataset_class = ImgReconDataset
-        process_target = True
-    elif dataset_cls_str == 'MultiModalityImgSegDataset':
-        dataset_class = MultiModalityImgSegDataset
-        process_label = True
-    elif dataset_cls_str == 'MNIST':
-        dataset_class = MNISTWrapper
-    elif dataset_cls_str == 'CIFAR10':
-        dataset_class = CIFAR10Wrapper
-    elif dataset_cls_str == 'CelebA':
-        dataset_class = CelebAWrapper
-    elif dataset_cls_str == 'PcdDataset':
-        dataset_class = PcdDataset
+    dataset_dict = img_dataset_dict | pcd_dataset_dict | vec_dataset_dict | graph_dataset_dict
+    assert dataset_cls_str in dataset_dict, f'Unsupported dataset class: {dataset_cls_str}'
+    
+    dataset_class = dataset_dict[dataset_cls_str]
+
+    if dataset_cls_str in img_dataset_dict:
+        data_form = DataForm.IMG
+    elif dataset_cls_str in pcd_dataset_dict:
         data_form = DataForm.PCD
-    elif dataset_cls_str == 'PcdClsDataset':
-        dataset_class = PcdClsDataset
-        data_form = DataForm.PCD
-    elif dataset_cls_str == 'PcdSegDataset':
-        dataset_class = PcdSegDataset
-        data_form = DataForm.PCD
-        process_label = True
-    elif dataset_cls_str == 'PcdReconDataset':
-        dataset_class = PcdReconDataset
-        data_form = DataForm.PCD
-        process_target = True
-    elif dataset_cls_str == 'PcdReconWithClassLabelDataset':
-        dataset_class = PcdReconWithClassLabelDataset
-        data_form = DataForm.PCD
-        process_target = True
-    elif dataset_cls_str == 'PointDataset':
-        dataset_class = PointDataset
+    elif dataset_cls_str in vec_dataset_dict:
         data_form = DataForm.VEC
-    elif dataset_cls_str == 'ToyDataset':
-        dataset_class = ToyDataset
-        data_form = DataForm.VEC
-    elif dataset_cls_str == 'GraphDataset':
-        dataset_class = GraphDataset
+    elif dataset_cls_str in graph_dataset_dict:
         data_form = DataForm.GRAPH
-    ### read shapenet as graph
-    elif dataset_cls_str == 'GraphShapeNet':
-        dataset_class = GraphShapeNetWrapper
-        data_form = DataForm.GRAPH
-    else:
-        raise RuntimeError(f'Unsupported dataset class: {dataset_cls_str}')
+
+    if dataset_class in process_label_datasets:
+        process_label = True 
+    if dataset_class in process_target_datasets:
+        process_target = True
     img_dim = None
     if data_form == DataForm.IMG:
         img_dim = dataset_config.get('dim', 2)

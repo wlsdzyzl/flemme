@@ -38,7 +38,7 @@ class ClassificationModel(OnlyEncoder):
     def forward(self, x, c = None):
         z = super().forward(x, c = c)
         return {'cls_logits':self.classifier(z), 'latent':z}
-    def compute_loss(self, x, y, c = None, **kwargs):
+    def compute_loss(self, x, y, c = None):
         res = self.forward(x, c = c)
         losses = []
         for loss, weight in zip(self.cls_losses, self.cls_loss_weights):

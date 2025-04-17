@@ -13,7 +13,7 @@ model:
     building_block: dense
     num_neighbors_k: 20
     local_feature_channels: [64, 64, 128, 256, 512]
-    dense_channels: [1024, 512, 256]
+    dense_channels: [512, 512]
     activation: lrelu
     normalization: group
   classification_losses: 

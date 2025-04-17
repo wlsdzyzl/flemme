@@ -52,7 +52,7 @@ class VariationalAutoEncoder(AutoEncoder):
     def get_loss_name(self):
          return [self.distr_loss_name, ] + self.recon_loss_names
 
-    def compute_loss(self, x, c = None, res = None, y = None, **kwargs):
+    def compute_loss(self, x, c = None, res = None, y = None):
         if res is None:
             res = self.forward(x, c)   
         ## compute the KL Divergence between N(mean, var) and N(0, 1)

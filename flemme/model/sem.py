@@ -36,7 +36,7 @@ class SegmentationModel(BaseModel):
         return super().decode(z, c = c)
     def forward(self, x, c = None):
         return {'seg_logits':super().forward(x, c = c)}
-    def compute_loss(self, x, y, c = None, **kwargs):
+    def compute_loss(self, x, y, c = None):
         res = self.forward(x, c = c)
         losses = []
         for loss, weight in zip(self.seg_losses, self.seg_loss_weights):
@@ -73,7 +73,7 @@ class HSegmentationModel(HBaseModel):
         x, h_x = super().forward(x, c = c)
         return {'seg_logits':x, 'hierarchical_logits': h_x}
     
-    def compute_loss(self, x, y, c = None, **kwargs):
+    def compute_loss(self, x, y, c = None):
         res = self.forward(x, c = c)
         losses = []
         ## loss for original image

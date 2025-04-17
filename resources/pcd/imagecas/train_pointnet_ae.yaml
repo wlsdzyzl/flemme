@@ -8,43 +8,36 @@ model:
   encoder:
     name: PointNet
     in_channel: 3
-    point_num: 1024
+    out_channel: 3
+    point_num: 2048
     building_block: dense
     num_neighbors_k: 20
-    local_feature_channels: [64, 64, 128, 256, 512]
-    dense_channels: [1024]
-    decoder_dense_channels: [512, 256]
+    local_feature_channels: [64, 128, 256, 512]
+    dense_channels: [512]
+    decoder_dense_channels: [256]
     activation: lrelu
     normalization: group
-    vector_embedding: True
-    ## for decoder
-    folding_times: 2
-    # base_shape: 
-    #   type: cylinderr
-      # width: 1.0
-      # height: 1.0
+    channel_attention: eca
+    vector_embedding: false
   reconstruction_losses: 
-    - name: DCD
-      eps: 0.005
-      iters: 50
-    # - name: CD
+    - name: EMD
 loader:
   dataset: 
     name: PcdDataset
     data_dir: left
-    data_suffix: .plt
+    data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/lrply/surface/
-  batch_size: 32
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/lrply/mask/
+  batch_size: 8
   num_workers: 8
   shuffle: true
   data_transforms:
     - name: Normalize
     - name: FixedPoints
-      num: 1024
+      num: 2048
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/02691156/PointNet/PointNet_AE_EMD_LOCAL_K
+check_point_dir: /media/wlsdzyzl/DATA/vcg-ckp/imagecas/PointNet_AE_EMD
 ### parameter for optimizer
 optimizer:
   name: Adam
@@ -55,6 +48,6 @@ lr_scheduler:
   name: LinearLR
   start_factor: 1.0
   end_factor: 0.01
-max_epoch: 250
+max_epoch: 100
 write_after_iters: 20
-save_after_epochs: 10
+save_after_epochs: 2
