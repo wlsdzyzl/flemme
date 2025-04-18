@@ -131,7 +131,7 @@ Configuration files are in `resources/img/biomed_2d` and `resources/img/biomed_3
 
 ### Point Cloud
 
-#### Completion & Segemntation results
+#### Completion & Segmentation results
 
 ![](./images/pcd_result.png)
 
@@ -180,6 +180,17 @@ If you find our project helpful, please consider to cite the following works:
       archivePrefix={arXiv},
       primaryClass={eess.IV},
       url={https://arxiv.org/abs/2408.09369}, 
+}
+```
+```
+@misc{zhang2025hierarchicalfeaturelearningmedical,
+      title={Hierarchical Feature Learning for Medical Point Clouds via State Space Model}, 
+      author={Guoqing Zhang and Jingyun Yang and Yang Li},
+      year={2025},
+      eprint={2504.13015},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2504.13015}, 
 }
 ```
 ## Acknowledgement
