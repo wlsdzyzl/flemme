@@ -31,7 +31,7 @@ loader:
     data_dir: skeleton
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA/vcg-results/skeleton/imagecas/lrply/mask/left/sknet_pointtrans_topo
+    - /media/wlsdzyzl/DATA/vcg-results/skeleton/imagecas/lrply/mask/left/sknet_pointtrans
   batch_size: 16
   num_workers: 8
   shuffle: true

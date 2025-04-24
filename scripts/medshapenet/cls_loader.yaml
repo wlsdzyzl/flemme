@@ -1,0 +1,26 @@
+loader:
+  dataset: 
+    name: PcdClsDataset
+    data_suffix: .ply
+    cls_label: MedPointS
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold2
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold3
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold4
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold5
+  batch_size: 128
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+  label_transforms:
+    - name: ToOneHot
+      num_classes: 47
+      ignore_background: true
+    - name: ToTensor
+      dtype: float

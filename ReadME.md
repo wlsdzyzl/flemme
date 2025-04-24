@@ -143,7 +143,9 @@ An overview of MedPointS is presented int the following figure:
 
 ![](./images/medpoints.png)
 
-You can download *MedPointS* from this [link](https://pan.baidu.com/s/1OKiglb6FtGmBLNwhVQXz9Q?pwd=cs27).
+You can download *MedPointS* from this [link](https://pan.baidu.com/s/1OKiglb6FtGmBLNwhVQXz9Q?pwd=cs27). 
+
+Alternatively, you can use load the dataset from Hugging Face: [MedPoints-cls](https://huggingface.co/datasets/wlsdzyzl/MedPointS-cls) , [MedPoints-cpl](https://huggingface.co/datasets/wlsdzyzl/MedPointS-cpl), and [MedPoints-seg](https://huggingface.co/datasets/wlsdzyzl/MedPointS-seg) for classification, completion, and segmentation tasks. 
 
 ## Play with Flemme
 #### Toy Example for Diffusion model

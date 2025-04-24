@@ -1,0 +1,35 @@
+loader:
+  dataset: 
+    name: PcdReconWithClassLabelDataset
+    data_dir: partial
+    target_dir: target
+    data_suffix: .ply
+    target_suffix: .ply
+    cls_label: MedPointS
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold2
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold3
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold4
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold5
+  batch_size: 128
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+  target_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+  label_transforms:
+    - name: ToOneHot
+      num_classes: 47
+      ignore_background: true
+    - name: ToTensor
+      dtype: float
