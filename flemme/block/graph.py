@@ -32,6 +32,7 @@ class GraphConvBlock(nn.Module):
                 norm = 'batch', 
                 num_norm_groups = 0, 
                 order = 'cn',
+                time_injection = 'gate_bias',
                 graph_normalize = True,
                 improved = False,
                 cached = False,  
@@ -53,9 +54,10 @@ class GraphConvBlock(nn.Module):
         # activation function
         self.act = get_act(activation)
         self.order = order
+        self.time_channel = time_channel
         if self.time_channel > 0:
-            self.hyper_bias = nn.Linear(self.time_channel, out_channel, bias=False)
-            self.hyper_gate = nn.Linear(self.time_channel, out_channel)
+            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
+            
 
     def forward(self, x, edge_index, t = None):
         for m in self.order:
@@ -68,9 +70,7 @@ class GraphConvBlock(nn.Module):
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-            bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-            x = x * gate + bias
+            x = self.time(x, t)
         return x
 
 class ChebConvBlock(GraphConvBlock):

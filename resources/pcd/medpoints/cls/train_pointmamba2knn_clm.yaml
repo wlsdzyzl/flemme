@@ -1,0 +1,97 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: train
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: ClM
+  # encoder config
+  encoder:
+    name: PointMamba2
+    in_channel: 3
+    out_channel: 46
+    point_num: 2048
+    building_block: pmamba
+    num_neighbors_k: 32
+    num_fps_points: [1024, 512, 256, 128, 64]
+    fps_feature_channels: [64, 64, 128, 256, 512]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
+    dense_channels: [1024, 512, 256]
+    activation: lrelu
+    normalization: group
+    long_range_modeling: True
+    scan_strategies: [x_order, y_order, z_order, center_dist]
+    sorted_query: True
+    flip_scan: True
+    pos_embedding: True
+    knn_query: feature
+    final_concat: True
+    # channel_attention: eca
+  classification_losses: 
+    - name: CE
+loader:
+  dataset: 
+    name: PcdClsDataset
+    data_suffix: .ply
+    cls_label: MedPointS
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold2
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold3
+  batch_size: 32
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+  label_transforms:
+    - name: ToOneHot
+      num_classes: 47
+      ignore_background: true
+    - name: ToTensor
+      dtype: float
+val_loader:
+  dataset: 
+    name: PcdClsDataset
+    data_suffix: .ply
+    cls_label: MedPointS
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold4
+  batch_size: 16
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+  label_transforms:
+    - name: ToOneHot
+      num_classes: 47
+      ignore_background: true
+    - name: ToTensor
+      dtype: float
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba2/PointMamba2_SFC_KNN_CLS
+resume: true
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0001
+  weight_decay: 0.00000001
+evaluation_metrics:
+  cls:
+    - name: ACC
+score_metric:
+  name: ACC
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 100
+write_after_iters: 20
+save_after_epochs: 1
+

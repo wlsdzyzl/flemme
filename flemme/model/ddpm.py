@@ -92,10 +92,29 @@ class DiffusionProbabilistic(nn.Module):
         self.register_buffer('alpha', 1 - beta)
         # $\bar\alpha_t = \prod_{s=1}^t \alpha_s$
         self.register_buffer('alpha_bar', torch.cumprod(1 - beta, dim=0))
+        self.register_buffer('sqrt_alpha_bar', torch.cumprod(1 - beta, dim=0) ** .5)
+        self.register_buffer('sqrt_one_minus_alpha_bar', (1 - torch.cumprod(1 - beta, dim=0)) ** .5)
         # $\sigma^2 = \beta$
         self.register_buffer('sigma2', beta)
         self.clipped = model_config.get('clipped', True)
         self.clip_range = model_config.get('clip_range', [-1.0, 1.0])
+        self.parameterization = model_config.get('parameterization', 'epsilon')
+        assert self.parameterization in ['epsilon', 'velocity', 'start'], \
+            'Parameterization should be one of ["epsilon", "velocity", "start"]'
+        logger.info(f'Using {self.parameterization} parameterization for diffusion model.')
+        self.recon_losses = []
+        self.recon_loss_names = []
+        self.recon_loss_weights = []
+        recon_loss_configs = model_config.pop('reconstruction_losses', [])
+        if not type(recon_loss_configs) == list:
+            recon_loss_configs = [recon_loss_configs,] 
+        if len(recon_loss_configs) > 0:
+            for loss_config in recon_loss_configs:
+                loss_config['reduction'] = self.loss_reduction
+                self.recon_loss_names.append(loss_config.get('name'))
+                self.recon_loss_weights.append(loss_config.pop('weight', 1.0))
+                self.recon_losses.append(get_loss(loss_config, self.data_form))
+
 
     @property
     def device(self):
@@ -109,7 +128,7 @@ class DiffusionProbabilistic(nn.Module):
         \end{align}
         """
         # [gather](utils.html) $\alpha_t$ and compute $\sqrt{\bar\alpha_t} x_0$
-        mean = gather(self.alpha_bar, t, self.gather_dim) ** 0.5 * x0
+        mean = gather(self.sqrt_alpha_bar, t, self.gather_dim) * x0
         # $(1-\bar\alpha_t) \mathbf{I}$
         var = 1 - gather(self.alpha_bar, t, self.gather_dim)
         
@@ -121,7 +140,52 @@ class DiffusionProbabilistic(nn.Module):
         _str = "********************* DiffusionProbabilistic *********************\n{}"\
             .format(self.eps_model.__str__())
         return _str
+    ## from stable diffusion
+    def get_velocity(self, x0, t, eps):
+        return gather(self.sqrt_alpha_bar, t, self.gather_dim) * eps - \
+            gather(self.sqrt_one_minus_alpha_bar, t, self.gather_dim) * x0
     
+    def get_eps_from_velocity(self, xt, t, v):
+
+        return gather(self.sqrt_alpha_bar, t, self.gather_dim) * v +\
+             gather(self.sqrt_one_minus_alpha_bar, t, self.gather_dim) * xt
+    
+    def get_eps_from_start(self, xt, t, s):
+        return (xt - gather(self.sqrt_alpha_bar, t, self.gather_dim) * s ) / \
+            gather(self.sqrt_one_minus_alpha_bar, t, self.gather_dim)
+
+    def get_start_from_eps(self, xt, t, eps):
+        ## x0 will be clipped to [-1, 1]
+        x0_pred = 1 / gather(self.sqrt_alpha_bar, t, self.gather_dim) * \
+            (xt - gather(self.sqrt_one_minus_alpha_bar, t, self.gather_dim) * eps)
+        return x0_pred
+
+    def get_start_from_velocity(self, xt, t, v):
+        return gather(self.sqrt_alpha_bar, t, self.gather_dim)*xt - \
+            gather(self.sqrt_one_minus_alpha_bar, t, self.gather_dim)*v
+    def get_eps_from_model(self, xt, t, c):
+        if self.eps_model.is_conditional and c is not None:
+            model_out = self.eps_model(xt, t, c)
+            if type(model_out) == tuple:
+                model_out = model_out[0]
+            if self.classifier_free:
+                cf_model_out = self.eps_model(xt, t)
+                if type(cf_model_out) == tuple:
+                    cf_model_out = cf_model_out[0]
+                model_out = (1.0 + self.guidance_weight) * model_out \
+                    - self.guidance_weight * cf_model_out              
+        else:
+            model_out = self.eps_model(xt, t)
+            if type(model_out) == tuple:
+                model_out = model_out[0]
+
+        if self.parameterization == 'velocity':
+            eps_theta = self.get_eps_from_velocity(xt, t, model_out)
+        elif self.parameterization == 'start':
+            eps_theta = self.get_eps_from_start(xt, t, model_out)
+        else:
+            eps_theta = model_out
+        return eps_theta
     @torch.no_grad()
     def denoise(self, xt, t, c = None, clipped = None, clip_range = None):
         """
@@ -138,36 +202,30 @@ class DiffusionProbabilistic(nn.Module):
         # $\textcolor{lightgreen}{\epsilon_\theta}(x_t, t)$
         ## classifier-free
         ## see: https://openreview.net/pdf?id=qw8AKxfYbI
-        if self.eps_model.is_conditional and c is not None:
-            eps_theta = self.eps_model(xt, t, c)
-            if self.classifier_free:
-                eps_theta = (1.0 + self.guidance_weight) * eps_theta \
-                    - self.guidance_weight * self.eps_model(xt, t)                
-        else:
-            eps_theta = self.eps_model(xt, t)
-        if type(eps_theta) == tuple:
-            eps_theta = eps_theta[0]
+        eps_theta = self.get_eps_from_model(xt, t, c)
         # [gather](utils.html) $\bar\alpha_t$
         alpha_bar = gather(self.alpha_bar, t, self.gather_dim)
         # $\alpha_t$
         alpha = gather(self.alpha, t, self.gather_dim)
         var = gather(self.sigma2, t, self.gather_dim)
+        sqrt_alpha_bar = gather(self.sqrt_alpha_bar, t, self.gather_dim)
+        sqrt_one_minus_alpha_bar = gather(self.sqrt_one_minus_alpha_bar, t, self.gather_dim)
+
         if clipped:
-                
             ## t is a tensor, however, all the values should be the same.
             if t.min() > 0:
                 alpha_bar_pre = gather(self.alpha_bar, t-1, self.gather_dim)
             else:
                 alpha_bar_pre = 1.0
             ## x0 will be clipped to [-1, 1]
-            x0_pred = 1 / (alpha_bar ** 0.5) * (xt - (1 - alpha_bar)**0.5 * eps_theta)
+            x0_pred = (xt - sqrt_one_minus_alpha_bar * eps_theta) / sqrt_alpha_bar 
             x0_pred = x0_pred.clamp(*clip_range)
             beta = gather(self.beta, t, self.gather_dim)
-            mean = 1 / (1 - alpha_bar) * (alpha ** 0.5 * (1 - alpha_bar_pre)  * xt + 
-                alpha_bar_pre ** 0.5 * beta * x0_pred)
+            mean = (alpha ** 0.5 * (1 - alpha_bar_pre)  * xt + 
+                alpha_bar_pre ** 0.5 * beta * x0_pred) / (1 - alpha_bar) 
         else:
             # $\frac{\beta}{\sqrt{1-\bar\alpha_t}}$
-            eps_coef = (1 - alpha) / (1 - alpha_bar) ** .5
+            eps_coef = (1 - alpha) / sqrt_one_minus_alpha_bar
             # $$\frac{1}{\sqrt{\alpha_t}} \Big(x_t -
             #      \frac{\beta_t}{\sqrt{1-\bar\alpha_t}}\textcolor{lightgreen}{\epsilon_\theta}(x_t, t) \Big)$$
             mean = 1 / (alpha ** 0.5) * (xt - eps_coef * eps_theta)
@@ -210,8 +268,9 @@ class DiffusionProbabilistic(nn.Module):
         return self.eps_model.get_output_shape()
     def get_loss_name(self):
         if isinstance(self.eps_model, HBase):
-            return [self.eps_loss_name, 'hierarchical_' + self.eps_loss_name]
-        return [self.eps_loss_name,]
+            return [self.eps_loss_name, 'hierarchical_' + self.eps_loss_name] +\
+                self.recon_loss_names + [ 'hierarchical_' + rln for rln in self.recon_loss_names]
+        return [self.eps_loss_name,] + self.recon_loss_names
     def compute_loss(self, x0: torch.Tensor, c = None):
         """
         #### Simplified Loss
@@ -231,21 +290,57 @@ class DiffusionProbabilistic(nn.Module):
         if self.eps_model.is_conditional and c is not None and \
             self.classifier_free and torch.rand(1).item() < self.condition_dropout:
             c = None
-        eps_theta = self.eps_model(xt, t = t, c = c) 
+        model_out = self.eps_model(xt, t = t, c = c) 
         ### eps loss
-        # MSE loss
+        if self.parameterization == 'epsilon':
+            target = eps 
+        elif self.parameterization == 'start':
+            target = x0
+        else:
+            target = self.get_velocity(x0, t, eps)
+
         losses = []
-        if not type(eps_theta) == tuple:
-            losses += [self.eps_loss(eps_theta, eps), ]
+        if not type(model_out) == tuple:
+            losses += [self.eps_loss(model_out, target), ]
         else:
             #### h-base model
-            loss = self.eps_loss(eps_theta[0], eps)
+            loss = self.eps_loss(model_out[0], target)
             sublosses = []
-            for h_x in eps_theta[1]:
-                h_eps = F.interpolate(eps, size = h_x.shape[2:], mode = self.eps_model.inter_mode)
-                sublosses.append(self.eps_loss(h_x, h_eps))
+            for h_x in model_out[1]:
+                h_target = F.interpolate(target, size = h_x.shape[2:], mode = self.eps_model.inter_mode)
+                sublosses.append(self.eps_loss(h_x, h_target))
             losses += [loss, sum(sublosses) / len(sublosses)]
+
         ### recon loss
+        if len(self.recon_losses) > 0:
+            if type(model_out) == tuple:
+                final_output = model_out[0]
+            else:
+                final_output = model_out
+
+            if self.parameterization == 'epsilon':
+                x0_pred = self.get_start_from_eps(xt = xt, t = t, eps = final_output)
+            elif self.parameterization == 'velocity':
+                x0_pred = self.get_start_from_velocity(xt = xt, t = t, v = final_output)
+            else:
+                x0_pred = final_output
+            for l, w in zip(self.recon_losses, self.recon_loss_weights):
+                losses += [l(x0_pred, x0) * w, ]
+            
+            ## h-base eps_model
+            if type(model_out) == tuple:                
+                for l, w in zip(self.recon_losses, self.recon_loss_weights):
+                    sublosses = []
+                    for h_mo in model_out[1]:
+                        h_x0 = F.interpolate(x0, size = h_mo.shape[2:], mode = self.eps_model.inter_mode)
+                        if self.parameterization == 'epsilon':
+                            h_x0_pred = self.get_start_from_eps(xt = xt, t = t, eps = h_mo)
+                        elif self.parameterization == 'velocity':
+                            h_x0_pred = self.get_start_from_velocity(xt = xt, t = t, v = h_mo)
+                        else:
+                            h_x0_pred = h_mo
+                        sublosses += [l(h_x0_pred, h_x0) * w, ]
+                    losses.append(sum(sublosses) / len(sublosses))
         return losses, None
     ### run diffusion and reversed diffusion
     ## input: raw data

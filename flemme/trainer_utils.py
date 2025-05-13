@@ -90,7 +90,8 @@ class ImageTensorboardFormatter:
     ### we shouldn't abondon the channel information
     def process_batch(self, name, batch):
         ### check:
-        assert batch.ndim == 4 or batch.ndim == 5, 'Only 2D (NCHW) and 3D (NCDHW) images are accepted for display'
+        # assert batch.ndim == 4 or batch.ndim == 5, 'Only 2D (NCHW) and 3D (NCDHW) images are accepted for display'
+        if not (batch.ndim == 4 or batch.ndim == 5): return [('0', None), ]
         tag_template = '{}/batch_{}'
 
         tagged_images = []
@@ -131,8 +132,15 @@ class PcdTensorboardFormatter:
         return self.process_batch(name, batch)
     ### we shouldn't abondon the channel information
     def process_batch(self, name, batch):
-        assert batch.ndim == 3, 'pcd batches need to be organized as shape (N * Pn * Pd).'
-        assert batch.shape[2] == 3 or batch.shape[2] == 6, 'Only support 3D Point cloud for visualization.'
+        # assert batch.ndim == 3, 'pcd batches need to be organized as shape (N * Pn * Pd).'
+        # assert batch.shape[2] > 3, 'Only support 3D Point cloud for visualization.'
+
+        if not (batch.ndim == 3 and batch.shape[2] >= 3):
+            return [('0', None), ]
+
+        if not (batch.shape[2] == 3 or batch.shape[2] == 6):
+            batch = batch[:, :, 0:3]
+        
         color = None
         if batch.shape[2] == 6:
             batch, color = torch.chunk(batch, 2, dim=-1)
@@ -151,11 +159,14 @@ class Vec2PCDTensorboardFormatter:
         return self.process_batch(name, batch)
     ### we shouldn't abondon the channel information
     def process_batch(self, name, batch):
-        assert batch.ndim == 2 and (batch.shape[1] == 3 or batch.shape[1] == 2), 'Only support the visualization of 3D vectors.'
+        # assert batch.ndim == 2 and batch.shape[1] > 2, 'Only support the visualization of 2D or 3D vectors.'
+        if not (batch.ndim == 2 and batch.shape[1] >= 2):
+            return [('0', None), ]
         ## we can add pcd batch into tensorboard directly.
         if batch.shape[1] == 3:
             return [(name, batch[None, :]), ]
         else:
+            batch = batch[:, 0:2]
             plt.figure(figsize=(10, 8))
             plt.scatter(batch[:, 0].detach().cpu().numpy(), 
                         batch[:, 1].detach().cpu().numpy(), s = 10, alpha=0.3)
@@ -184,10 +195,11 @@ def write_data(writer, formatter, data_form, iter_id, input_map, prefix='train',
         if batch is None or not torch.is_tensor(batch): 
             logger.debug('results of {} is not a tensor.'.format(name))
             continue
-        if batch.ndim < 2 or batch.ndim == 2 and not (batch.shape[1] == 3 or batch.shape[1] == 2):
-            logger.debug('results of {} can not be visualized.'.format(name))
-            continue
+        # if batch.ndim < 2 or batch.ndim == 2 and batch.shape[1] != 2 and batch.shape[1] != 3:
+        #     logger.debug('results of {} cannot be visualized.'.format(name))
+        #     continue
         for tag, data in formatter(name, batch):
+            if data == None: continue
             if data_form == DataForm.IMG:
                 writer.add_image(prefix + '_' + tag, data, iter_id)
             elif data_form == DataForm.PCD:
@@ -572,7 +584,7 @@ def save_data(output, data_form, output_path, segmentation = False):
         if len(output.shape) == 3:
             ### non-binary segmentation will be saved as npy
             if segmentation:
-                output = output[0]
+                output = output.squeeze(0)
                 save_npy(output_path+'.npy', output)
             ### binary segmentation will be saved as png
             else:
@@ -581,13 +593,16 @@ def save_data(output, data_form, output_path, segmentation = False):
                 save_img(output_path+'.png', (output * 255).astype('uint8'))
         ## CDHW
         elif len(output.shape) == 4:
-            output = output[0]
+            output = output.squeeze(0)
             save_itk(output_path+'.nii.gz', output)
     elif data_form == DataForm.PCD:
         if segmentation:
             np.savetxt(output_path+'.seg', output)
-        else:
+        elif output.shape[-1] == 3:
             save_ply(output_path+'.ply', output)
+        ### not regular point cloud
+        else:
+            save_npy(output_path + '.npy', output)
     else:
         raise NotImplementedError
 

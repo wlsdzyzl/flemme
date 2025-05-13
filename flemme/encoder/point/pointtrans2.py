@@ -36,6 +36,7 @@ class PointTrans2Encoder(Point2Encoder):
                  final_concat = False,
                  pos_embedding = False,
                  channel_attention = None,
+                 time_injection = 'gate_bias',
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -61,7 +62,8 @@ class PointTrans2Encoder(Point2Encoder):
                 last_activation = last_activation,
                 final_concat = final_concat,
                 pos_embedding= pos_embedding,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection=time_injection)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
@@ -75,7 +77,8 @@ class PointTrans2Encoder(Point2Encoder):
                                         atten_dropout = atten_dropout, 
                                         residual_attention = residual_attention,
                                         skip_connection = skip_connection,
-                                        post_normalization = True,)
+                                        post_normalization = True,
+                                        time_injection = time_injection)
         msg_sequence = [MSGBlock(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
             num_fps_points = self.num_fps_points[fid],
@@ -110,6 +113,7 @@ class PointTrans2Decoder(Point2Decoder):
                 qkv_bias = True, qk_scale = None, atten_dropout = None, 
                 residual_attention = False, skip_connection = True,
                 channel_attention = None,
+                time_injection = 'gate_bias',
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
@@ -122,7 +126,8 @@ class PointTrans2Decoder(Point2Decoder):
                 num_norm_groups = num_norm_groups, 
                 activation = activation, 
                 dropout = dropout,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection=time_injection)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
@@ -135,7 +140,8 @@ class PointTrans2Decoder(Point2Decoder):
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                         atten_dropout = atten_dropout, 
                                         residual_attention = residual_attention,
-                                        skip_connection = skip_connection)
+                                        skip_connection = skip_connection,
+                                        time_injection = time_injection)
         fp_sequence = [  FPBlock( in_channel_known = self.known_feature_channels[fid],
                                 in_channel_unknown = self.unknow_feature_channels[fid],
                                 out_channel = self.fp_path[fid + 1],

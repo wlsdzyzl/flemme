@@ -68,7 +68,8 @@ class PointMambaBlock(NormBlock):
         dt_rank = None, dt_scale = 1.0,
         dropout = None, skip_connection = True, mamba = 'Mamba', 
         activation = 'relu', norm='batch', num_norm_groups = -1, 
-        post_normalization = False, **kwargs):
+        post_normalization = False, 
+        time_injection = 'gate_bias', **kwargs):
         
         super().__init__(_channel_dim = -1)
         self.in_channel = in_channel
@@ -105,8 +106,10 @@ class PointMambaBlock(NormBlock):
         else:
             self.dropout = nn.Dropout(p=dropout)
         if self.time_channel > 0:
-            self.hyper_bias = nn.Linear(self.time_channel, out_channel, bias=False)
-            self.hyper_gate = nn.Linear(self.time_channel, out_channel)
+            ## Time Injection
+            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
+            
+
 
     def forward(self, x, t = None):
         res = self.mamba(x)
@@ -124,9 +127,7 @@ class PointMambaBlock(NormBlock):
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-            bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-            x = x * gate + bias
+            x = self.time(x, t)
         return x
     @staticmethod
     def is_sequence_modeling():
@@ -250,7 +251,8 @@ class PointScanMambaBlock(PointScanMambaBaseBlock):
         dropout=0., conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, 
         skip_connection = True,
-        post_normalization = False, **kwargs):
+        post_normalization = False, 
+        time_injection = 'gate_bias', **kwargs):
         super().__init__(in_channel = in_channel, 
             num_scan = num_scan,
             out_channel = out_channel, state_channel=state_channel, 
@@ -279,8 +281,9 @@ class PointScanMambaBlock(PointScanMambaBaseBlock):
         self.selective_scan = selective_scan_fn
         self.time_channel = time_channel
         if self.time_channel > 0:
-            self.hyper_bias = nn.Linear(time_channel, out_channel, bias=False)
-            self.hyper_gate = nn.Linear(time_channel, out_channel)
+            ## Time Injection
+            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
+            
     @staticmethod
     def dt_init(dt_rank, inner_channel, dt_scale=1.0, dt_init="random", dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4):
         dt_proj = nn.Linear(dt_rank, inner_channel, bias=True)
@@ -368,9 +371,7 @@ class PointScanMambaBlock(PointScanMambaBaseBlock):
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-            bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-            x = x * gate + bias
+            x = self.time(x, t)
         return x
 
 class PointScanMamba2Block(PointScanMambaBaseBlock):
@@ -385,7 +386,9 @@ class PointScanMamba2Block(PointScanMambaBaseBlock):
         dropout=0., conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, 
         skip_connection = True,
-        post_normalization = False, **kwargs):
+        post_normalization = False, 
+        time_injection = 'gate_bias', 
+        **kwargs):
 
         super().__init__(in_channel = in_channel, 
             num_scan = num_scan,
@@ -426,8 +429,10 @@ class PointScanMamba2Block(PointScanMambaBaseBlock):
         self.chunk_size = chunk_size
         self.time_channel = time_channel
         if self.time_channel > 0:
-            self.hyper_bias = nn.Linear(time_channel, out_channel, bias=False)
-            self.hyper_gate = nn.Linear(time_channel, out_channel)
+            ## Time Injection
+            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
+            
+
     @staticmethod
     def dt_bias_init(num_heads, dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4):
         # Initialize log dt bias
@@ -499,7 +504,5 @@ class PointScanMamba2Block(PointScanMambaBaseBlock):
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-            bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-            x = x * gate + bias
+            x = self.time(x, t)
         return x

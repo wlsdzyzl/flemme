@@ -135,6 +135,20 @@ Configuration files are in `resources/img/biomed_2d` and `resources/img/biomed_3
 
 ![](./images/pcd_result.png)
 
+To train and evaluate the model proposed by [2], run the following commands:
+
+```bash
+## classification
+train_flemme --config /path/to/project/flemme/resources/pcd/medpoints/cls/train_pointmamba2knn_clm.yaml
+test_flemme --config /path/to/project/flemme/resources/pcd/medpoints/cls/test_pointmamba2knn_clm.yaml
+## completion
+train_flemme --config /path/to/project/flemme/resources/pcd/medpoints/cpl/train_pointmamba2knn_cpl.yaml
+test_flemme --config /path/to/project/flemme/resources/pcd/medpoints/cpl/test_pointmamba2knn_cpl.yaml
+## segmentation
+train_flemme --config /path/to/project/flemme/resources/pcd/medpoints/seg/train_pointmamba2knn_sem.yaml
+test_flemme --config /path/to/project/flemme/resources/pcd/medpoints/seg/test_pointmamba2knn_sem.yaml
+```
+
 ## *MedPointS* Dataset
 
 MedPointS is a large-scale medical point cloud dataset based on MedShapeNet for anatomy classification, completion, and segmentation.
@@ -173,6 +187,7 @@ Configuration files are in `resources/img/cifar10`
 ## BibTeX
 If you find our project helpful, please consider to cite the following works:
 
+[1] Flemme: A Flexible and Modular Learning Platform for Medical Images; BIBM 2024.
 ```
 @misc{zhang2024flemmeflexiblemodularlearning,
       title={Flemme: A Flexible and Modular Learning Platform for Medical Images}, 
@@ -184,6 +199,7 @@ If you find our project helpful, please consider to cite the following works:
       url={https://arxiv.org/abs/2408.09369}, 
 }
 ```
+[2] Hierarchical Feature Learning for Medical Point Clouds via State Space Model; MICCAI 2025.
 ```
 @misc{zhang2025hierarchicalfeaturelearningmedical,
       title={Hierarchical Feature Learning for Medical Point Clouds via State Space Model}, 

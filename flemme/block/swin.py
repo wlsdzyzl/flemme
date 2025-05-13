@@ -254,7 +254,7 @@ class WindowAttentionBlock(SelfAttentionBlock):
     """
 
     def __init__(self, in_channel, window_size, num_heads = 3, 
-        d_k = None, qkv_bias=True, qk_scale = None, skip_connection = False, 
+        d_k = None, qkv_bias=True, qk_scale = None, skip_connection = True, 
         atten_dropout=None, dropout = None):
 
         super().__init__(in_channel = in_channel, num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, 
@@ -372,7 +372,8 @@ class VisionTransformerBlock(nn.Module):
                 time_channel = 0, num_heads = 1, 
                 mlp_hidden_ratio=[4.0,], qkv_bias=True, 
                 qk_scale=None, dropout=0., atten_dropout=0., drop_path=0.,
-                activation = 'silu', norm = 'layer', num_norm_groups = 4, **kwargs):
+                activation = 'silu', norm = 'layer', num_norm_groups = 4, 
+                time_injection = 'gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -405,8 +406,9 @@ class VisionTransformerBlock(nn.Module):
         #             activation = None) if in_channel != self.out_channel else nn.Identity()
         self.time_channel = time_channel
         if self.time_channel > 0:
-            self.hyper_bias = nn.Linear(time_channel, out_channel, bias=False)
-            self.hyper_gate = nn.Linear(time_channel, out_channel)
+            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
+            
+
     def forward(self, x, t = None):
         shortcut = x
         x = self.norm1.normalize(x)
@@ -416,9 +418,7 @@ class VisionTransformerBlock(nn.Module):
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-            bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-            x = x * gate + bias
+            x = self.time(x, t)
         return x
 
 
@@ -448,13 +448,16 @@ class SwinTransformerBlock(VisionTransformerBlock):
                 mlp_hidden_ratio=[4.0,], 
                 qkv_bias=True, qk_scale=None, dropout=0., 
                 atten_dropout=0., drop_path=0.,
-                activation = 'silu', norm = 'layer', num_norm_groups = 4, **kwargs):
-        super().__init__(dim = len(patch_image_size), in_channel = in_channel, out_channel = out_channel, 
+                activation = 'silu', norm = 'layer', num_norm_groups = 4, 
+                time_injection = 'gate_bias', **kwargs):
+        super().__init__(dim = len(patch_image_size), in_channel = in_channel, 
+                 out_channel = out_channel, time_channel=time_channel, 
                  num_heads = num_heads, mlp_hidden_ratio=mlp_hidden_ratio, 
                  qkv_bias=qkv_bias, qk_scale=qk_scale, 
                  dropout=dropout, atten_dropout=atten_dropout, 
                  drop_path=drop_path, activation=activation, 
-                 norm = norm, num_norm_groups = num_norm_groups)
+                 norm = norm, num_norm_groups = num_norm_groups,
+                 time_injection=time_injection)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.patch_image_size = patch_image_size
@@ -525,10 +528,8 @@ class SwinTransformerBlock(VisionTransformerBlock):
             atten_mask = None
 
         self.register_buffer("atten_mask", atten_mask)
-        self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.hyper_bias = nn.Linear(time_channel, out_channel, bias=False)
-            self.hyper_gate = nn.Linear(time_channel, out_channel)
+
+
     def forward(self, x, t = None):
         ### patches to shifted window
         shortcut = x
@@ -571,9 +572,7 @@ class SwinTransformerBlock(VisionTransformerBlock):
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-            bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-            x = x * gate + bias
+            x = self.time(x, t)
         return x
 ## embed time step into swin transformer and vison mamba
     
@@ -583,7 +582,8 @@ class DoubleSwinTransformerBlock(nn.Module):
                 num_heads = 1, window_size=7, shift_size=0,
                 mlp_hidden_ratio=[4.0,], qkv_bias=True, qk_scale=None, 
                 dropout=0., atten_dropout=0., drop_path=0.,
-                activation = 'silu', norm = 'layer', num_norm_groups = 4, **kwargs):
+                activation = 'silu', norm = 'layer', num_norm_groups = 4, 
+                time_injection = 'gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -595,7 +595,8 @@ class DoubleSwinTransformerBlock(nn.Module):
                 shift_size=shift_size, mlp_hidden_ratio=mlp_hidden_ratio, 
                 qkv_bias=qkv_bias, qk_scale=qk_scale, 
                 dropout=dropout, atten_dropout=atten_dropout, drop_path=drop_path,
-                activation=activation, norm = norm, num_norm_groups = num_norm_groups)
+                activation=activation, norm = norm, num_norm_groups = num_norm_groups,
+                time_channel=time_channel, time_injection=time_injection)
         self.st2 = SwinTransformerBlock(patch_image_size = patch_image_size, in_channel = out_channel, 
                 out_channel = out_channel, num_heads = num_heads, window_size=window_size, 
                 shift_size=min(window_size) // 2 if shift_size_sum == 0 else 0, 
@@ -604,23 +605,19 @@ class DoubleSwinTransformerBlock(nn.Module):
                 dropout=dropout, atten_dropout=atten_dropout, drop_path=drop_path,
                 activation=activation, norm = norm, num_norm_groups = num_norm_groups)
         self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time_emb = nn.Linear(time_channel, out_channel)
+
     def forward(self, x, t = None):
-        x = self.st1(x)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            x = x + expand_as(self.time_emb(t), x, channel_dim=-1)
+        x = self.st1(x, t)
         x = self.st2(x)
         return x
 
     
 class ResSwinTransformerBlock(nn.Module):
     def __init__(self, patch_image_size, in_channel, out_channel = None, time_channel = 0, 
-                 num_heads = 1, window_size=7, shift_size=0,
+                 num_heads = 1, window_size=7, shift_size=0, 
                  mlp_hidden_ratio=[4.0,], qkv_bias=True, qk_scale=None, dropout=0., atten_dropout=0., drop_path=0.,
-                 activation = 'silu', norm = 'layer', num_norm_groups = 4, **kwargs):
+                 activation = 'silu', norm = 'layer', num_norm_groups = 4, 
+                 time_injection = 'gate_bias', **kwargs):
         super().__init__()
         shift_size_sum = shift_size
         if isinstance(shift_size, list) or isinstance(shift_size, tuple):
@@ -630,7 +627,8 @@ class ResSwinTransformerBlock(nn.Module):
                 shift_size=shift_size, mlp_hidden_ratio=mlp_hidden_ratio, 
                 qkv_bias=qkv_bias, qk_scale=qk_scale, 
                 dropout=dropout, atten_dropout=atten_dropout, drop_path=drop_path,
-                activation=activation, norm = norm, num_norm_groups = num_norm_groups)
+                activation=activation, norm = norm, num_norm_groups = num_norm_groups,
+                time_channel=time_channel, time_injection=time_injection)
         self.st2 = SwinTransformerBlock(patch_image_size = patch_image_size, in_channel = out_channel, 
                 out_channel = out_channel, num_heads = num_heads, window_size=window_size, 
                 shift_size=min(window_size) // 2 if shift_size_sum == 0 else 0, 
@@ -641,15 +639,9 @@ class ResSwinTransformerBlock(nn.Module):
         self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
         self.act = get_act(activation)
         self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time_emb = nn.Linear(time_channel, out_channel)
 
     def forward(self, x, t = None):
-        h = self.st1(x)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            h = h + expand_as(self.time_emb(t), h, channel_dim=-1)
+        h = self.st1(x, t)
         h = self.st2(h)
         out = self.act(h + self.shortcut(x))
         return out

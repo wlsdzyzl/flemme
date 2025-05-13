@@ -213,7 +213,8 @@ class VMambaBlock(MBaseBlock):
         inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], dt_rank=None, dt_min=0.001, 
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
+        time_injection = 'gate_bias', **kwargs):
         super().__init__(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -240,8 +241,9 @@ class VMambaBlock(MBaseBlock):
         self.selective_scan = selective_scan_fn
         self.time_channel = time_channel
         if self.time_channel > 0:
-            self.hyper_bias = nn.Linear(time_channel, out_channel, bias=False)
-            self.hyper_gate = nn.Linear(time_channel, out_channel)
+            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
+            
+
     @staticmethod
     def dt_init(dt_rank, inner_channel, dt_scale=1.0, dt_init="random", dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4):
         dt_proj = nn.Linear(dt_rank, inner_channel, bias=True)
@@ -328,9 +330,7 @@ class VMambaBlock(MBaseBlock):
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-            bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-            x = x * gate + bias
+            x = self.time(x, t)
         return x
     
 class DoubleVMambaBlock(nn.Module):
@@ -341,7 +341,8 @@ class DoubleVMambaBlock(nn.Module):
         inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], dt_rank=None, dt_min=0.001, 
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
+        time_injection = 'gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -353,7 +354,8 @@ class DoubleVMambaBlock(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan,
+            time_channel=time_channel, time_injection=time_injection)
         self.mamba2 = VMambaBlock(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -364,15 +366,9 @@ class DoubleVMambaBlock(nn.Module):
             activation = activation, norm = norm, 
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time_emb = nn.Linear(time_channel, out_channel)
 
     def forward(self, x, t = None):
-        x = self.mamba1(x)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            x = x + expand_as(self.time_emb(t), x, channel_dim=-1)
+        x = self.mamba1(x, t)
         x = self.mamba2(x)
         return x
 
@@ -383,7 +379,8 @@ class ResVMambaBlock(nn.Module):
         inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], dt_rank=None, dt_min=0.001, 
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
+        time_injection='gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -395,7 +392,8 @@ class ResVMambaBlock(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan,
+            time_channel=time_channel, time_injection=time_injection)
         self.mamba2 = VMambaBlock(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -408,14 +406,8 @@ class ResVMambaBlock(nn.Module):
         self.act = get_act(activation)  
         self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
         self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time_emb = nn.Linear(time_channel, out_channel)
     def forward(self, x, t = None):
-        h = self.mamba1(x)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            h = h + expand_as(self.time_emb(t), h, channel_dim=-1)
+        h = self.mamba1(x, t)
         h = self.mamba2(h)
         out = self.act(h + self.shortcut(x))
         return out
@@ -430,7 +422,8 @@ class VMamba2Block(MBaseBlock):
         dt_min=0.001, A_init_range=(1, 16),
         dt_max=0.1, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
+        time_injection = 'gate_bias', **kwargs):
 
         super().__init__(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
@@ -469,8 +462,9 @@ class VMamba2Block(MBaseBlock):
         self.chunk_size = chunk_size
         self.time_channel = time_channel
         if self.time_channel > 0:
-            self.hyper_bias = nn.Linear(time_channel, out_channel, bias=False)
-            self.hyper_gate = nn.Linear(time_channel, out_channel)
+            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
+            
+
     @staticmethod
     def dt_bias_init(num_heads, dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4):
         # Initialize log dt bias
@@ -540,9 +534,7 @@ class VMamba2Block(MBaseBlock):
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-            bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-            x = x * gate + bias
+            x = self.time(x, t)
         return x
 class DoubleVMamba2Block(nn.Module):
     def __init__(
@@ -554,7 +546,8 @@ class DoubleVMamba2Block(nn.Module):
         dt_min=0.001, A_init_range=(1, 16),
         dt_max=0.1, dt_init="random", dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
+        time_injection = 'gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -568,7 +561,8 @@ class DoubleVMamba2Block(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan,
+            time_channel=time_channel, time_injection=time_injection)
         self.mamba2 = VMamba2Block(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -581,14 +575,8 @@ class DoubleVMamba2Block(nn.Module):
             activation = activation, norm = norm, 
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time_emb = nn.Linear(time_channel, out_channel)
     def forward(self, x, t = None):
-        x = self.mamba1(x)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            x = x + expand_as(self.time_emb(t), x, channel_dim=-1)
+        x = self.mamba1(x, t)
         x = self.mamba2(x)
         return x
 
@@ -602,7 +590,8 @@ class ResVMamba2Block(nn.Module):
         dt_min=0.001, A_init_range=(1, 16),
         dt_max=0.1, dt_init="random", dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
-        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, **kwargs):
+        norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
+        time_injection = 'gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -616,7 +605,8 @@ class ResVMamba2Block(nn.Module):
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
-            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
+            num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan,
+            time_channel=time_channel, time_injection = time_injection)
         self.mamba2 = VMamba2Block(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -631,14 +621,8 @@ class ResVMamba2Block(nn.Module):
         self.act = get_act(activation)  
         self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
         self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time_emb = nn.Linear(time_channel, out_channel)
     def forward(self, x, t = None):
-        h = self.mamba1(x)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.' 
-            h = h + expand_as(self.time_emb(t), h, channel_dim=-1)
+        h = self.mamba1(x, t)
         h = self.mamba2(h)
         out = self.act(h + self.shortcut(x))
         return out

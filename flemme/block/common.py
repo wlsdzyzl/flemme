@@ -108,7 +108,6 @@ def get_norm(norm_name, norm_channel, dim = -1, num_norm_groups = 0):
         else:
             return nn.Identity(), Norm.NONE 
 def get_ca(method, **kwargs):
-    
     if method == 'ca':
         return CABlock(**kwargs)
     elif method == 'eca':
@@ -118,6 +117,20 @@ def get_ca(method, **kwargs):
     else:
         logger.error(f'Unrecognized channel attention method: {method}, should be one of [ca, eca, eca-ns].')
         exit(1)
+def get_context_injection(method, context_channel, data_channel, channel_dim):
+    if method == 'gb' or method == 'gate_bias':
+        return GateBiasBlock(context_channel, data_channel, channel_dim=channel_dim)
+    elif method == 'bias':
+        return BiasBlock(context_channel, data_channel, channel_dim=channel_dim)
+    elif method == 'ca' or method == 'cross_attention' or method == 'cross_atten':
+        return CrossAttentionBlock(in_channel = data_channel, 
+                                        context_channel = context_channel,
+                                        channel_dim = channel_dim, 
+                                        skip_connection = True)
+    else:
+        logger.error('Unknown method to process time-step embedding.')
+        exit(1)
+
 def get_middle_channel(in_channel, out_channel, unit_channel = 16):
     tmp_channel = int(max(max(in_channel, out_channel) // 2, min(in_channel, out_channel)))
     return int(math.ceil(tmp_channel / unit_channel) * unit_channel)
@@ -326,154 +339,28 @@ class TimeEmbeddingBlock(nn.Module):
         emb = self.dense1(emb)
         emb = self.dense2(emb)
         return emb
-class DenseBlock(NormBlock):
-    def __init__(self, in_channel, out_channel, time_channel = 0, 
-                norm = None, num_norm_groups = 0, 
-                activation = 'relu', dropout=None, order="ln", **kwargs):
-        super().__init__(_channel_dim = -1)
-        if len(kwargs) > 0:
-            logger.debug("redundant parameters:{}".format(kwargs))
-        # print(in_channel, out_channel)
-        self.linear = nn.Linear(in_channel, out_channel)
-        ## normalization layer
-        norm_channel = out_channel
-        if order.index('n') < order.index('l'):
-            norm_channel = in_channel
-        self.norm, self.norm_type = get_norm(norm, norm_channel, 1, num_norm_groups)
-        if dropout is None or dropout <= 0:
-            self.dropout = nn.Identity()
-        else:
-            self.dropout = nn.Dropout(p=dropout)
-        # activation function
-        self.act = get_act(activation)
-        self.order = order
-        self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.hyper_bias = nn.Linear(self.time_channel, out_channel, bias=False)
-            self.hyper_gate = nn.Linear(self.time_channel, out_channel)
-
-    def forward(self, x, t = None):
-        size = x.shape[1:-1]
-        if len(size) > 1:
-            x = x.reshape(x.shape[0], -1, x.shape[-1])
-        for m in self.order:
-            if m == 'l':
-                x = self.linear(x)
-            elif m == 'n':
-                x = self.normalize(x)
-        x = self.dropout(self.act(x))
-
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-            bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-            x = x * gate + bias
-        if len(size) > 1:
-            x = x.reshape(*((x.shape[0], ) + size + (x.shape[-1], )))
-        return x
-    @staticmethod
-    def is_sequence_modeling():
-        return False
-## Multi Layer Perception block
-class MultiLayerPerceptionBlock(nn.Module):
-    def __init__(self, in_channel, out_channel, 
-                n = 1, hidden_channels = None, 
-                time_channel = 0, norm = None, num_norm_groups = 0, 
-                activation = 'relu', dropout=None, 
-                order="ln", final_activation = True,
-                **kwargs):
+class BiasBlock(nn.Module):
+    def __init__(self, context_channel, data_channel, channel_dim):
         super().__init__()
-        if len(kwargs) > 0:
-            logger.debug("redundant parameters:{}".format(kwargs))
-        assert n is not None and n >= 1 or type(hidden_channels) == list, \
-            "Number of layers is not specified."
-        if not type(hidden_channels) == list or len(hidden_channels) == 0:
-            hidden_channel = get_middle_channel(in_channel, out_channel)
-            hidden_channels = [hidden_channel,] * (n - 1)
-        channels = [in_channel, ] + hidden_channels + [out_channel, ]
-        module_sequence = [DenseBlock( in_channel = channels[idx], 
-                    out_channel = channels[idx+1], time_channel = time_channel, norm = norm,
-                    num_norm_groups = num_norm_groups, 
-                    activation = activation, dropout = dropout, 
-                    order=order,
-                    ) for idx in range(len(channels) - 2)]
-        if not final_activation:
-            module_sequence = module_sequence + [DenseBlock( in_channel = channels[-2], 
-                        out_channel = channels[-1], time_channel = time_channel, norm = None,
-                        activation = None, 
-                        order=order,
-                        ), ]
-        else:
-            module_sequence = module_sequence + [DenseBlock( in_channel = channels[-2], 
-                    out_channel = channels[-1], time_channel = time_channel, norm = norm,
-                    num_norm_groups = num_norm_groups, 
-                    activation = activation, dropout = dropout, 
-                    order=order,
-                    ), ]
-        self.mlp = SequentialT(*module_sequence)
-    def forward(self, x, t = None):
-        x = self.mlp(x, t)
-        return x 
-
-class DoubleDenseBlock(nn.Module):
-    def __init__(self, in_channel, out_channel, 
-        time_channel = 0, norm = None, num_norm_groups = 0, 
-        activation = 'relu', dropout=None, 
-        order="ln", **kwargs):
-        super().__init__()
-        if len(kwargs) > 0:
-            logger.debug("redundant parameters:{}".format(kwargs))
-        self.dense1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
-            norm=norm, num_norm_groups = num_norm_groups, activation = activation, 
-            dropout = dropout, order = order)
-        self.dense2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
-            norm=norm, num_norm_groups = num_norm_groups, activation = activation, 
-            dropout = dropout, order = order)    
-        self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time_emb = nn.Linear(time_channel, out_channel)
+        self.hyper_bias = nn.Linear(context_channel, data_channel, bias=False)
+        self.channel_dim = channel_dim
     def forward(self, x, t):
-        x = self.dense1(x)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            x = x + expand_as(self.time_emb(t), x, channel_dim=-1)
-        x = self.dense2(x)
+        bias = expand_as(self.hyper_bias(t), x, channel_dim = self.channel_dim)
+        x = x + bias
         return x
-    @staticmethod
-    def is_sequence_modeling():
-        return False
-class ResDenseBlock(nn.Module):
-    def __init__(self, in_channel, out_channel, time_channel, norm = None,
-        num_norm_groups = 0, activation = 'relu', dropout=None, 
-        order="ln", **kwargs):
+
+class GateBiasBlock(nn.Module):
+    def __init__(self, context_channel, data_channel, channel_dim):
         super().__init__()
-        if len(kwargs) > 0:
-            logger.debug("redundant parameters:{}".format(kwargs))
-        self.dense1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
-            norm=norm, num_norm_groups = num_norm_groups, activation = activation, 
-            dropout = dropout, order = order)
-        self.dense2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
-            norm=norm, num_norm_groups = num_norm_groups, activation = None, 
-            dropout = dropout, order = order)  
-        self.act = get_act(activation)  
-        self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
-        self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time_emb = nn.Linear(time_channel, out_channel)
+        self.hyper_bias = nn.Linear(context_channel, data_channel, bias=False)
+        self.hyper_gate = nn.Linear(context_channel, data_channel)
+        self.channel_dim = channel_dim
     def forward(self, x, t):
-        h = self.dense1(x)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            h = h + expand_as(self.time_emb(t), h, channel_dim=-1)
-        h = self.dense2(h)
-        out = self.act(h + self.shortcut(x))
-        return out
-    @staticmethod
-    def is_sequence_modeling():
-        return False
+        gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=self.channel_dim)
+        bias = expand_as(self.hyper_bias(t), x, channel_dim = self.channel_dim)
+        x = x * gate + bias
+        return x
+    
 ## transfer class label to one-hot vector which is encoded through FC block.
 class OneHotEmbeddingBlock(nn.Module):
     def __init__(self, num_classes, out_channel, activation, apply_onehot = True):
@@ -530,7 +417,7 @@ class SelfAttentionBlock(AttentionBlock):
 
     def __init__(self, in_channel, num_heads = 3, d_k = None, 
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
-        dropout = None, skip_connection = False, channel_dim = 1):
+        dropout = None, skip_connection = True, channel_dim = 1):
         """
         * `in_channel` is the number of channel in the input
         * `num_heads` is the number of heads in multi-head attention
@@ -540,7 +427,7 @@ class SelfAttentionBlock(AttentionBlock):
         self.d_k = d_k or int(in_channel / num_heads) or 1
         scale = qk_scale or self.d_k ** -0.5
         super().__init__(scale=scale, atten_dropout=atten_dropout)
-
+        self.in_channel = in_channel
         # Project x to query, key and values
         self.qkv = nn.Linear(in_channel, num_heads * self.d_k * 3, bias = qkv_bias)
         # project to original space
@@ -558,9 +445,9 @@ class SelfAttentionBlock(AttentionBlock):
         x_shape = x.shape
         if self.channel_dim == 1:
             x = channel_transfer(x)
-        batch_size, in_channel = x.shape[0], x.shape[-1]
+        batch_size = x.shape[0]
         # Change `x` to shape `[batch_size, seq, in_channel]`
-        x = x.reshape(batch_size, -1, in_channel)
+        x = x.reshape(batch_size, -1, self.in_channel)
         # Get query, key, and values (concatenated) and shape it to `[3, batch_size, num_heads, seq, d_k]`
         qkv = self.qkv(x).reshape(batch_size, -1, 3, self.num_heads, self.d_k).permute(2, 0, 3, 1, 4)
         # Split query, key, and values.
@@ -588,17 +475,19 @@ class CrossAttentionBlock(AttentionBlock):
     This is similar to [transformer multi-head attention](../../transformers/mha.html).
     """
 
-    def __init__(self, in_channel, num_heads = 3, d_k = None, 
+    def __init__(self, in_channel, context_channel = None, num_heads = 3, d_k = None, 
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
-        dropout = None, skip_connection = False, channel_dim = 1):
+        dropout = None, skip_connection = True, channel_dim = 1):
         self.d_k = d_k or int(in_channel / num_heads)
         scale = qk_scale or self.d_k ** -0.5
         super().__init__(scale=scale, atten_dropout=atten_dropout)
 
         # Default `d_k`
         # Project x to query, key and values
+        self.in_channel = in_channel
+        self.context_channel = context_channel or self.in_channel
         self.q = nn.Linear(in_channel, num_heads * self.d_k, bias = qkv_bias)
-        self.kv = nn.Linear(in_channel, num_heads * self.d_k * 2, bias = qkv_bias)
+        self.kv = nn.Linear(context_channel, num_heads * self.d_k * 2, bias = qkv_bias)
         # project to original space
         self.proj = nn.Linear(num_heads * self.d_k, in_channel)
         self.num_heads = num_heads
@@ -609,21 +498,21 @@ class CrossAttentionBlock(AttentionBlock):
         else:
             self.dropout = nn.Dropout(p=dropout)
     ### key and value are compute from x, query is compute from y
-    def forward(self, x, y):
+    def forward(self, x, y = None):
 
         # Get shape
-        assert x.shape == y.shape, 'x and y should have the same shape in cross_attention.'
+        if y is None: y = x
         x_shape = x.shape
         if self.channel_dim == 1:
             x = channel_transfer(x)
-            y = channel_transfer(y)
-        batch_size, in_channel = x.shape[0], x.shape[-1]
+            # y = channel_transfer(y)
+        batch_size = x.shape[0]
         # Change `x` to shape `[batch_size, seq, in_channel]`
-        x = x.reshape(batch_size, -1, in_channel)
-        y = y.reshape(batch_size, -1, in_channel)
-
+        x = x.reshape(batch_size, -1, self.in_channel)
+        y = y.reshape(batch_size, -1, self.context_channel)
+        # assert x.shape[:-1] == y.shape[:-1], 'x and y should have the same shapes except for channel dimension.'
         # Get query, key, and values (concatenated) and shape it to `[2, batch_size, num_heads, seq, d_k]`
-        kv = self.kv(x).reshape(batch_size, -1, 2, self.num_heads, self.d_k).permute(2, 0, 3, 1, 4)
+        kv = self.kv(y).reshape(batch_size, -1, 2, self.num_heads, self.d_k).permute(2, 0, 3, 1, 4)
         # [batch_size, num_heads, seq, d_k]
         q = self.q(x).reshape(batch_size, -1, self.num_heads, self.d_k).permute(0, 2, 1, 3)
         # Split query, key, and values. 
@@ -644,11 +533,12 @@ class CrossAttentionBlock(AttentionBlock):
         # Change to shape `[batch_size, in_channel, height, width]`
         res = res.reshape(x_shape)
         return res
+
 ### FFT with attention: only for images
 class FFTAttenBlock(nn.Module):
     def __init__(self, dim, in_channel: int, num_heads: int = 1, d_k: int = None, 
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
-        dropout = None, skip_connection = False):
+        dropout = None, skip_connection = True):
         super().__init__()
         self.atten = SelfAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
             qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
@@ -662,6 +552,156 @@ class FFTAttenBlock(nn.Module):
         x = self.atten(x)
         x = torch.view_as_complex(x.contiguous())
         return self.ifft(x)
+    
+class DenseBlock(NormBlock):
+    def __init__(self, in_channel, out_channel, time_channel = 0, 
+                norm = None, num_norm_groups = 0, 
+                activation = 'relu', dropout=None, order="ln", 
+                time_injection = 'gate_bias', **kwargs):
+        super().__init__(_channel_dim = -1)
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters:{}".format(kwargs))
+        # print(in_channel, out_channel)
+        self.linear = nn.Linear(in_channel, out_channel)
+        ## normalization layer
+        norm_channel = out_channel
+        if order.index('n') < order.index('l'):
+            norm_channel = in_channel
+        self.norm, self.norm_type = get_norm(norm, norm_channel, 1, num_norm_groups)
+        if dropout is None or dropout <= 0:
+            self.dropout = nn.Identity()
+        else:
+            self.dropout = nn.Dropout(p=dropout)
+        # activation function
+        self.act = get_act(activation)
+        self.order = order
+        self.time_channel = time_channel
+        if self.time_channel > 0:
+            ## Time Injection
+            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
+            # self.hyper_bias = nn.Linear(self.time_channel, out_channel, bias=False)
+            # self.hyper_gate = nn.Linear(self.time_channel, out_channel)
+
+    def forward(self, x, t = None):
+        size = x.shape[1:-1]
+        if len(size) > 1:
+            x = x.reshape(x.shape[0], -1, x.shape[-1])
+        for m in self.order:
+            if m == 'l':
+                x = self.linear(x)
+            elif m == 'n':
+                x = self.normalize(x)
+        x = self.dropout(self.act(x))
+
+        if t is not None:
+            assert self.time_channel == t.shape[-1], \
+                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.' 
+            x = self.time(x, t)
+            # gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
+            # bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
+            # x = x * gate + bias
+        if len(size) > 1:
+            x = x.reshape(*((x.shape[0], ) + size + (x.shape[-1], )))
+        return x
+    @staticmethod
+    def is_sequence_modeling():
+        return False
+    
+## Multi Layer Perception block
+class MultiLayerPerceptionBlock(nn.Module):
+    def __init__(self, in_channel, out_channel, 
+                n = 1, hidden_channels = None, 
+                time_channel = 0, norm = None, num_norm_groups = 0, 
+                activation = 'relu', dropout=None, 
+                order="ln", final_activation = True,
+                time_injection = 'gate_bias',
+                **kwargs):
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters:{}".format(kwargs))
+        assert n is not None and n >= 1 or type(hidden_channels) == list, \
+            "Number of layers is not specified."
+        if not type(hidden_channels) == list or len(hidden_channels) == 0:
+            hidden_channel = get_middle_channel(in_channel, out_channel)
+            hidden_channels = [hidden_channel,] * (n - 1)
+        channels = [in_channel, ] + hidden_channels + [out_channel, ]
+        module_sequence = [DenseBlock( in_channel = channels[idx], 
+                    out_channel = channels[idx+1], time_channel = time_channel, 
+                    time_injection = time_injection, norm = norm,
+                    num_norm_groups = num_norm_groups, 
+                    activation = activation, dropout = dropout, 
+                    order=order,
+                    ) for idx in range(len(channels) - 2)]
+        if not final_activation:
+            module_sequence = module_sequence + [DenseBlock( in_channel = channels[-2], 
+                        out_channel = channels[-1], time_channel = time_channel, 
+                        time_injection = time_injection, norm = None,
+                        activation = None, 
+                        order=order,
+                        ), ]
+        else:
+            module_sequence = module_sequence + [DenseBlock( in_channel = channels[-2], 
+                    out_channel = channels[-1], time_channel = time_channel, 
+                    time_injection = time_injection, norm = norm,
+                    num_norm_groups = num_norm_groups, 
+                    activation = activation, dropout = dropout, 
+                    order=order,
+                    ), ]
+        self.mlp = SequentialT(*module_sequence)
+    def forward(self, x, t = None):
+        x = self.mlp(x, t)
+        return x 
+
+class DoubleDenseBlock(nn.Module):
+    def __init__(self, in_channel, out_channel, 
+        time_channel = 0, norm = None, num_norm_groups = 0, 
+        activation = 'relu', dropout=None, 
+        order="ln", time_injection = 'gate_bias', **kwargs):
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters:{}".format(kwargs))
+        self.dense1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
+            norm=norm, num_norm_groups = num_norm_groups, activation = activation, 
+            dropout = dropout, order = order, 
+            time_channel = time_channel, time_injection = time_injection)
+        self.dense2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
+            norm=norm, num_norm_groups = num_norm_groups, activation = activation, 
+            dropout = dropout, order = order)    
+        self.time_channel = time_channel
+    def forward(self, x, t):
+        x = self.dense1(x, t)
+        x = self.dense2(x)
+        return x
+    @staticmethod
+    def is_sequence_modeling():
+        return False
+    
+class ResDenseBlock(nn.Module):
+    def __init__(self, in_channel, out_channel, time_channel, norm = None,
+        num_norm_groups = 0, activation = 'relu', dropout=None, 
+        order="ln", time_injection = 'gate_bias', **kwargs):
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters:{}".format(kwargs))
+        self.dense1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
+            norm=norm, num_norm_groups = num_norm_groups, activation = activation, 
+            dropout = dropout, order = order,
+            time_injection = time_injection)
+        self.dense2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
+            norm=norm, num_norm_groups = num_norm_groups, activation = None, 
+            dropout = dropout, order = order)  
+        self.act = get_act(activation)  
+        self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
+        self.time_channel = time_channel
+    def forward(self, x, t):
+        h = self.dense1(x, t)
+        h = self.dense2(h)
+        out = self.act(h + self.shortcut(x))
+        return out
+    @staticmethod
+    def is_sequence_modeling():
+        return False
+
 class CABlock(nn.Module):
     """Constructs a ECA module.
 
@@ -776,10 +816,10 @@ class ConvBlock(NormBlock):
     def __init__(self, dim, in_channel, out_channel, 
             time_channel = 0, kernel_size = 3, 
             padding = 1, depthwise = False, activation = 'relu', 
-            norm='batch', num_norm_groups = 0, 
+            norm='batch', num_norm_groups = 0, time_injection = 'gate_bias',
             order = 'cn', atten = None, num_heads = 1, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
-            dropout = None, skip_connection = False, **kwargs):
+            dropout = None, skip_connection = True, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -818,15 +858,13 @@ class ConvBlock(NormBlock):
             d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
             atten_dropout = atten_dropout, dropout = dropout, 
             skip_connection = skip_connection)
-        else:
-            self.atten = nn.Identity()
         # activation function
         self.act = get_act(activation)
         self.order = order
         self.time_channel = time_channel
         if self.time_channel > 0:
-            self.hyper_bias = nn.Linear(self.time_channel, out_channel, bias=False)
-            self.hyper_gate = nn.Linear(self.time_channel, out_channel)
+            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=1)
+            
     def forward(self, x, t = None):
         for m in self.order:
             if m == 'n':
@@ -834,23 +872,24 @@ class ConvBlock(NormBlock):
             elif m == 'c':
                 x = self.proj(self.conv(x))
         x = self.act(x)
-        x = self.atten(x)
+        if hasattr(self, 'atten'):
+            x = self.atten(x)
+
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=1)
-            bias = expand_as(self.hyper_bias(t), x, channel_dim = 1)
-            x * gate + bias
+            x = self.time(x, t)
         return x
 ## double convolution
 class DoubleConvBlock(nn.Module):
     def __init__(self, dim, in_channel, out_channel, 
             time_channel = 0, kernel_size = 3, 
             padding = 1, depthwise = False, 
-            activation = 'relu', norm='batch', num_norm_groups = 0, order = 'cn', 
+            activation = 'relu', norm='batch', num_norm_groups = 0, 
+            time_injection = 'gate_bias', order = 'cn', 
             atten = None, num_heads = 1, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
-            dropout = None, skip_connection = False,  **kwargs):
+            dropout = None, skip_connection = True,  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -860,7 +899,8 @@ class DoubleConvBlock(nn.Module):
                                norm=norm, num_norm_groups=num_norm_groups, order = order, 
                                atten=atten, num_heads=num_heads, d_k=d_k, 
                                qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-                               dropout = dropout, skip_connection = skip_connection)
+                               dropout = dropout, skip_connection = skip_connection,
+                               time_channel=time_channel, time_injection=time_injection)
         self.conv2 = ConvBlock(dim = dim, in_channel=out_channel, out_channel=out_channel, 
                                kernel_size=kernel_size, padding=padding, 
                                depthwise = depthwise, activation=activation,
@@ -869,17 +909,9 @@ class DoubleConvBlock(nn.Module):
                                qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
                                dropout = dropout, skip_connection = skip_connection)
         self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time_emb = DenseBlock(time_channel, out_channel, activation=activation, dropout=dropout)
     def forward(self, x: torch.Tensor, t: torch.Tensor):
         # First convolution layer
-        x = self.conv1(x)
-        # Add time embeddings
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            t = expand_as(self.time_emb(t), x, channel_dim=1)
-            x = x + t
+        x = self.conv1(x, t)
         # Second convolution layer
         x = self.conv2(x)
         return x 
@@ -892,7 +924,8 @@ class ResConvBlock(nn.Module):
         activation = 'relu', norm='batch', num_norm_groups = 0, order = 'cn', 
         atten = None, num_heads = 1, d_k = None,
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
-        dropout = None, skip_connection = False, **kwargs):
+        dropout = None, skip_connection = True, 
+        time_injection = 'gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -902,7 +935,8 @@ class ResConvBlock(nn.Module):
                                norm=norm, num_norm_groups=num_norm_groups, order = order, 
                                atten=atten, num_heads=num_heads, d_k=d_k, 
                                qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-                               dropout = dropout, skip_connection = skip_connection)
+                               dropout = dropout, skip_connection = skip_connection,
+                               time_channel=time_channel, time_injection=time_injection)
         self.conv2 = ConvBlock(dim = dim, in_channel=out_channel, out_channel=out_channel, 
                                kernel_size=kernel_size, padding=padding, 
                                depthwise = depthwise, activation=None,
@@ -920,18 +954,10 @@ class ResConvBlock(nn.Module):
         else:
             self.shortcut = nn.Identity()        
         self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time_emb = DenseBlock(time_channel, out_channel, activation=activation, dropout=dropout)
 
     def forward(self, x, t = None):
         # First convolution layer
-        _x = self.conv1(x)
-        # Add time embeddings
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            t = expand_as(self.time_emb(t), _x, channel_dim=1)
-            _x = _x + t
+        _x = self.conv1(x, t)
         # Second convolution layer
         _x = self.conv2(_x)
         out = self.act( _x + self.shortcut(x))

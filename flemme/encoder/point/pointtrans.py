@@ -22,6 +22,7 @@ class PointTransEncoder(PointEncoder):
                  z_count = 1, vector_embedding = True, 
                  last_activation = True,
                  channel_attention = None,
+                 time_injection = 'gate_bias',
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -35,7 +36,8 @@ class PointTransEncoder(PointEncoder):
                 activation = activation, dropout = dropout, 
                 z_count = z_count, vector_embedding = vector_embedding,
                 last_activation = last_activation,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection=time_injection)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 
@@ -47,7 +49,8 @@ class PointTransEncoder(PointEncoder):
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                         atten_dropout = atten_dropout, 
                                         residual_attention = residual_attention,
-                                        skip_connection = skip_connection)
+                                        skip_connection = skip_connection,
+                                        time_injection = time_injection)
 
         # compute point features
         ## local graph feature

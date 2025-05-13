@@ -30,6 +30,7 @@ class PointMambaEncoder(PointEncoder):
                 last_activation = True,
                 skip_connection = True,
                 channel_attention = None,
+                time_injection = 'gate_bias',
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -43,7 +44,8 @@ class PointMambaEncoder(PointEncoder):
                 activation = activation, dropout = dropout, 
                 z_count = z_count, vector_embedding = vector_embedding,
                 last_activation = last_activation,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection=time_injection)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 
@@ -61,7 +63,8 @@ class PointMambaEncoder(PointEncoder):
                                         dt_min=dt_min, A_init_range=A_init_range,
                                         dt_max=dt_max, dt_init_floor=dt_init_floor, 
                                         dt_rank = dt_rank, dt_scale = dt_scale,
-                                        skip_connection = skip_connection)
+                                        skip_connection = skip_connection,
+                                        time_injection = time_injection)
 
         ### convolution with kernel size = 1
         # compute point features

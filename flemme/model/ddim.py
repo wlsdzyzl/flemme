@@ -61,16 +61,7 @@ class DiffusionImplicit(DDPM):
     ## index: sample step index
     @torch.no_grad()    
     def denoise(self, xt, t, index, c = None, clipped = None, clip_range = None):
-        ## classifier-free
-        if self.eps_model.is_conditional and c is not None:
-            eps_theta = self.eps_model(xt, t, c)
-            if self.classifier_free:
-                eps_theta = (1.0 + self.guidance_weight) * eps_theta \
-                    - self.guidance_weight * self.eps_model(xt, t)                
-        else:
-            eps_theta = self.eps_model(xt, t)
-        if type(eps_theta) == tuple:
-            eps_theta = eps_theta[0]
+        eps_theta = self.get_eps_from_model(xt, t, c)
         alpha = self.ddim_alpha[index]
         alpha_prev = self.ddim_alpha_prev[index]
         sigma = self.ddim_sigma[index]

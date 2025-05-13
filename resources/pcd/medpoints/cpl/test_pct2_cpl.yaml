@@ -7,18 +7,25 @@ model:
   name: AE
   # encoder config
   encoder:
-    name: PointNet
+    name: PointTrans2
     in_channel: 3
     out_channel: 3
     point_num: 2048
-    building_block: dense
+    building_block: pct_oa
     # num_neighbors_k: 20
-    local_feature_channels: [64, 64, 128, 256, 512]
-    dense_channels: [1024]
+    num_neighbors_k: 32
+    num_fps_points: [2048, 1024, 512, 256, 128]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
+    fps_feature_channels: [64, 64, 128, 256, 512]
     decoder_dense_channels: [512, 512, 256, 256, 128]
+    dense_channels: [1024]
     activation: lrelu
     normalization: group
     vector_embedding: True
+    # pos_embedding: True
+    # long_range_modeling: True
+  decoder:
+    name: PointNet
     folding_times: 2
   is_supervised: True
   condition_embedding:
@@ -34,6 +41,8 @@ model:
     - name: DCD
       alpha: 40
       n_lambda: 0.5
+    - name: CD
+      weight: 0.001
 loader:
   dataset: 
     name: PcdReconWithClassLabelDataset
@@ -66,8 +75,8 @@ loader:
     - name: ToTensor
       dtype: float
 
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointNet/PointNet_CPL/ckp_best_loss.pth
-recon_dir: /media/wlsdzyzl/DATA/flemme-results/cpl/medshapenet/PointNet/
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointTrans2/PointTrans2_CPL/ckp_best_loss.pth
+recon_dir: /media/wlsdzyzl/DATA/flemme-results/cpl/medshapenet/PointTrans2/
 save_input: true
 save_target: true
 evaluation_metrics:

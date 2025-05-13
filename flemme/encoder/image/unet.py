@@ -19,7 +19,8 @@ class UNetEncoder(CNNEncoder):
                  building_block='res_t', normalization = 'group', num_norm_groups = 8, cn_order = 'cn',
                  activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 abs_pos_embedding = False, channel_attention = None, **kwargs):
+                 abs_pos_embedding = False, channel_attention = None, 
+                 time_injection = 'gate_bias', **kwargs):
         '''
         ## check down channels and middle channels
         ## each value in down channels corresponds to a downsample layer and a convolution layer
@@ -35,7 +36,8 @@ class UNetEncoder(CNNEncoder):
             num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
             abs_pos_embedding=abs_pos_embedding, atten_dropout = atten_dropout,
             z_count = 1, dense_channels = [], return_feature_list = True,
-            channel_attention = channel_attention)
+            channel_attention = channel_attention,
+            time_injection = time_injection)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
     
@@ -50,7 +52,8 @@ class UNetDecoder(CNNDecoder):
                  num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  return_feature_list = False, 
-                 channel_attention = None, **kwargs):
+                 channel_attention = None, 
+                 time_injection = 'gate_bias', **kwargs):
         super().__init__(image_size = image_size, image_channel = image_channel, 
             in_channel = in_channel, time_channel = time_channel, patch_size=patch_size,
             up_channels = up_channels, up_attens = up_attens, 
@@ -61,7 +64,8 @@ class UNetDecoder(CNNDecoder):
             num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
             return_feature_list = return_feature_list, 
             atten_dropout = atten_dropout, dense_channels = [],
-            channel_attention=channel_attention)
+            channel_attention=channel_attention,
+            time_injection = time_injection)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
         up_channels = [in_channel, ] + up_channels
@@ -106,6 +110,7 @@ if module_config['transformer']:
                     num_blocks = 2, activation = 'silu', 
                     abs_pos_embedding = False,
                     channel_attention = None, 
+                    time_injection = 'gate_bias', 
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 patch_size = patch_size, patch_channel = patch_channel, time_channel = time_channel,
@@ -118,7 +123,8 @@ if module_config['transformer']:
                 abs_pos_embedding = abs_pos_embedding, 
                 z_count = 1, dense_channels = [], 
                 return_feature_list = True,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection = time_injection)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class ViTUNetDecoder(ViTDecoder):
@@ -133,7 +139,8 @@ if module_config['transformer']:
                     normalization = 'group', num_norm_groups = 8, 
                     num_blocks = 2, activation = 'silu', 
                     return_feature_list = False, 
-                    channel_attention = None, **kwargs):
+                    channel_attention = None, 
+                    time_injection = 'gate_bias', **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 patch_size = patch_size, in_channel = in_channel, time_channel = time_channel,
                 building_block = building_block, mlp_hidden_ratio = mlp_hidden_ratio, qkv_bias = qkv_bias,
@@ -143,7 +150,8 @@ if module_config['transformer']:
                 normalization = normalization, num_norm_groups = num_norm_groups, 
                 num_blocks = num_blocks, activation = activation, dense_channels = [],
                 return_feature_list = return_feature_list,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection = time_injection)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
@@ -193,6 +201,7 @@ if module_config['transformer']:
                     num_blocks = 2, activation = 'silu', 
                     abs_pos_embedding = False,
                     channel_attention = None,
+                    time_injection = 'gate_bias', 
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 window_size = window_size, time_channel = time_channel,
@@ -205,7 +214,8 @@ if module_config['transformer']:
                 num_blocks = num_blocks, activation = activation, 
                 abs_pos_embedding = abs_pos_embedding, 
                 z_count = 1, dense_channels = [], return_feature_list = True,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection = time_injection)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class SwinUNetDecoder(SwinDecoder):
@@ -220,7 +230,8 @@ if module_config['transformer']:
                     normalization = 'group', num_norm_groups = 8, 
                     num_blocks = 2, activation = 'silu', 
                     return_feature_list = False, 
-                    channel_attention = None, **kwargs):
+                    channel_attention = None, 
+                    time_injection = 'gate_bias', **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 window_size = window_size, time_channel = time_channel,
                 patch_size = patch_size, in_channel = in_channel,
@@ -231,7 +242,8 @@ if module_config['transformer']:
                 normalization = normalization, num_norm_groups = num_norm_groups, 
                 num_blocks = num_blocks, activation = activation, dense_channels = [],
                 return_feature_list = return_feature_list,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection = time_injection)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
@@ -293,6 +305,7 @@ if module_config['mamba']:
                     learnable_init_states = True, 
                     chunk_size=256,
                     channel_attention = None,
+                    time_injection = 'gate_bias', 
                     **kwargs):
             super().__init__(image_size, image_channel = image_channel, 
                     time_channel = time_channel,
@@ -316,7 +329,8 @@ if module_config['mamba']:
                     abs_pos_embedding = abs_pos_embedding,
                     z_count = 1, dense_channels = [],
                     return_feature_list = True,
-                    channel_attention = channel_attention)
+                    channel_attention = channel_attention,
+                    time_injection = time_injection)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class VMambaUNetDecoder(VMambaDecoder):
@@ -342,6 +356,7 @@ if module_config['mamba']:
                     scan_mode = 'single', flip_scan = True, 
                     return_feature_list = False, 
                     channel_attention = None, 
+                    time_injection = 'gate_bias', 
                     **kwargs):
             super().__init__(image_size, image_channel = image_channel, 
                     patch_size = patch_size, in_channel = in_channel,
@@ -363,7 +378,8 @@ if module_config['mamba']:
                     num_blocks = num_blocks, activation = activation, 
                     scan_mode = scan_mode, flip_scan=flip_scan, 
                     dense_channels = [], return_feature_list = return_feature_list,
-                    channel_attention = channel_attention)
+                    channel_attention = channel_attention,
+                    time_injection = time_injection)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
             ### use patch expansion block for up sampling

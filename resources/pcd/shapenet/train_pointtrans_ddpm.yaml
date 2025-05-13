@@ -3,9 +3,11 @@
 mode: train
 model:
   # can be AE, VAE, SeM and DDPM
-  name: DDPM
+  name: DDIM
   num_steps: 1000
+  sample_num_steps: 100
   beta_schedule: consine
+  parameterization: velocity
   eps_model:
     time_channel: 128
     encoder:
@@ -17,10 +19,10 @@ model:
       local_feature_channels: [128, 256, 512, 1024]
       dense_channels: [1024]
       activation: lrelu
-      normalization: group
+      normalization: layer
       channel_attention: eca
       vector_embedding: false
-      time_injection: cross_atten
+      # time_injection: cross_attention
     decoder:
       name: PointNet
       dense_channels: [512, 256, 128]
@@ -32,18 +34,15 @@ loader:
     data_dir: skeleton
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA/vcg-results/skeleton/imagecas_clean/sknet_pointtrans
-  batch_size: 16
+    - /media/wlsdzyzl/DATA/vcg-results/skeleton/shapenet/chair/sknet/
+  batch_size: 12
   num_workers: 8
   shuffle: true
   data_transforms:
-    - name: Normalize
-    - name: FixedPoints
-      method: qfps
-      num: 256
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/imagecas_clean/PointTrans_Diffusion_Skeleton
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/shapenet/chair/skdpm-start/
+resume: true
 ### parameter for optimizer
 optimizer:
   name: Adam
@@ -56,7 +55,7 @@ lr_scheduler:
   end_factor: 0.01
 sampler:
   name: NormalSampler
-max_epoch: 1000
-write_after_iters: 10
+max_epoch: 2000
+write_after_iters: 20
 write_sample_num: 4
 save_after_epochs: 10

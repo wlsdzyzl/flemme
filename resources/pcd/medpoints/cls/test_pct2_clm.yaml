@@ -1,0 +1,59 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: test
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: ClM
+  # encoder config
+  encoder:
+    name: PointTrans2
+    in_channel: 3
+    out_channel: 46
+    point_num: 2048
+    building_block: pct_oa
+    # num_neighbors_k: 20
+    # local_feature_channels: [64, 64, 128, 256, 512]
+    num_neighbors_k: 32
+    num_fps_points: [1024, 512, 256, 128, 64]
+    fps_feature_channels: [64, 64, 128, 256, 512]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
+    dense_channels: [1024, 512, 256]
+    activation: lrelu
+    normalization: group
+    # pos_embedding: True
+    # long_range_modeling: True
+  classification_losses: 
+    - name: CE
+loader:
+  dataset: 
+    name: PcdClsDataset
+    data_suffix: .ply
+    cls_label: MedPointS
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold5
+  batch_size: 32
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+  label_transforms:
+    - name: ToOneHot
+      num_classes: 47
+      ignore_background: true
+    - name: ToTensor
+      dtype: float
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointTrans2/PointTrans2_CLS/ckp_best_loss.pth
+
+
+evaluation_metrics:
+  cls:
+    - name: ACC
+tsne_visualization: 
+  top_n: 10
+  title: t-SNE Visualization of Top-10 Classes
+  vis_dim: 2
+  label_names: medshapenet

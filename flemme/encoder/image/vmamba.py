@@ -36,6 +36,7 @@ class VMambaEncoder(nn.Module):
                 return_feature_list = False,
                 z_count = 1, 
                 channel_attention = None, 
+                time_injection = 'gate_bias', 
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -79,7 +80,8 @@ class VMambaEncoder(nn.Module):
                                 chunk_size=chunk_size,
                                 activation = activation, 
                                 scan_mode = scan_mode,
-                                flip_scan = flip_scan)
+                                flip_scan = flip_scan,
+                                time_injection = time_injection)
         ### construct patch
         self.patch_emb = PatchConstructionBlock(dim = self.dim, 
                                                 patch_size = self.patch_size,
@@ -155,6 +157,8 @@ class VMambaEncoder(nn.Module):
         ## set out_channel
         self.out_channel = dense_channels[-1]
         self.return_feature_list = return_feature_list
+        if time_channel > 0:
+            logger.info(f'Using time-step injection method: {time_injection}')
     def forward(self, x, t = None):
         x = self.patch_emb(x)
         res = []
@@ -230,6 +234,7 @@ class VMambaDecoder(nn.Module):
                 scan_mode = 'single', flip_scan = True, 
                 return_feature_list = False,
                 channel_attention = None,
+                time_injection = 'gate_bias', 
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -270,7 +275,8 @@ class VMambaDecoder(nn.Module):
                                 norm = normalization, num_norm_groups = num_norm_groups,
                                 state_channel = state_channel,
                                 activation = activation,
-                                scan_mode = scan_mode, flip_scan = flip_scan)
+                                scan_mode = scan_mode, flip_scan = flip_scan,
+                                time_injection = time_injection)
         ### use patch expansion block for up sampling
         ## fully connected layer
         dense_channels = [in_channel, ] + dense_channels 
@@ -339,6 +345,8 @@ class VMambaDecoder(nn.Module):
                                                 norm = None)
         self.final_path = final_channels + [self.image_channel]
         self.return_feature_list = return_feature_list
+        if time_channel > 0:
+            logger.info(f'Using time-step injection method: {time_injection}')
     def __str__(self):
         _str = ''
         if self.vector_embedding:

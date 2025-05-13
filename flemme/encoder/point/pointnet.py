@@ -22,6 +22,7 @@ class PointEncoder(nn.Module):
                  z_count, vector_embedding, 
                  last_activation,
                  channel_attention,
+                 time_injection,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -53,15 +54,18 @@ class PointEncoder(nn.Module):
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
                                                 time_channel = self.time_channel,
                                                 activation = self.activation, dropout=self.dropout, 
-                                                norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 1)]
+                                                norm = normalization, num_norm_groups=num_norm_groups,
+                                                time_injection=time_injection) for i in range(len(dense_channels) - 1)]
         else:
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
                                                 time_channel = self.time_channel,
                                                 activation = self.activation, dropout=self.dropout, 
-                                                norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 2)]
+                                                norm = normalization, num_norm_groups=num_norm_groups,
+                                                time_injection=time_injection) for i in range(len(dense_channels) - 2)]
             # the last layer is a linear layer, without batch normalization
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], 
                                         time_channel = self.time_channel,
+                                        time_injection = time_injection,
                                         activation = None, norm = None), ]
         self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
         self.out_channel = dense_channels[-1]
@@ -78,6 +82,8 @@ class PointEncoder(nn.Module):
             ca_sequence = [get_ca(dim = 1, channel = self.lf_path[i+1], channel_dim = -1, **channel_attention) 
                            for i in range(len(self.lf_path) - 1)]
             self.ca = nn.ModuleList(ca_sequence)
+        if time_channel > 0:
+            logger.info(f'Using time-step injection method: {time_injection}')
     def forward(self, x, t = None):
         if self.lf is None:
             raise NotImplementedError
@@ -141,7 +147,8 @@ class PointNetEncoder(PointEncoder):
                  activation = 'lrelu', dropout = 0., 
                  z_count = 1, vector_embedding = True, 
                  last_activation = True, 
-                 channel_attention = None, **kwargs):
+                 channel_attention = None, 
+                 time_injection = 'gate_bias', **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
                 time_channel = time_channel,
@@ -154,7 +161,8 @@ class PointNetEncoder(PointEncoder):
                 activation = activation, dropout = dropout, 
                 z_count = z_count, vector_embedding = vector_embedding, 
                 last_activation = last_activation,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection=time_injection)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 
@@ -163,7 +171,8 @@ class PointNetEncoder(PointEncoder):
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
-                                        dropout = dropout)
+                                        dropout = dropout,
+                                        time_injection = time_injection)
         # compute point features
         ## local graph feature
         if self.num_neighbors_k > 0:
@@ -196,7 +205,8 @@ class PointNetDecoder(nn.Module):
                 num_blocks = 2,
                 final_channels = [512, 512],
                 folding_hidden_channels = [512, 512],
-                vector_embedding = True, **kwargs):
+                vector_embedding = True, 
+                time_injection = 'gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -211,7 +221,8 @@ class PointNetDecoder(nn.Module):
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
                                         time_channel = self.time_channel,
                                         norm = normalization, num_norm_groups=num_norm_groups, 
-                                        activation = activation, dropout=dropout) for i in range(len(dense_channels) - 1)]
+                                        activation = activation, dropout=dropout,
+                                        time_injection=time_injection) for i in range(len(dense_channels) - 1)]
         self.dense = SequentialT(*dense_sequence) 
         self.dense_path = dense_channels
         if self.folding_times > 0:
@@ -287,7 +298,8 @@ class PointNetDecoder(nn.Module):
                                     n = num_blocks,
                                     time_channel = self.time_channel,
                                     norm = normalization, num_norm_groups=num_norm_groups, 
-                                    activation = activation, dropout=dropout) for fc in folding_channels]
+                                    activation = activation, dropout=dropout,
+                                    time_injection=time_injection) for fc in folding_channels]
             self.fold = SequentialT(*folding_sequence)
         else:
             final_out_channel = point_dim * point_num if self.vector_embedding else self.point_dim
@@ -299,7 +311,10 @@ class PointNetDecoder(nn.Module):
                                             time_channel = self.time_channel,
                                             norm = normalization, num_norm_groups=num_norm_groups, 
                                             activation = activation, dropout=dropout,
-                                            final_activation = False)
+                                            final_activation = False,
+                                            time_injection=time_injection)
+        if time_channel > 0:
+            logger.info(f'Using time-step injection method: {time_injection}')
 
     def __str__(self):
         _str = ''

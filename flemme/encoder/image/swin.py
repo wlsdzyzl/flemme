@@ -26,6 +26,7 @@ class SwinEncoder(nn.Module):
                  return_feature_list = False,
                  z_count = 1, 
                  channel_attention = None,
+                 time_injection = 'gate_bias',
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -65,7 +66,8 @@ class SwinEncoder(nn.Module):
                                 dropout = dropout,
                                 atten_dropout = atten_dropout,
                                 norm = normalization, num_norm_groups = num_norm_groups,
-                                activation = activation)
+                                activation = activation,
+                                time_injection = time_injection,)
         ### construct patch
         self.patch_emb = PatchConstructionBlock(dim = self.dim, 
                                                 patch_size = self.patch_size,
@@ -147,6 +149,8 @@ class SwinEncoder(nn.Module):
         ## set out_channel
         self.out_channel = dense_channels[-1]
         self.return_feature_list = return_feature_list
+        if time_channel > 0:
+            logger.info(f'Using time-step injection method: {time_injection}')
     def forward(self, x, t = None):
         x = self.patch_emb(x)
         res = []
@@ -209,7 +213,8 @@ class SwinDecoder(nn.Module):
                  normalization = 'group', num_norm_groups = 8, 
                  num_blocks = 2, activation = 'silu', 
                  return_feature_list = False, 
-                 channel_attention = None, **kwargs):
+                 channel_attention = None, 
+                 time_injection = 'gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -241,6 +246,7 @@ class SwinDecoder(nn.Module):
         self.BuildingBlock = get_building_block(building_block, 
                                 window_size = self.window_size, 
                                 time_channel = time_channel,
+                                time_injection = time_injection,
                                 mlp_hidden_ratio = mlp_hidden_ratio,
                                 qkv_bias = qkv_bias,
                                 qk_scale = qk_scale,
@@ -323,6 +329,8 @@ class SwinDecoder(nn.Module):
                                                 norm = None)
         self.final_path = final_channels + [self.image_channel]
         self.return_feature_list = return_feature_list
+        if time_channel > 0:
+            logger.info(f'Using time-step injection method: {time_injection}')
     def __str__(self):
         _str = ''
         if self.vector_embedding:

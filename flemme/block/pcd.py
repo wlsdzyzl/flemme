@@ -17,7 +17,7 @@ if module_config['transformer']:
 
         def __init__(self, in_channel, num_heads = 3, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
-            dropout = None, skip_connection = False):
+            dropout = None, skip_connection = True):
             """
             * `in_channel` is the number of channel in the input
             * `num_heads` is the number of heads in multi-head attention
@@ -87,7 +87,8 @@ if module_config['transformer']:
             dropout = None, residual_attention = False, 
             skip_connection = True, attention = 'SA', 
             activation = 'relu', norm='batch', num_norm_groups = -1, 
-            post_normalization = False, **kwargs):
+            post_normalization = False, 
+            time_injection = 'gate_bias', **kwargs):
             
             super().__init__(_channel_dim = -1)
             self.in_channel = in_channel
@@ -111,8 +112,8 @@ if module_config['transformer']:
             self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
 
             if self.time_channel > 0:
-                self.hyper_bias = nn.Linear(self.time_channel, out_channel, bias=False)
-                self.hyper_gate = nn.Linear(self.time_channel, out_channel)
+                self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
+                
         def forward(self, x, t = None):
             res = self.atten(x)
             if not self.post_normalization:
@@ -127,9 +128,7 @@ if module_config['transformer']:
             if t is not None:
                 assert self.time_channel == t.shape[-1], \
                     f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-                gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=-1)
-                bias = expand_as(self.hyper_bias(t), x, channel_dim = -1)
-                x = x * gate + bias
+                x = self.time(x, t)
             return x
         @staticmethod
         def is_sequence_modeling():
@@ -233,6 +232,7 @@ class FoldingLayer(MultiLayerPerceptionBlock):
                 activation = 'relu', 
                 dropout=None, 
                 order="ln", 
+                time_injection = 'gate_bias',
                 **kwargs):
                 
         super().__init__(in_channel=in_channel,
@@ -240,6 +240,7 @@ class FoldingLayer(MultiLayerPerceptionBlock):
                             n = n,
                             hidden_channels=hidden_channels,
                             time_channel=time_channel,
+                            time_injection=time_injection,
                             norm=norm,
                             num_norm_groups=num_norm_groups,
                             activation=activation,
@@ -464,6 +465,7 @@ class SampledFeatureCatBlock(nn.Module):
                 num_blocks = 2,
                 hidden_channels = None,
                 time_channel = 0, 
+                time_injection = 'gate_bias',
                 norm = None, 
                 num_norm_groups = 0, 
                 activation = 'relu', 
@@ -476,6 +478,7 @@ class SampledFeatureCatBlock(nn.Module):
                             n = num_blocks,
                             hidden_channels=hidden_channels,
                             time_channel=time_channel,
+                            time_injection=time_injection,
                             norm=norm,
                             num_norm_groups=num_norm_groups,
                             activation=activation,

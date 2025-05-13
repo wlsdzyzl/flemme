@@ -50,7 +50,7 @@ def main():
         if is_supervised:
             logger.info('Supervising model, we will use label as target.')
         elif is_conditional:
-            logger.info('Conditional model, we will using label as condition.')
+            logger.info('Conditional model, label may be used as condition.')
         model_path = test_config.get('model_path', None)
         assert model_path is not None, "Model path is not specified."
 

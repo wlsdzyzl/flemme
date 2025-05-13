@@ -18,7 +18,9 @@ def create_sampler(model, sampler_config):
 class NormalSampler:
     def __init__(self, model, rand_seed = None,  
                  num_sample_steps = -1,
-                 clipped = None, clip_range = None, **kwargs):
+                 clipped = None, clip_range = None, 
+                 batch_size = 16, 
+                 **kwargs):
         if len(kwargs) > 0:
             logger.debug('Redundant parameters: {}'.format(kwargs))
         self.model = model
@@ -31,6 +33,7 @@ class NormalSampler:
         self.clipped = clipped
         self.clip_range = clip_range
         self.num_sample_steps = num_sample_steps
+        self.batch_size = batch_size
         if isinstance(model, DDPM):
             if self.num_sample_steps <= 0:
                 self.num_sample_steps = model.num_steps
@@ -38,15 +41,25 @@ class NormalSampler:
                 "Number of sample steps cannot be greater than num_steps."
         
     def sample(self, z, c = None):
-        if isinstance(self.model, DDIM):
-            return self.model.sample(z, c = c, clipped=self.clipped,
-                                clip_range=self.clip_range)
-        elif isinstance(self.model, DDPM):
-            return self.model.sample(z, end_step=self.num_sample_steps - 1, c = c,
-                                        clipped=self.clipped, clip_range=self.clip_range)
-
+        z_batch = torch.split(z, self.batch_size, dim = 0)
+        res = []
+        for zb in z_batch:
+            if isinstance(self.model, DDIM):
+                y = self.model.sample(zb, c = c, clipped=self.clipped,
+                                    clip_range=self.clip_range)
+            elif isinstance(self.model, DDPM):
+                y = self.model.sample(zb, end_step=self.num_sample_steps - 1, c = c,
+                                            clipped=self.clipped, clip_range=self.clip_range)
+            else:
+                y = self.model.decode(zb, c)
+        
+            res.append(y)
         ### AE, VAE and so on.
-        return self.model.decode(z, c)
+        if type(res[0]) == tuple:
+            res = tuple(torch.cat([res[j][i] for j in range(len(res))], dim = 0) for i in range(len(res[0])))
+        else:
+            res = torch.cat(res, dim = 0)
+        return res
     
     ## interpolation, condition should be the same for inter data
     def interpolate(self, corner_latents = None, corner_num = 2, inter_num = 8, cond = None):

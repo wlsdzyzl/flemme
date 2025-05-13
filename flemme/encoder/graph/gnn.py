@@ -20,7 +20,8 @@ class GraphEncoder(nn.Module):
                  dense_channels = [],
                  activation = 'lrelu', dropout = 0.,
                  normalization = 'group', num_norm_groups = 8,  
-                 z_count = 1, nodewise = False, **kwargs):
+                 z_count = 1, nodewise = False, 
+                 time_injection = 'gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
@@ -51,6 +52,7 @@ class GraphEncoder(nn.Module):
                 dense_channels[0] += message_passing_channels[-1]
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
                                                 time_channel = self.time_channel,
+                                                time_injection = time_injection,
                                                 activation = self.activation, dropout=self.dropout, 
                                                 norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 2)]
             # the last layer is a linear layer, without batch normalization

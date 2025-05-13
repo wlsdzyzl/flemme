@@ -1,0 +1,69 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: test
+determinstic: True
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: PointMamba2
+    in_channel: 3
+    out_channel: 46
+    point_num: 4096
+    building_block: pmamba
+    num_neighbors_k: 32
+    num_fps_points: [2048, 1024, 512, 256, 128]
+    fps_feature_channels: [64, 64, 128, 256, 512]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
+    fp_channels: [512, 512, 256, 256, 128]
+    dense_channels: [1024]
+    activation: lrelu
+    normalization: group
+    long_range_modeling: True
+    scan_strategies: [x_order, y_order, z_order, center_dist]
+    sorted_query: True
+    flip_scan: True
+    pos_embedding: True
+    knn_query: feature
+    # final_concat: True
+    # channel_attention: eca
+  segmentation_losses:
+    - name: Dice
+      normalization: softmax
+    - name: CE
+loader:
+  dataset: 
+    name: PcdSegDataset
+    data_dir: pcd
+    label_dir: coarse_label
+    data_suffix: .ply
+    label_suffix: .seg
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold5
+  batch_size: 16
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 4096
+    - name: ToTensor
+      dtype: float
+  label_transforms:
+    - name: FixedPoints
+      num: 4096
+    - name: ToOneHot
+      num_classes: 47
+      ignore_background: true
+    - name: ToTensor
+      dtype: float
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba2/PointMamba2_KNN_SEG/ckp_best_loss.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/MedShapeNet/PointMamba2_KNN_SEG
+save_colorized: true
+save_target: true
+evaluation_metrics:
+  seg:
+    - name: mIoU
+    - name: Dice
+    - name: SoftDice

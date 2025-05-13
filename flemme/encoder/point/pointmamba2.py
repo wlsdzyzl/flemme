@@ -45,6 +45,7 @@ class PointMamba2Encoder(Point2Encoder):
             final_concat = False,
             pos_embedding = False,
             channel_attention = None,
+            time_injection = 'gate_bias',
             **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -70,7 +71,8 @@ class PointMamba2Encoder(Point2Encoder):
                 pos_embedding=pos_embedding,
                 return_xyz = return_xyz,
                 last_activation = last_activation,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection = time_injection)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
@@ -89,7 +91,8 @@ class PointMamba2Encoder(Point2Encoder):
                                         dt_max=dt_max, dt_init_floor=dt_init_floor, 
                                         dt_rank = dt_rank, dt_scale = dt_scale,
                                         skip_connection = skip_connection, 
-                                        post_normalization = True)
+                                        post_normalization = True,
+                                        time_injection = time_injection)
         # print(self.msg_path)
         msg_sequence = [MSGBlock(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
@@ -128,7 +131,8 @@ class PointMamba2Encoder(Point2Encoder):
                                     dt_max=dt_max, dt_init_floor=dt_init_floor, 
                                     dt_rank = dt_rank, dt_scale = dt_scale,
                                     skip_connection = skip_connection, 
-                                    post_normalization = True)
+                                    post_normalization = True,
+                                    time_injection = time_injection)
                 lrm_sequence = [MultipleBuildingBlocks(in_channel = fps_feature_channels[fid], 
                     out_channels = fps_feature_channels[fid],
                     n = num_blocks,
@@ -172,6 +176,7 @@ class PointMamba2Decoder(Point2Decoder):
                 dt_rank = None, dt_scale = 1.0,
                 skip_connection = True,
                 channel_attention = None,
+                time_injection = 'gate_bias',
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
@@ -184,7 +189,8 @@ class PointMamba2Decoder(Point2Decoder):
                 num_norm_groups = num_norm_groups, 
                 activation = activation, 
                 dropout = dropout,
-                channel_attention = channel_attention)
+                channel_attention = channel_attention,
+                time_injection = time_injection)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
@@ -202,7 +208,8 @@ class PointMamba2Decoder(Point2Decoder):
                                         dt_min=dt_min, A_init_range=A_init_range,
                                         dt_max=dt_max, dt_init_floor=dt_init_floor, 
                                         dt_rank = dt_rank, dt_scale = dt_scale,
-                                        skip_connection = skip_connection)
+                                        skip_connection = skip_connection,
+                                        time_injection = time_injection)
         fp_sequence = [  FPBlock( in_channel_known = self.known_feature_channels[fid],
                                 in_channel_unknown = self.unknow_feature_channels[fid],
                                 out_channel = self.fp_path[fid + 1],

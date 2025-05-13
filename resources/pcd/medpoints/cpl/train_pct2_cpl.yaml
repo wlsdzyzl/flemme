@@ -1,0 +1,128 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: train
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: AE
+  # encoder config
+  encoder:
+    name: PointTrans2
+    in_channel: 3
+    out_channel: 3
+    point_num: 2048
+    building_block: pct_oa
+    # num_neighbors_k: 20
+    num_neighbors_k: 32
+    num_fps_points: [2048, 1024, 512, 256, 128]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
+    fps_feature_channels: [64, 64, 128, 256, 512]
+    decoder_dense_channels: [512, 512, 256, 256, 128]
+    dense_channels: [1024]
+    activation: lrelu
+    normalization: group
+    vector_embedding: True
+    # pos_embedding: True
+    # long_range_modeling: True
+  decoder:
+    name: PointNet
+    folding_times: 2
+  is_supervised: True
+  condition_embedding:
+    combine_condition: add
+    merge_timestep_and_condition: true
+    encoder:
+      name: OneHot
+      type: categories
+      out_channel: 128
+      num_classes: 46
+      apply_onehot: False
+  reconstruction_losses: 
+    - name: DCD
+      alpha: 40
+      n_lambda: 0.5
+    - name: CD
+      weight: 0.001
+loader:
+  dataset: 
+    name: PcdReconWithClassLabelDataset
+    data_dir: partial
+    target_dir: target
+    data_suffix: .ply
+    target_suffix: .ply
+    cls_label: MedPointS
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold2
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold3
+  batch_size: 48
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+  target_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+  label_transforms:
+    - name: ToOneHot
+      num_classes: 47
+      ignore_background: true
+    - name: ToTensor
+      dtype: float
+val_loader:
+  dataset: 
+    name: PcdReconWithClassLabelDataset
+    data_dir: partial
+    target_dir: target
+    data_suffix: .ply
+    target_suffix: .ply
+    cls_label: MedPointS
+  data_path_list: 
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold4
+  batch_size: 24
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+  target_transforms:
+    - name: Normalize
+    - name: FixedPoints
+      num: 2048
+    - name: ToTensor
+      dtype: float
+  label_transforms:
+    - name: ToOneHot
+      num_classes: 47
+      ignore_background: true
+    - name: ToTensor
+      dtype: float
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointTrans2/PointTrans2_CPL
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0001
+  weight_decay: 0.00000001
+evaluation_metrics:
+  recon:
+    - name: CD
+score_metric:
+  name: CD
+  higher_is_better: false
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 200
+write_after_iters: 20
+save_after_epochs: 2

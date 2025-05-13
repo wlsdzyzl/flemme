@@ -32,6 +32,7 @@ class CNNEncoder(nn.Module):
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  abs_pos_embedding = False, last_activation = True, return_feature_list = False,
                  channel_attention = None,
+                 time_injection = 'gate_bias', 
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -60,7 +61,8 @@ class CNNEncoder(nn.Module):
                                         order = cn_order, dropout = dropout,  
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
-                                        atten_dropout = atten_dropout)
+                                        atten_dropout = atten_dropout,
+                                        time_injection = time_injection)
         ## down-sampling and convolution layers
         self.image_proj = DownSamplingBlock(dim=self.dim, scale_factor=patch_size, in_channel=image_channel, 
                                                out_channel=self.image_patch_channel, func=dsample_function)
@@ -134,6 +136,8 @@ class CNNEncoder(nn.Module):
         ## set out_channel
         self.out_channel = dense_channels[-1]
         self.return_feature_list = return_feature_list
+        if time_channel > 0:
+            logger.info(f'Using time-step injection method: {time_injection}')
     def __str__(self):
         _str = ''
         if len(self.down_path) > 1:
@@ -207,7 +211,8 @@ class CNNDecoder(nn.Module):
                  num_blocks = 2, activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  return_feature_list = False, 
-                 channel_attention = None, **kwargs):
+                 channel_attention = None, 
+                 time_injection = 'gate_bias', **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -231,7 +236,8 @@ class CNNDecoder(nn.Module):
                                         order = cn_order, dropout = dropout,
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
-                                        atten_dropout = atten_dropout)
+                                        atten_dropout = atten_dropout,
+                                        time_injection = time_injection)
         ## fully connected layer
         dense_channels = [in_channel, ] + dense_channels 
         if not sum([im_size % (patch_size * math.prod(shape_scaling)) for im_size in self.image_size ]) == 0:
@@ -291,6 +297,8 @@ class CNNDecoder(nn.Module):
                                                        out_channel=self.image_channel, func=usample_function)
         self.final_path = final_channels + [self.image_channel]
         self.return_feature_list = return_feature_list
+        if time_channel > 0:
+            logger.info(f'Using time-step injection method: {time_injection}')
     def __str__(self):
         _str = ''
         if self.vector_embedding:

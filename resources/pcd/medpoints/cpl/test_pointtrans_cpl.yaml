@@ -7,12 +7,11 @@ model:
   name: AE
   # encoder config
   encoder:
-    name: PointNet
+    name: PointTrans
     in_channel: 3
     out_channel: 3
     point_num: 2048
-    building_block: dense
-    # num_neighbors_k: 20
+    building_block: pct_oa
     local_feature_channels: [64, 64, 128, 256, 512]
     dense_channels: [1024]
     decoder_dense_channels: [512, 512, 256, 256, 128]
@@ -34,6 +33,8 @@ model:
     - name: DCD
       alpha: 40
       n_lambda: 0.5
+    - name: CD
+      weight: 0.001
 loader:
   dataset: 
     name: PcdReconWithClassLabelDataset
@@ -46,7 +47,7 @@ loader:
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold5
   batch_size: 64
   num_workers: 8
-  shuffle: false
+  shuffle: true
   data_transforms:
     - name: Normalize
     - name: FixedPoints
@@ -66,10 +67,8 @@ loader:
     - name: ToTensor
       dtype: float
 
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointNet/PointNet_CPL/ckp_best_loss.pth
-recon_dir: /media/wlsdzyzl/DATA/flemme-results/cpl/medshapenet/PointNet/
-save_input: true
-save_target: true
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointTrans/PointTrans_CPL/ckp_best_loss.pth
+recon_dir: /media/wlsdzyzl/DATA/flemme-results/cpl/medshapenet/PointTrans/
 evaluation_metrics:
   recon:
     - name: CD
