@@ -1,7 +1,8 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import get_building_block, LocalGraphLayer, MultipleBuildingBlocks
+from flemme.block import get_building_block, \
+    LocalGraphLayer, MultipleBuildingBlocks
 from .pointnet import PointEncoder
 from flemme.logger import get_logger
 logger = get_logger("encoder.point.pointtrans")
@@ -12,6 +13,7 @@ class PointTransEncoder(PointEncoder):
                  time_channel = 0,
                  num_neighbors_k=0, 
                  local_feature_channels = [64, 64, 128, 256], 
+                 voxel_resolutions = [],
                  num_blocks = 2,
                  dense_channels = [256, 256],
                  building_block = 'pct_sa', 
@@ -23,6 +25,9 @@ class PointTransEncoder(PointEncoder):
                  last_activation = True,
                  channel_attention = None,
                  time_injection = 'gate_bias',
+                 voxel_conv_kernel_size = 3,
+                 with_se = False,
+                 coordinate_normalize = True,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -37,7 +42,11 @@ class PointTransEncoder(PointEncoder):
                 z_count = z_count, vector_embedding = vector_embedding,
                 last_activation = last_activation,
                 channel_attention = channel_attention,
-                time_injection=time_injection)
+                time_injection=time_injection,
+                voxel_resolutions=voxel_resolutions,
+                voxel_conv_kernel_size = voxel_conv_kernel_size,
+                with_se = with_se,
+                coordinate_normalize = coordinate_normalize)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 
@@ -60,6 +69,7 @@ class PointTransEncoder(PointEncoder):
                                             out_channel = self.lf_path[i+1], 
                                             BuildingBlock = self.BuildingBlock,                                          
                                             num_blocks = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
+
         else:    
             trans_sequence = [MultipleBuildingBlocks(in_channel=self.lf_path[i], 
                                             out_channel=self.lf_path[i+1], 

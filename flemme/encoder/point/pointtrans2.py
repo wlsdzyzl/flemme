@@ -1,8 +1,8 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
-from flemme.block import get_building_block, FeaturePropogatingBlock as FPBlock,\
-    SamplingAndGroupingBlock as MSGBlock, MultipleBuildingBlocks
+from flemme.block import get_building_block, FeaturePropogatingLayer as FPLayer,\
+    SamplingAndGroupingLayer as MSGLayer, MultipleBuildingBlocks
 from .pointnet2 import Point2Encoder, Point2Decoder
 from flemme.logger import get_logger
 logger = get_logger("encoder.point.pointtrans2")
@@ -37,6 +37,10 @@ class PointTrans2Encoder(Point2Encoder):
                  pos_embedding = False,
                  channel_attention = None,
                  time_injection = 'gate_bias',
+                 voxel_resolutions = [],
+                 voxel_conv_kernel_size = 3,
+                 with_se = False,
+                 coordinate_normalize = True,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -63,7 +67,12 @@ class PointTrans2Encoder(Point2Encoder):
                 final_concat = final_concat,
                 pos_embedding= pos_embedding,
                 channel_attention = channel_attention,
-                time_injection=time_injection)
+                time_injection=time_injection,
+                voxel_resolutions=voxel_resolutions,
+                voxel_conv_kernel_size = voxel_conv_kernel_size,
+                with_se = with_se,
+                coordinate_normalize = coordinate_normalize)
+
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
@@ -79,7 +88,7 @@ class PointTrans2Encoder(Point2Encoder):
                                         skip_connection = skip_connection,
                                         post_normalization = True,
                                         time_injection = time_injection)
-        msg_sequence = [MSGBlock(in_channel = self.msg_path[fid], 
+        msg_sequence = [MSGLayer(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
             num_fps_points = self.num_fps_points[fid],
             k = self.num_neighbors_k[fid],
@@ -142,7 +151,7 @@ class PointTrans2Decoder(Point2Decoder):
                                         residual_attention = residual_attention,
                                         skip_connection = skip_connection,
                                         time_injection = time_injection)
-        fp_sequence = [  FPBlock( in_channel_known = self.known_feature_channels[fid],
+        fp_sequence = [  FPLayer( in_channel_known = self.known_feature_channels[fid],
                                 in_channel_unknown = self.unknow_feature_channels[fid],
                                 out_channel = self.fp_path[fid + 1],
                                 num_blocks = self.num_blocks,

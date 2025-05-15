@@ -2,6 +2,8 @@
 #include "group_points.h"
 #include "interpolate.h"
 #include "sampling.h"
+#include "voxelize.h"
+#include "trilinear_devox.h"
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("gather_points", &gather_points);
@@ -16,4 +18,13 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("batch_ball_query", &batch_ball_query);
   m.def("group_points", &group_points);
   m.def("group_points_grad", &group_points_grad);
+
+  m.def("trilinear_devoxelize_forward", &trilinear_devoxelize_forward,
+        "Trilinear Devoxelization forward (CUDA)");
+  m.def("trilinear_devoxelize_backward", &trilinear_devoxelize_backward,
+        "Trilinear Devoxelization backward (CUDA)");
+  m.def("avg_voxelize_forward", &avg_voxelize_forward,
+        "Voxelization forward with average pooling (CUDA)");
+  m.def("avg_voxelize_backward", &avg_voxelize_backward,
+        "Voxelization backward (CUDA)");
 }

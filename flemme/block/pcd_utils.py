@@ -362,7 +362,6 @@ class QueryAndGroup(nn.Module):
             if self.sorted_query:
                 _,  sorted_id = torch.sort(dist, dim = -1)
                 idx = torch.gather(idx, dim=-1,index = sorted_id)
-
         xyz_embed_trans = xyz_embed.transpose(1, 2).contiguous()
         grouped_xyz_emb = grouping_operation(xyz_embed_trans, idx)  # (B, 3, npoint, nsample)
         grouped_xyz_emb -= new_xyz_embed.transpose(1, 2).contiguous().unsqueeze(-1)
@@ -426,3 +425,75 @@ class GroupAll(nn.Module):
             new_features = grouped_xyz
 
         return new_features
+
+
+class TrilinearDevoxelization(Function):
+    @staticmethod
+    def forward(ctx, features, coords, resolution, is_training=True):
+        """
+        :param ctx:
+        :param coords: the coordinates of points, FloatTensor[B, 3, N]
+        :param features: FloatTensor[B, C, R, R, R]
+        :param resolution: int, the voxel resolution
+        :param is_training: bool, training mode
+        :return:
+            FloatTensor[B, C, N]
+        """
+        B, C = features.shape[:2]
+        features = features.contiguous().view(B, C, -1)
+        coords = coords.contiguous()
+        outs, inds, wgts = pcd_ops.trilinear_devoxelize_forward(resolution, is_training, coords, features)
+        if is_training:
+            ctx.save_for_backward(inds, wgts)
+            ctx.r = resolution
+        return outs
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        """
+        :param ctx: 
+        :param grad_output: gradient of outputs, FloatTensor[B, C, N]
+        :return:
+            gradient of inputs, FloatTensor[B, C, R, R, R]
+        """
+        inds, wgts = ctx.saved_tensors
+        grad_inputs = pcd_ops.trilinear_devoxelize_backward(grad_output.contiguous(), inds, wgts, ctx.r)
+        return grad_inputs.view(grad_output.size(0), grad_output.size(1), ctx.r, ctx.r, ctx.r), None, None, None
+
+
+trilinear_devoxelize = TrilinearDevoxelization.apply
+
+
+class AvgVoxelization(Function):
+    @staticmethod
+    def forward(ctx, features, coords, resolution):
+        """
+        :param ctx:
+        :param features: Features of the point cloud, FloatTensor[B, C, N]
+        :param coords: Voxelized Coordinates of each point, IntTensor[B, 3, N]
+        :param resolution: Voxel resolution
+        :return:
+            Voxelized Features, FloatTensor[B, C, R, R, R]
+        """
+        features = features.contiguous()
+        coords = coords.int().contiguous()
+        b, c, _ = features.shape
+        out, indices, counts = pcd_ops.avg_voxelize_forward(features, coords, resolution)
+        ctx.save_for_backward(indices, counts)
+        return out.view(b, c, resolution, resolution, resolution)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        """
+        :param ctx:
+        :param grad_output: gradient of output, FloatTensor[B, C, R, R, R]
+        :return:
+            gradient of inputs, FloatTensor[B, C, N]
+        """
+        b, c = grad_output.shape[:2]
+        indices, counts = ctx.saved_tensors
+        grad_features = pcd_ops.avg_voxelize_backward(grad_output.contiguous().view(b, c, -1), indices, counts)
+        return grad_features, None, None
+
+
+avg_voxelize = AvgVoxelization.apply

@@ -319,6 +319,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     assert len(fp_channels) == len(fps_feature_channels), \
                         'Point2Encoder should have a same number of feature propagating layers and sampling and grouping layers.'
                     if return_encoder:
+                        # print(encoder_config)
                         encoder = Encoder(point_dim=in_channel + eai_channel, 
                                                     projection_channel = projection_channel,
                                                     time_channel = time_channel,
@@ -327,6 +328,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                     dense_channels=dense_channels, 
                                                     building_block=building_block,
                                                     **encoder_config)
+                        
                         decoder_in_channels = encoder.out_channels
                     ## Different encoders of point clouds could use the same decoder.
                     if return_decoder:

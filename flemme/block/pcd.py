@@ -268,7 +268,7 @@ class FoldingLayer(MultiLayerPerceptionBlock):
 ### furthest point sampling
 ### group features based on some centers with radius.
 ### point cloud "down-sampling"
-class SamplingAndGroupingBlock(nn.Module):
+class SamplingAndGroupingLayer(nn.Module):
     # in_channel: in_channel of input features
     # out_channel: out_channel of output featuress
     def __init__(self, in_channel, out_channels, 
@@ -363,19 +363,6 @@ class SamplingAndGroupingBlock(nn.Module):
                 center_features_trans = gather_features(features_trans, 
                     index = sample_ids, channel_dim = 1,
                     gather_dim = -1)
-            ### PointNet ++ implementation
-            # channel_transfer(gather_features(
-            #         channel_recover(xyz), sample_ids
-            #     ))
-            # center_embed = channel_transfer(gather_features(
-            #         channel_recover(xyz_embed), sample_ids
-            #     ))
-            # if features_trans is not None:
-            #     center_features_trans = gather_features(
-            #             features_trans, sample_ids
-            #         )
-            # print(center_embed.shape, xyz_embed.shape, centers.shape)
-        ## None center indicates we will group all the points.
         
         center_feature_list = []
         for gid in range(len(self.groupers)):
@@ -389,8 +376,6 @@ class SamplingAndGroupingBlock(nn.Module):
             center_features = self.bb[gid](grouped_features, t)  
             # (B, M, out_channel)
             center_features = center_features.max(dim=2)[0]
-
-            
             center_feature_list.append(center_features)
         
         return centers, center_embed, torch.cat(center_feature_list, dim = -1), sample_ids
@@ -398,7 +383,7 @@ class SamplingAndGroupingBlock(nn.Module):
 
 ### Propagates the features of one set to another
 ### point cloud "up-sampling"
-class FeaturePropogatingBlock(nn.Module):
+class FeaturePropogatingLayer(nn.Module):
     r"""Propigates the features of one set to another
 
     """
@@ -459,7 +444,7 @@ class FeaturePropogatingBlock(nn.Module):
         return new_features
 
 
-class SampledFeatureCatBlock(nn.Module):
+class SampledFeatureCatLayer(nn.Module):
     def __init__(self, in_channels,
                 out_channel, 
                 num_blocks = 2,
@@ -507,3 +492,71 @@ class SampledFeatureCatBlock(nn.Module):
         gathered_feature = torch.concat(gathered_feature_list[::-1], dim = -1)
         return self.mlp(gathered_feature, t = t)
         
+
+### point-voxel
+class Voxelization(nn.Module):
+    def __init__(self, resolution, normalize=True, eps=1e-8):
+        super().__init__()
+        self.r = int(resolution)
+        self.normalize = normalize
+        self.eps = eps
+
+    def forward(self, features, coords):
+        coords = coords.detach()
+        norm_coords = coords - coords.mean(2, keepdim=True)
+        if self.normalize:
+            norm_coords = norm_coords / (norm_coords.norm(dim=1, keepdim=True).max(dim=2, keepdim=True).values * 2.0 + self.eps) + 0.5
+        else:
+            norm_coords = (norm_coords + 1) / 2.0
+        norm_coords = torch.clamp(norm_coords * self.r, 0, self.r - 1)
+        vox_coords = torch.round(norm_coords).to(torch.int32)
+        return avg_voxelize(features, vox_coords, self.r), norm_coords
+
+class SE3d(nn.Module):
+    def __init__(self, channel, reduction=8):
+        super().__init__()
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(channel // reduction, channel, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, inputs):
+        return inputs * self.fc(inputs.mean(-1).mean(-1).mean(-1)).view(inputs.shape[0], inputs.shape[1], 1, 1, 1)
+
+class VoxelLayer(nn.Module):
+    def __init__(self,  
+                in_channel, 
+                out_channel, 
+                BuildingBlock,
+                num_blocks = 2,
+                hidden_channels = None, 
+                resolution = 16, 
+                with_se=False, 
+                coordinate_normalize=True, 
+                eps=1e-8):
+        super().__init__()
+        self.in_channel = in_channel
+        self.out_channel = out_channel
+        self.resolution = resolution
+        if resolution > 0:
+            self.voxelization = Voxelization(resolution, normalize=coordinate_normalize, eps=eps)
+            self.vbb = MultipleBuildingBlocks(BuildingBlock=BuildingBlock,
+                                                in_channel=in_channel, 
+                                                out_channel=out_channel, 
+                                                n=num_blocks,
+                                                hidden_channels=hidden_channels)
+            if with_se:
+                self.se3d = SE3d(out_channel)
+            else:
+                self.se3d = nn.Identity()
+
+    def forward(self, features, coords, t):
+        if self.resolution > 0:
+            feature_trans, coord_trans = channel_recover(features), channel_recover(coords)
+            voxel_features, voxel_coords = self.voxelization(feature_trans, coord_trans)
+            voxel_features = self.se3d(self.vbb(voxel_features, t))
+            voxel_features = trilinear_devoxelize(voxel_features, voxel_coords, self.resolution, self.training)
+            return channel_transfer(voxel_features)
+        return 0.0

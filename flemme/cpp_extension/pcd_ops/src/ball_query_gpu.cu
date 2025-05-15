@@ -32,12 +32,12 @@ __global__ void query_ball_point_kernel(int b, int n, int m, float radius,
       float d2 = (new_x - x) * (new_x - x) + (new_y - y) * (new_y - y) +
                  (new_z - z) * (new_z - z);
       if (d2 < radius2) {
-        // if (cnt == 0) {
-        //   for (int l = 0; l < nsample; ++l) {
-        //     idx[j * nsample + l] = k;
-        //     dist[j * nsample + l] = d2;
-        //   }
-        // }
+        if (cnt == 0) {
+          for (int l = 0; l < nsample; ++l) {
+            idx[j * nsample + l] = k;
+            dist[j * nsample + l] = d2;
+          }
+        }
         idx[j * nsample + cnt] = k;
         dist[j * nsample + cnt] = d2; 
         ++cnt;
@@ -78,12 +78,12 @@ __global__ void batch_query_ball_point_kernel(int b, int n, int m,
       float d2 = (new_x - x) * (new_x - x) + (new_y - y) * (new_y - y) +
                  (new_z - z) * (new_z - z);
       if (d2 < radius2) {
-        // if (cnt == 0) {
-        //   for (int l = 0; l < nsample; ++l) {
-        //     idx[j * nsample + l] = k;
-        //     dist[j * nsample + l] = d2;
-        //   }
-        // }
+        if (cnt == 0) {
+          for (int l = 0; l < nsample; ++l) {
+            idx[j * nsample + l] = k;
+            dist[j * nsample + l] = d2;
+          }
+        }
         idx[j * nsample + cnt] = k;
         dist[j * nsample + cnt] = d2; 
         ++cnt;

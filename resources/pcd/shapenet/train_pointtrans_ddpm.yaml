@@ -15,8 +15,9 @@ model:
       in_channel: 3
       point_num: 256
       building_block: pct_oa
-      num_neighbors_k: 20
+      # num_neighbors_k: 20
       local_feature_channels: [128, 256, 512, 1024]
+      voxel_resolutions: [32, 32, 16, 16]
       dense_channels: [1024]
       activation: lrelu
       normalization: layer
@@ -41,7 +42,7 @@ loader:
   data_transforms:
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/shapenet/chair/skdpm-start/
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/shapenet/chair/skdpm-pvtrans-new/
 resume: true
 ### parameter for optimizer
 optimizer:

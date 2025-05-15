@@ -4,7 +4,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, get_ca, \
-    FoldingLayer, LocalGraphLayer, MultipleBuildingBlocks, MultiLayerPerceptionBlock
+    FoldingLayer, LocalGraphLayer, MultipleBuildingBlocks, MultiLayerPerceptionBlock,\
+    VoxelLayer
 from flemme.logger import get_logger
 from .sphere3d import icosphere, uvsphere
 import copy
@@ -15,6 +16,8 @@ class PointEncoder(nn.Module):
                  time_channel,
                  num_neighbors_k, 
                  local_feature_channels,
+                 voxel_resolutions,
+                 voxel_conv_kernel_size,
                  num_blocks,
                  dense_channels,
                  activation, dropout,
@@ -23,6 +26,8 @@ class PointEncoder(nn.Module):
                  last_activation,
                  channel_attention,
                  time_injection,
+                 with_se,
+                 coordinate_normalize,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -41,6 +46,10 @@ class PointEncoder(nn.Module):
         self.projection_channel = projection_channel
         self.time_channel = time_channel
         self.num_blocks = num_blocks
+        self.voxel_resolutions = voxel_resolutions
+
+        assert len(self.voxel_resolutions) == 0 or len(self.voxel_resolutions) == len(local_feature_channels),\
+            "Voxel resolutions should have a same size with local feature channels."
         ## fully connected layers
         # z_count = 2 usually means we compute mean and variance.
         # compute embedding from global feature
@@ -84,22 +93,58 @@ class PointEncoder(nn.Module):
             self.ca = nn.ModuleList(ca_sequence)
         if time_channel > 0:
             logger.info(f'Using time-step injection method: {time_injection}')
+        # self.need_pos = len(self.voxel_resolutions) > 0
+
+        # point-voxel cnn
+        if len(self.voxel_resolutions) > 0:
+            logger.info('This model extracts voxel features.')
+            VBuildingBlock = get_building_block('conv',
+                                            dim = 3,
+                                            time_channel = self.time_channel, 
+                                            activation=activation, 
+                                            norm = 'batch', 
+                                            num_norm_groups = num_norm_groups, 
+                                            kernel_size = voxel_conv_kernel_size,
+                                            time_injection = time_injection)
+            vlf_sequence = [VoxelLayer(resolution = self.voxel_resolutions[i], 
+                                            in_channel = self.lf_path[i],
+                                            out_channel = self.lf_path[i+1], 
+                                            BuildingBlock = VBuildingBlock,
+                                            num_blocks = self.num_blocks,
+                                            with_se = with_se,
+                                            coordinate_normalize=coordinate_normalize,
+                                            ) for i in range(len(self.lf_path) - 2) ]
+            vlf_sequence.append(VoxelLayer(resolution = self.voxel_resolutions[-1], 
+                                            in_channel = sum(self.lf_path[1:-1]),
+                                            out_channel = self.lf_path[-1], 
+                                            BuildingBlock = VBuildingBlock,
+                                            num_blocks = self.num_blocks,
+                                            with_se = with_se,
+                                            coordinate_normalize=coordinate_normalize,
+                                            ))
+            self.vlf = nn.ModuleList(vlf_sequence)
     def forward(self, x, t = None):
         if self.lf is None:
             raise NotImplementedError
         B, N, _ = x.shape
         ## N * Np * d
         res = []
+        pos = x[...,:3]
         x = self.point_proj(x)
         for lid, lf in enumerate(self.lf[:-1]):
+            ## fuse voxel features and point features
+            vx = x
             x = lf(x, t)
+            if hasattr(self, 'vlf'):
+                x = x + self.vlf[lid](vx, pos, t)
             if hasattr(self, 'ca'):
                 self.ca[lid](x)
             res.append(x)
 
         x = torch.concat(res, dim=-1)
-        
-        pf = self.lf[-1](x)
+        pf = self.lf[-1](x, t)
+        if hasattr(self, 'vlf'):
+            pf = pf + self.vlf[-1](x, pos, t)
         if hasattr(self, 'ca'):
             pf = self.ca[-1](pf)
         ## max and average pooling to get global feature
@@ -139,7 +184,9 @@ class PointNetEncoder(PointEncoder):
                  projection_channel = 64,
                  time_channel = 0,
                  num_neighbors_k=0, 
+                 ### point-voxel cnn
                  local_feature_channels = [64, 64, 128, 256], 
+                 voxel_resolutions = [],
                  num_blocks = 2,
                  dense_channels = [256, 256],
                  building_block = 'dense', 
@@ -148,7 +195,11 @@ class PointNetEncoder(PointEncoder):
                  z_count = 1, vector_embedding = True, 
                  last_activation = True, 
                  channel_attention = None, 
-                 time_injection = 'gate_bias', **kwargs):
+                 time_injection = 'gate_bias', 
+                 voxel_conv_kernel_size = 3,
+                 with_se = False,
+                 coordinate_normalize = True,
+                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
                 time_channel = time_channel,
@@ -162,7 +213,11 @@ class PointNetEncoder(PointEncoder):
                 z_count = z_count, vector_embedding = vector_embedding, 
                 last_activation = last_activation,
                 channel_attention = channel_attention,
-                time_injection=time_injection)
+                time_injection=time_injection,
+                voxel_resolutions=voxel_resolutions,
+                voxel_conv_kernel_size = voxel_conv_kernel_size,
+                with_se = with_se,
+                coordinate_normalize = coordinate_normalize)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 
@@ -173,6 +228,7 @@ class PointNetEncoder(PointEncoder):
                                         num_norm_groups = num_norm_groups, 
                                         dropout = dropout,
                                         time_injection = time_injection)
+        
         # compute point features
         ## local graph feature
         if self.num_neighbors_k > 0:

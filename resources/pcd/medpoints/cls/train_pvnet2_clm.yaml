@@ -6,24 +6,22 @@ model:
   name: ClM
   # encoder config
   encoder:
-    name: PointMamba2
+    name: PointNet2
     in_channel: 3
     out_channel: 46
     point_num: 2048
-    building_block: pmamba
+    building_block: dense
+    # num_neighbors_k: 20
+    # local_feature_channels: [64, 64, 128, 256, 512]
     num_neighbors_k: 32
+    # knn_query: feature
     num_fps_points: [1024, 512, 256, 128, 64]
     fps_feature_channels: [64, 64, 128, 256, 512]
-    voxel_resolutions: [32, 32, 16, 8, 8]
+    voxel_resolutions: [32, 32, 16, 8, 0]
     neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
     dense_channels: [1024, 512, 256]
     activation: lrelu
     normalization: group
-    long_range_modeling: True
-    scan_strategies: [z_order, center_dist]
-    sorted_query: True
-    flip_scan: True
-    channel_attention: eca-ns
   classification_losses: 
     - name: CE
 loader:
@@ -35,7 +33,7 @@ loader:
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold2
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold3
-  batch_size: 2
+  batch_size: 1
   num_workers: 8
   shuffle: true
   data_transforms:
@@ -57,7 +55,7 @@ val_loader:
     cls_label: MedPointS
   data_path_list: 
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold4
-  batch_size: 2
+  batch_size: 32
   num_workers: 8
   shuffle: true
   data_transforms:
@@ -72,7 +70,7 @@ val_loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba2/PointMamba2_LG_CLS
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PVNet/PVNet_CLS
 ### parameter for optimizer
 optimizer:
   name: Adam
