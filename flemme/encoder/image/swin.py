@@ -27,6 +27,9 @@ class SwinEncoder(nn.Module):
                  z_count = 1, 
                  channel_attention = None,
                  time_injection = 'gate_bias',
+                 condition_channel = 0,
+                 condition_injection = 'gate_bias',
+                 condition_first = False,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -67,7 +70,10 @@ class SwinEncoder(nn.Module):
                                 atten_dropout = atten_dropout,
                                 norm = normalization, num_norm_groups = num_norm_groups,
                                 activation = activation,
-                                time_injection = time_injection,)
+                                time_injection = time_injection,
+                                condition_channel = condition_channel,
+                                condition_injection = condition_injection,
+                                condition_first = condition_first)
         ### construct patch
         self.patch_emb = PatchConstructionBlock(dim = self.dim, 
                                                 patch_size = self.patch_size,
@@ -149,22 +155,21 @@ class SwinEncoder(nn.Module):
         ## set out_channel
         self.out_channel = dense_channels[-1]
         self.return_feature_list = return_feature_list
-        if time_channel > 0:
-            logger.info(f'Using time-step injection method: {time_injection}')
-    def forward(self, x, t = None):
+        
+    def forward(self, x, t = None, c = None):
         x = self.patch_emb(x)
         res = []
         if self.absolute_pos_embed is not None:
             x = x + self.absolute_pos_embed
         for did, (d_trans, down) in enumerate(zip(self.d_trans, self.down)):
-            x = d_trans(x, t)
+            x = d_trans(x, t, c)
             if hasattr(self, 'dca'):
                 x = self.dca[did](x)
             res = res + [x,]
             x = down(x)
 
         for mid, m_trans in enumerate(self.middle):
-            x = m_trans(x, t)
+            x = m_trans(x, t, c)
             if hasattr(self, 'mca'):
                 x = self.mca[mid](x)
         ### The last dimension is feature channel
@@ -214,7 +219,11 @@ class SwinDecoder(nn.Module):
                  num_blocks = 2, activation = 'silu', 
                  return_feature_list = False, 
                  channel_attention = None, 
-                 time_injection = 'gate_bias', **kwargs):
+                 time_injection = 'gate_bias', 
+                 condition_channel = 0,
+                 condition_injection = 'gate_bias',
+                 condition_first = False,
+                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -247,13 +256,16 @@ class SwinDecoder(nn.Module):
                                 window_size = self.window_size, 
                                 time_channel = time_channel,
                                 time_injection = time_injection,
+                                condition_channel = condition_channel,
+                                condition_injection = condition_injection,
                                 mlp_hidden_ratio = mlp_hidden_ratio,
                                 qkv_bias = qkv_bias,
                                 qk_scale = qk_scale,
                                 dropout = dropout,
                                 atten_dropout = atten_dropout,
                                 norm = normalization, num_norm_groups = num_norm_groups,
-                                activation = activation)
+                                activation = activation,
+                                condition_first = condition_first)
         ## fully connected layer
         dense_channels = [in_channel, ] + dense_channels 
         if not sum([im_size % (self.patch_size * (2** self.u_depth)) for im_size in self.image_size ]) == 0:
@@ -329,8 +341,7 @@ class SwinDecoder(nn.Module):
                                                 norm = None)
         self.final_path = final_channels + [self.image_channel]
         self.return_feature_list = return_feature_list
-        if time_channel > 0:
-            logger.info(f'Using time-step injection method: {time_injection}')
+        
     def __str__(self):
         _str = ''
         if self.vector_embedding:
@@ -352,7 +363,7 @@ class SwinDecoder(nn.Module):
             _str += str(self.final_path[-1])
             _str += '\n'
         return _str 
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         if type(x) == tuple:
             x = x[0]
         if self.vector_embedding:
@@ -360,12 +371,12 @@ class SwinDecoder(nn.Module):
             x = x.reshape(*self.view_shape)
         res = []
         for uid, (up, u_trans) in enumerate(zip(self.up, self.u_trans)):
-            x = u_trans(up(x), t)
+            x = u_trans(up(x), t, c)
             if hasattr(self, 'uca'):
                 x = self.uca[uid](x)
             res = res + [x,]
         for fid, f_trans in enumerate(self.final):
-            x = f_trans(x, t)
+            x = f_trans(x, t, c)
             if hasattr(self, 'fca'):
                 x = self.fca[fid](x)
         x = self.patch_recov(x)

@@ -1,8 +1,9 @@
 # train ae or vae
 model:
   # can be AE, VAE and DDPM
-  name: DDPM
+  name: DDIM
   num_steps: 1000
+  sample_num_steps: 100
   beta_schedule: consine
   eps_model:
     name: Base
@@ -13,39 +14,25 @@ model:
       image_size: [28, 28]
       in_channel: 1
       patch_size: 1
-      down_channels: [32, 64]
-      middle_channels: [128, 128]
+      down_channels: [256, 512]
+      middle_channels: [1024]
       ## allow an asummetrical architecture
       # decode_down_channels: [32, 64]
       ### with time embedding
       building_block: single
-      activation: silu
+      activation: gelu
       num_blocks: 2
       normalization: group
       num_norm_groups: 16
       dropout: 0.1
-      ## the value can be list or int
-    condition_embedding:
-      combine_condition: add
-      merge_timestep_and_condition: true
-      encoder:
-        name: OneHot
-        type: categories
-        out_channel: 128
-        num_classes: 10
-  classifier_free_guidance:
-    condition_dropout: 0.2
-    guidance_weight: 2.0
-      ## allow an asummetrical architecture
-      # decoder_dense_channels: [128 256]
   ## 2D ddpm
   eps_loss:
     name: MSE
 loader:
   dataset: 
     name: MNIST
-    data_path: /media/wlsdzyzl/DATA/datasets/MNIST
-  batch_size: 64
+    data_path: /media/wlsdzyzl/DATA/datasets/img/MNIST
+  batch_size: 256
   num_workers: 8
   shuffle: true
   data_transforms:
@@ -54,11 +41,11 @@ loader:
       size: [28, 28]
     - name: ToTensor
     - name: Normalize
-      mean: [0.1307]
-      std: [0.3081]
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CDDPM
+      mean: [0.5]
+      std: [0.5]
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CDDPM/DDPM
 sampler:
-  num_sample_steps: 200
+  num_sample_steps: 100
   rand_seed: 2024
   clipped: true
   clip_range: [-1.0, 1.0]

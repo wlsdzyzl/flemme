@@ -41,6 +41,9 @@ class PointTrans2Encoder(Point2Encoder):
                  voxel_conv_kernel_size = 3,
                  with_se = False,
                  coordinate_normalize = True,
+                 condition_channel = 0,
+                 condition_injection = 'gate_bias',
+                 condition_first = False,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -71,12 +74,16 @@ class PointTrans2Encoder(Point2Encoder):
                 voxel_resolutions=voxel_resolutions,
                 voxel_conv_kernel_size = voxel_conv_kernel_size,
                 with_se = with_se,
-                coordinate_normalize = coordinate_normalize)
+                coordinate_normalize = coordinate_normalize,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
+
 
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = self.time_channel, 
+                                        time_channel = time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
@@ -87,7 +94,11 @@ class PointTrans2Encoder(Point2Encoder):
                                         residual_attention = residual_attention,
                                         skip_connection = skip_connection,
                                         post_normalization = True,
-                                        time_injection = time_injection)
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
+
         msg_sequence = [MSGLayer(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
             num_fps_points = self.num_fps_points[fid],
@@ -123,6 +134,13 @@ class PointTrans2Decoder(Point2Decoder):
                 residual_attention = False, skip_connection = True,
                 channel_attention = None,
                 time_injection = 'gate_bias',
+                voxel_resolutions = [],
+                voxel_conv_kernel_size = 3,
+                with_se = False,
+                coordinate_normalize = True,
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
@@ -136,11 +154,19 @@ class PointTrans2Decoder(Point2Decoder):
                 activation = activation, 
                 dropout = dropout,
                 channel_attention = channel_attention,
-                time_injection=time_injection)
+                time_injection=time_injection,
+                voxel_resolutions=voxel_resolutions,
+                voxel_conv_kernel_size = voxel_conv_kernel_size,
+                with_se = with_se,
+                coordinate_normalize = coordinate_normalize,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
+
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = self.time_channel, 
+                                        time_channel = time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups,
@@ -150,7 +176,11 @@ class PointTrans2Decoder(Point2Decoder):
                                         atten_dropout = atten_dropout, 
                                         residual_attention = residual_attention,
                                         skip_connection = skip_connection,
-                                        time_injection = time_injection)
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
+
         fp_sequence = [  FPLayer( in_channel_known = self.known_feature_channels[fid],
                                 in_channel_unknown = self.unknow_feature_channels[fid],
                                 out_channel = self.fp_path[fid + 1],

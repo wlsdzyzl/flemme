@@ -1,5 +1,4 @@
 # train ae or vae
-rand_seed: 2024
 model:
   # can be AE, VAE and DDPM
   name: DDIM
@@ -7,6 +6,7 @@ model:
   sample_num_steps: 100
   beta_schedule: consine
   eps_model:
+    name: Base
     # encoder config
     time_channel: 128
     encoder:
@@ -14,36 +14,35 @@ model:
       image_size: [28, 28]
       in_channel: 1
       patch_size: 1
-      down_channels: [32, 64]
-      middle_channels: [128, 128]
+      down_channels: [256, 512]
+      middle_channels: [1024]
       ## allow an asummetrical architecture
       # decode_down_channels: [32, 64]
       ### with time embedding
       building_block: single
-      activation: silu
+      activation: gelu
       num_blocks: 2
       normalization: group
       num_norm_groups: 16
       dropout: 0.1
-    # condition_embedding:
-    #   combine_condition: add
-    #   merge_timestep_and_condition: true
-    #   encoder:
-    #     name: OneHot
-    #     type: categories
-    #     out_channel: 128
-    #     num_classes: 10
-  # classifier_free_guidance:
-  #   condition_dropout: 0.2
-  #   guidance_weight: 2.0
+      ## the value can be list or int
+    # time_injection: bias
+    condition_embedding:
+      combine_condition: add
+      decoder:
+        name: OneHot
+        type: categories
+        out_channel: 128
+        num_classes: 10
+      ## allow an asummetrical architecture
+      # decoder_dense_channels: [128 256]
   ## 2D ddpm
   eps_loss:
     name: MSE
 loader:
   dataset: 
     name: MNIST
-  data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/img/MNIST
+    data_path: /media/wlsdzyzl/DATA/datasets/img/MNIST
   batch_size: 256
   num_workers: 8
   shuffle: true
@@ -55,7 +54,7 @@ loader:
     - name: Normalize
       mean: [0.5]
       std: [0.5]
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/DDPM
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CDDPM/CDDPM_add
 sampler:
   num_sample_steps: 100
   rand_seed: 2024
@@ -63,7 +62,7 @@ sampler:
   clip_range: [-1.0, 1.0]
 ### parameter for optimizer
 optimizer:
-  name: AdamW
+  name: Adam
   lr: 0.0003
   weight_decay: 0.00000001
 ### scheduler for learning rate
@@ -71,6 +70,6 @@ lr_scheduler:
   name: LinearLR
   start_factor: 1.0
   end_factor: 0.01
-max_epoch: 1000
-write_after_iters: 50
+max_epoch: 100
+write_after_iters: 100
 save_after_epochs: 5

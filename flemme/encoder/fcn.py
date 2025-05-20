@@ -23,7 +23,7 @@ class FCNEncoder(nn.Module):
         self.activation = activation
         self.z_count = z_count
         self.vector_embedding = False
-        self.time_channel = time_channel
+        # self.time_channel = time_channel
         self.BuildingBlock = get_building_block(building_block, 
                                                 time_channel = time_channel, 
                                                 activation=activation, 
@@ -47,9 +47,9 @@ class FCNEncoder(nn.Module):
         _str += '\n'
         return _str 
     # input: Nb * Np * d
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         # ## x is point cloud
-        x = [self.dense[i](x, t) for i in range(self.z_count)]
+        x = [self.dense[i](x, t, c) for i in range(self.z_count)]
         if self.z_count == 1:
             x = x[0]
         return x
@@ -91,7 +91,7 @@ class FCNDecoder(nn.Module):
         _str += '\n'
         return _str 
     # input: Nb * Np * d
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         ## x is point cloud
-        x = self.dense(x, t)
+        x = self.dense(x, t, c)
         return x

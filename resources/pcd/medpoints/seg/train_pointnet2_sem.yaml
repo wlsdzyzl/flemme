@@ -16,6 +16,7 @@ model:
     num_fps_points: [2048, 1024, 512, 256, 128]
     neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
     fps_feature_channels: [64, 64, 128, 256, 512]
+    # voxel_resolutions: [32, 32, 16, 8, 4]
     fp_channels: [512, 512, 256, 256, 128]
     dense_channels: [1024]
     activation: lrelu
@@ -36,7 +37,7 @@ loader:
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold1
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold2
     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold3
-  batch_size: 64
+  batch_size: 8
   num_workers: 8
   shuffle: true
   data_transforms:

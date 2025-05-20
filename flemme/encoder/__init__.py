@@ -46,6 +46,8 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         ### building block usually can be fully-connected block, convolution block, swin or mamba block
         building_block = encoder_config.pop('building_block', 'single')
         time_channel = encoder_config.pop('time_channel', 0)
+        condition_channel = encoder_config.pop('condition_channel', 0)
+        decoder_condition_channel = encoder_config.pop('decoder_condition_channel', 0)
         dai_channel = encoder_config.pop('decoder_additional_in_channel', 0)
         eai_channel = encoder_config.pop('encoder_additional_in_channel', 0)
         encoder, decoder = None, None
@@ -93,6 +95,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             if return_encoder:
                 encoder = Encoder(point_dim=in_channel + eai_channel, 
                                             time_channel=time_channel, 
+                                            condition_channel = condition_channel,
                                             dense_channels=dense_channels,
                                             building_block=building_block,
                                             **encoder_config)
@@ -101,6 +104,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 decoder = Decoder(point_dim=out_channel, 
                                         in_channel=decoder_in_channel + dai_channel,
                                         time_channel=time_channel, 
+                                        condition_channel = decoder_condition_channel,
                                         dense_channels=de_dense_channels,
                                         building_block=building_block,
                                         **encoder_config)
@@ -173,6 +177,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 if return_encoder:
                     encoder = Encoder(image_size=image_size, image_channel = in_channel + eai_channel, 
                                                 time_channel = time_channel,
+                                                condition_channel = condition_channel,
                                                 patch_size = patch_size,
                                                 patch_channel = patch_channel,
                                                 down_channels=down_channels, 
@@ -188,6 +193,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     decoder = Decoder(image_size=image_size, image_channel = out_channel, 
                                                 in_channel=decoder_in_channel + dai_channel, 
                                                 time_channel = time_channel,
+                                                condition_channel = decoder_condition_channel,
                                                 patch_size = patch_size,
                                                 dense_channels = de_dense_channels, 
                                                 up_channels=up_channels, 
@@ -218,6 +224,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     encoder = Encoder(image_size = image_size, 
                                         image_channel = in_channel + eai_channel, 
                                         time_channel = time_channel, 
+                                        condition_channel = condition_channel,
                                         patch_size = patch_size,
                                         patch_channel = patch_channel,
                                         down_channels = down_channels, 
@@ -232,6 +239,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                     image_channel = out_channel, 
                                     in_channel = decoder_in_channel + dai_channel,
                                     time_channel = time_channel, 
+                                    condition_channel = decoder_condition_channel,
                                     patch_size = patch_size,
                                     up_channels = up_channels, 
                                     final_channels = final_channels,
@@ -244,6 +252,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     encoder = Encoder(image_size = image_size, 
                                 image_channel = in_channel + eai_channel, 
                                 time_channel = time_channel, 
+                                condition_channel = condition_channel,
                                 patch_size = patch_size,
                                 patch_channel = patch_channel,
                                 down_channels = down_channels, 
@@ -256,6 +265,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                 image_channel = out_channel, 
                                 in_channel = decoder_in_channel + dai_channel,
                                 time_channel = time_channel, 
+                                condition_channel = decoder_condition_channel,
                                 patch_size = patch_size,
                                 up_channels = up_channels, 
                                 final_channels = final_channels,
@@ -273,6 +283,9 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             if not encoder_name == 'FCN':
                 # encoder
                 projection_channel = encoder_config.pop('projection_channel', 64)
+                voxel_resolutions = encoder_config.pop('voxel_resolutions', [])
+                assert type(voxel_resolutions) == list, "voxel_resolutions should be a list."
+
                 if not encoder_name[-1] == '2':
                     ## 0: without using local graph
                     num_neighbors_k = encoder_config.pop('num_neighbors_k', 0)
@@ -285,16 +298,19 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                         encoder = Encoder(point_dim=in_channel + eai_channel, 
                                                     projection_channel = projection_channel,
                                                     time_channel = time_channel,
+                                                    condition_channel = condition_channel,
                                                     num_neighbors_k = num_neighbors_k,
                                                     local_feature_channels=local_feature_channels, 
                                                     dense_channels=dense_channels, 
                                                     building_block=building_block,
+                                                    voxel_resolutions = voxel_resolutions,
                                                     **encoder_config)
                         decoder_in_channel = encoder.out_channel
                     ## Different encoders of point clouds could use the same decoder.
                     if return_decoder:
                         decoder = Decoder(point_dim=out_channel, point_num=point_num, 
                                                     time_channel = time_channel, 
+                                                    condition_channel = decoder_condition_channel,
                                                     in_channel=decoder_in_channel + dai_channel, 
                                                     dense_channels=de_dense_channels,
                                                     folding_times = folding_times,
@@ -318,26 +334,37 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                         fps_feature_channels = fp_channels[::-1]
                     assert len(fp_channels) == len(fps_feature_channels), \
                         'Point2Encoder should have a same number of feature propagating layers and sampling and grouping layers.'
+
                     if return_encoder:
                         # print(encoder_config)
                         encoder = Encoder(point_dim=in_channel + eai_channel, 
                                                     projection_channel = projection_channel,
                                                     time_channel = time_channel,
+                                                    condition_channel = condition_channel,
                                                     num_neighbors_k = num_neighbors_k,
                                                     fps_feature_channels=fps_feature_channels, 
                                                     dense_channels=dense_channels, 
                                                     building_block=building_block,
+                                                    voxel_resolutions = voxel_resolutions,
                                                     **encoder_config)
                         
                         decoder_in_channels = encoder.out_channels
                     ## Different encoders of point clouds could use the same decoder.
                     if return_decoder:
+                        de_voxel_resolutions = encoder_config.pop('decoder_voxel_resolutions', None)
+                        
+                        if not de_voxel_resolutions:
+                            de_voxel_resolutions = voxel_resolutions[::-1]
+                        assert type(de_voxel_resolutions) == list, "decoder_voxel_resolutions should be a list."
+
                         decoder = Decoder(point_dim=out_channel, point_num=point_num, 
                                                     time_channel = time_channel, 
+                                                    condition_channel = decoder_condition_channel,
                                                     in_channels=decoder_in_channels, 
                                                     dense_channels=de_dense_channels,
                                                     building_block=building_block,
                                                     fp_channels = fp_channels,
+                                                    voxel_resolutions = de_voxel_resolutions,
                                                     **encoder_config)
             if return_encoder:
                 encoder.point_num = point_num
@@ -364,6 +391,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                     node_dim = feature_in_channel,
                                     projection_channel = projection_channel,
                                     time_channel = time_channel,
+                                    condition_channel = condition_channel,
                                     message_passing_channels = message_passing_channels,
                                     dense_channels=dense_channels, 
                                     building_block=building_block,
@@ -377,6 +405,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                     node_dim = feature_out_channel,
                                     node_num = node_num, 
                                     time_channel = time_channel, 
+                                    condition_channel = decoder_condition_channel,
                                     in_channel=decoder_in_channel + dai_channel, 
                                     dense_channels=de_dense_channels,
                                     recon_pos = recon_pos,

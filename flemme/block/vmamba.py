@@ -214,7 +214,10 @@ class VMambaBlock(MBaseBlock):
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
-        time_injection = 'gate_bias', **kwargs):
+        time_injection = 'gate_bias', 
+        condition_channel = 0, condition_injection = 'gate_bias',
+        condition_first = False,
+        **kwargs):
         super().__init__(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -239,10 +242,16 @@ class VMambaBlock(MBaseBlock):
         self.A_logs = self.A_log_init(self.state_channel, self.inner_channel, copies=self.K, merge=True) # (K=4, D, N)
         self.Ds = self.D_init(self.inner_channel, copies=self.K, merge=True) # (K=4, D, N)
         self.selective_scan = selective_scan_fn
-        self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
-            
+
+        self.cinj = None
+        if time_channel > 0 or condition_channel > 0:
+            self.cinj = ContextInjectionBlock(time_channel = time_channel,
+                condition_channel = condition_channel,
+                out_channel = out_channel,
+                time_injection=time_injection,
+                condition_injection=condition_injection,
+                channel_dim = -1,
+                condition_first = condition_first)
 
     @staticmethod
     def dt_init(dt_rank, inner_channel, dt_scale=1.0, dt_init="random", dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4):
@@ -325,12 +334,16 @@ class VMambaBlock(MBaseBlock):
         ).view(B, K, -1, L)
         assert out_y.dtype == torch.float
         return out_y
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         x = super().forward(x)
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
             x = self.time(x, t)
+        if c is not None:
+            assert self.condition_channel == c.shape[-1], \
+                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
+            x = self.cond(x, c)
         return x
     
 class DoubleVMambaBlock(nn.Module):
@@ -342,7 +355,9 @@ class DoubleVMambaBlock(nn.Module):
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
-        time_injection = 'gate_bias', **kwargs):
+        time_injection = 'gate_bias', 
+        condition_channel = 0, condition_injection = 'gate_bias',
+        condition_first = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -355,7 +370,10 @@ class DoubleVMambaBlock(nn.Module):
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan,
-            time_channel=time_channel, time_injection=time_injection)
+            time_channel=time_channel, time_injection=time_injection,
+            condition_channel=condition_channel, 
+            condition_injection = condition_injection,
+            condition_first=condition_first)
         self.mamba2 = VMambaBlock(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -365,10 +383,10 @@ class DoubleVMambaBlock(nn.Module):
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
-        self.time_channel = time_channel
-
-    def forward(self, x, t = None):
-        x = self.mamba1(x, t)
+        # self.time_channel = time_channel
+        # self.condition_channel = condition_channel
+    def forward(self, x, t = None, c = None):
+        x = self.mamba1(x, t, c)
         x = self.mamba2(x)
         return x
 
@@ -380,7 +398,9 @@ class ResVMambaBlock(nn.Module):
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
-        time_injection='gate_bias', **kwargs):
+        time_injection='gate_bias', condition_channel = 0, 
+        condition_injection = 'gate_bias', 
+        condition_first = False, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -393,7 +413,10 @@ class ResVMambaBlock(nn.Module):
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan,
-            time_channel=time_channel, time_injection=time_injection)
+            time_channel=time_channel, time_injection=time_injection,
+            condition_channel = condition_channel, 
+            condition_injection = condition_injection,
+            condition_first=condition_first)
         self.mamba2 = VMambaBlock(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -405,9 +428,10 @@ class ResVMambaBlock(nn.Module):
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.act = get_act(activation)  
         self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
-        self.time_channel = time_channel
-    def forward(self, x, t = None):
-        h = self.mamba1(x, t)
+        # self.time_channel = time_channel
+        # self.condition_channel = condition_channel
+    def forward(self, x, t = None, c = None):
+        h = self.mamba1(x, t, c)
         h = self.mamba2(h)
         out = self.act(h + self.shortcut(x))
         return out
@@ -423,7 +447,9 @@ class VMamba2Block(MBaseBlock):
         dt_max=0.1, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
-        time_injection = 'gate_bias', **kwargs):
+        time_injection = 'gate_bias', condition_channel = 0, 
+        condition_injection = 'gate_bias',
+        condition_first = False,**kwargs):
 
         super().__init__(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
@@ -460,11 +486,17 @@ class VMamba2Block(MBaseBlock):
 
         self.selective_scan = mamba_chunk_scan_combined
         self.chunk_size = chunk_size
-        self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
-            
 
+        self.cinj = None
+        if time_channel > 0 or condition_channel > 0:
+            self.cinj = ContextInjectionBlock(time_channel = time_channel,
+                condition_channel = condition_channel,
+                out_channel = out_channel,
+                time_injection=time_injection,
+                condition_injection=condition_injection,
+                channel_dim = -1,
+                condition_first = condition_first)
+                
     @staticmethod
     def dt_bias_init(num_heads, dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4):
         # Initialize log dt bias
@@ -529,12 +561,16 @@ class VMamba2Block(MBaseBlock):
             )
         out_y = channel_recover(rearrange(out_y, "b l h p -> b l (h p)")).view(B, K, -1, L)
         return out_y
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         x = super().forward(x)
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
             x = self.time(x, t)
+        if c is not None:
+            assert self.condition_channel == c.shape[-1], \
+                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
+            x = self.cond(x, c)
         return x
 class DoubleVMamba2Block(nn.Module):
     def __init__(
@@ -547,7 +583,10 @@ class DoubleVMamba2Block(nn.Module):
         dt_max=0.1, dt_init="random", dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
-        time_injection = 'gate_bias', **kwargs):
+        time_injection = 'gate_bias', 
+        condition_channel = 0, condition_injection = 'gate_bias',
+        condition_first = False,
+        **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -562,7 +601,9 @@ class DoubleVMamba2Block(nn.Module):
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan,
-            time_channel=time_channel, time_injection=time_injection)
+            time_channel=time_channel, time_injection=time_injection,
+            condition_channel=condition_channel, condition_injection = condition_injection,
+            condition_first=condition_first)
         self.mamba2 = VMamba2Block(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -574,9 +615,10 @@ class DoubleVMamba2Block(nn.Module):
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
-        self.time_channel = time_channel
-    def forward(self, x, t = None):
-        x = self.mamba1(x, t)
+        # self.time_channel = time_channel
+        # self.condition_channel = condition_channel
+    def forward(self, x, t = None, c = None):
+        x = self.mamba1(x, t, c)
         x = self.mamba2(x)
         return x
 
@@ -591,7 +633,10 @@ class ResVMamba2Block(nn.Module):
         dt_max=0.1, dt_init="random", dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
-        time_injection = 'gate_bias', **kwargs):
+        time_injection = 'gate_bias', 
+        condition_channel = 0, condition_injection = 'gate_bias',
+        condition_first = False,
+        **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
@@ -606,7 +651,10 @@ class ResVMamba2Block(nn.Module):
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan,
-            time_channel=time_channel, time_injection = time_injection)
+            time_channel=time_channel, time_injection = time_injection,
+            condition_channel = condition_channel,
+            condition_injection = condition_injection,
+            condition_first=condition_first)
         self.mamba2 = VMamba2Block(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
@@ -620,9 +668,10 @@ class ResVMamba2Block(nn.Module):
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.act = get_act(activation)  
         self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
-        self.time_channel = time_channel
-    def forward(self, x, t = None):
-        h = self.mamba1(x, t)
+        # self.time_channel = time_channel
+        # self.condition_channel = condition_channel
+    def forward(self, x, t = None, c = None):
+        h = self.mamba1(x, t, c)
         h = self.mamba2(h)
         out = self.act(h + self.shortcut(x))
         return out

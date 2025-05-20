@@ -265,15 +265,15 @@ def main():
                         if save_input and len(results['input']) > 0:
                             input_x = results['input'][idx]
                             save_data(input_x, data_form=model.data_form, output_path=output_path+'_input')
-            cond = y[0] if is_conditional else (x[0] if is_supervised else None)
+            cond = c[0] if is_conditional and is_supervised else (y[0] if is_conditional else None)
         else:
             logger.warning('loader_config is None, reconstruction, segmentation, conditional generation and interpolation will be ignored.')
             cond = None
 
         if model.is_generative and eval_gen_config is not None:
             sampler = None
-            sampler_config = eval_gen_config.get('sampler', None)
-            if sampler_config is not None:
+            sampler_config = eval_gen_config.get('sampler', {'name':'NormalSampler'})
+            if sampler_config:
                 sampler = create_sampler(model=model, sampler_config = sampler_config)
             else:
                 logger.error("Sampler is not specified for generation.")

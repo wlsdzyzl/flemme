@@ -35,6 +35,9 @@ class PointMambaEncoder(PointEncoder):
                 voxel_conv_kernel_size = 3,
                 with_se = False,
                 coordinate_normalize = True,
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -53,11 +56,14 @@ class PointMambaEncoder(PointEncoder):
                 voxel_resolutions=voxel_resolutions,
                 voxel_conv_kernel_size = voxel_conv_kernel_size,
                 with_se = with_se,
-                coordinate_normalize = coordinate_normalize)
+                coordinate_normalize = coordinate_normalize,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
 
-        self.BuildingBlock = get_building_block(building_block, time_channel = self.time_channel, 
+        self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
                                         activation=activation, 
                                         norm = normalization, num_norm_groups = num_norm_groups, 
                                         dropout = dropout,
@@ -72,7 +78,10 @@ class PointMambaEncoder(PointEncoder):
                                         dt_max=dt_max, dt_init_floor=dt_init_floor, 
                                         dt_rank = dt_rank, dt_scale = dt_scale,
                                         skip_connection = skip_connection,
-                                        time_injection = time_injection)
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
 
         ### convolution with kernel size = 1
         # compute point features

@@ -39,19 +39,25 @@ class NormalSampler:
                 self.num_sample_steps = model.num_steps
             assert self.num_sample_steps <= model.num_steps, \
                 "Number of sample steps cannot be greater than num_steps."
+            if not isinstance(model, DDIM) and self.num_sample_steps < model.num_steps:
+                logger.warning('Small number of sample steps leads to fast but poor results. We recommand you to use DDIM.')
         
     def sample(self, z, c = None):
         z_batch = torch.split(z, self.batch_size, dim = 0)
+        if c is not None:
+            c_batch = torch.split(c, self.batch_size, dim = 0)
+        else:
+            c_batch = [None, ] * len(z_batch)
         res = []
-        for zb in z_batch:
+        for bid, zb in enumerate(z_batch):
             if isinstance(self.model, DDIM):
-                y = self.model.sample(zb, c = c, clipped=self.clipped,
+                y = self.model.sample(zb, c = c_batch[bid], clipped=self.clipped,
                                     clip_range=self.clip_range)
             elif isinstance(self.model, DDPM):
-                y = self.model.sample(zb, end_step=self.num_sample_steps - 1, c = c,
+                y = self.model.sample(zb, end_step=self.num_sample_steps - 1, c = c_batch[bid],
                                             clipped=self.clipped, clip_range=self.clip_range)
             else:
-                y = self.model.decode(zb, c)
+                y = self.model.decode(zb, c_batch[bid])
         
             res.append(y)
         ### AE, VAE and so on.
@@ -113,10 +119,10 @@ class NormalSampler:
         if not self.is_conditional:
             cond = None
         z = torch.randn(*( [n, ] + self.model.get_latent_shape())).to(self.device)
-        # print('!!!!!!!!!!!!!', z.shape)
         if cond is not None and (len(cond.shape) == 0 
                                  or not cond.shape[0] == n):
             ## all data use the same condition
             cond = torch.stack([cond for _ in range(n)])
+            # print(cond.shape, z.shape)
         return self.sample(z, cond)
     

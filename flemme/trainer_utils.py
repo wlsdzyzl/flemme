@@ -489,6 +489,7 @@ def process_input(t):
         x, y, c, p = t
     return x, y, c, p
 def compute_loss(model, x, y, c, **kwargs):
+    
     if model.is_supervised and model.is_conditional:
         losses, res = model.compute_loss(x, y = y, c = c, **kwargs)
     elif model.is_supervised:

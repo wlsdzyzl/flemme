@@ -24,14 +24,15 @@ model:
       kernel_size: 3
   is_supervised: True
   condition_embedding:
-    combine_condition: add
-    merge_timestep_and_condition: true
+    combine_condition: injection
+    condition_injection: bias
     encoder:
       name: OneHot
       type: categories
       out_channel: 128
       num_classes: 46
       apply_onehot: False
+    decoder: same_as_encoder
   reconstruction_losses: 
     - name: DCD
       alpha: 40

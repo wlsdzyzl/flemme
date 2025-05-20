@@ -1,7 +1,7 @@
 # train ae or vae
 model:
   # can be AE, VAE and DDPM
-  name: DDPM
+  name: DDIM
   num_steps: 1000
   beta_schedule: consine
   eps_model:
@@ -26,8 +26,8 @@ model:
       dropout: 0.1
       ## the value can be list or int
     condition_embedding:
-      combine_condition: add
-      merge_timestep_and_condition: true
+      combine_condition: injection
+      condition_injection: add_to_time
       encoder:
         name: OneHot
         type: categories
@@ -46,7 +46,7 @@ loader:
   dataset: 
     name: CIFAR10
     data_path: /media/wlsdzyzl/DATA/datasets/img/CIFAR10
-  batch_size: 64
+  batch_size: 256
   num_workers: 8
   shuffle: true
   data_transforms:
@@ -59,7 +59,7 @@ loader:
       std: [0.5, 0.5, 0.5]
 check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/CIFAR10/CDDPM_CFree_2.0
 sampler:
-  num_sample_steps: 200
+  num_sample_steps: 100
   rand_seed: 2024
   clipped: true
   clip_range: [-1.0, 1.0]

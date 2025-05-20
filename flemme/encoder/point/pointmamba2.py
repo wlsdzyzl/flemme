@@ -50,6 +50,9 @@ class PointMamba2Encoder(Point2Encoder):
             voxel_conv_kernel_size = 3,
             with_se = False,
             coordinate_normalize = True,
+            condition_channel = 0,
+            condition_injection = 'gate_bias',
+            condition_first = False,
             **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -80,11 +83,14 @@ class PointMamba2Encoder(Point2Encoder):
                 voxel_resolutions=voxel_resolutions,
                 voxel_conv_kernel_size = voxel_conv_kernel_size,
                 with_se = with_se,
-                coordinate_normalize = coordinate_normalize)
+                coordinate_normalize = coordinate_normalize,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = self.time_channel, 
+                                        time_channel = time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
@@ -100,7 +106,10 @@ class PointMamba2Encoder(Point2Encoder):
                                         dt_rank = dt_rank, dt_scale = dt_scale,
                                         skip_connection = skip_connection, 
                                         post_normalization = True,
-                                        time_injection = time_injection)
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
         # print(self.msg_path)
         msg_sequence = [MSGLayer(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
@@ -122,7 +131,7 @@ class PointMamba2Encoder(Point2Encoder):
                 num_scan = len(self.scanners)
                 if self.flip_scan: num_scan *= 2
                 PSMambaBlock = get_psmamba_block(building_block, 
-                                    time_channel = self.time_channel, 
+                                    time_channel = time_channel, 
                                     num_scan = num_scan,
                                     activation=activation, 
                                     norm = normalization, 
@@ -140,7 +149,10 @@ class PointMamba2Encoder(Point2Encoder):
                                     dt_rank = dt_rank, dt_scale = dt_scale,
                                     skip_connection = skip_connection, 
                                     post_normalization = True,
-                                    time_injection = time_injection)
+                                    time_injection = time_injection,
+                                    condition_channel = condition_channel,
+                                    condition_injection = condition_injection,
+                                    condition_first = condition_first)
                 lrm_sequence = [MultipleBuildingBlocks(in_channel = fps_feature_channels[fid], 
                     out_channels = fps_feature_channels[fid],
                     n = num_blocks,
@@ -185,6 +197,13 @@ class PointMamba2Decoder(Point2Decoder):
                 skip_connection = True,
                 channel_attention = None,
                 time_injection = 'gate_bias',
+                voxel_resolutions = [],
+                voxel_conv_kernel_size = 3,
+                with_se = False,
+                coordinate_normalize = True,
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
@@ -198,11 +217,18 @@ class PointMamba2Decoder(Point2Decoder):
                 activation = activation, 
                 dropout = dropout,
                 channel_attention = channel_attention,
-                time_injection = time_injection)
+                time_injection = time_injection,
+                voxel_resolutions=voxel_resolutions,
+                voxel_conv_kernel_size = voxel_conv_kernel_size,
+                with_se = with_se,
+                coordinate_normalize = coordinate_normalize,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = self.time_channel, 
+                                        time_channel = time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups,
@@ -217,7 +243,10 @@ class PointMamba2Decoder(Point2Decoder):
                                         dt_max=dt_max, dt_init_floor=dt_init_floor, 
                                         dt_rank = dt_rank, dt_scale = dt_scale,
                                         skip_connection = skip_connection,
-                                        time_injection = time_injection)
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
         fp_sequence = [  FPLayer( in_channel_known = self.known_feature_channels[fid],
                                 in_channel_unknown = self.unknow_feature_channels[fid],
                                 out_channel = self.fp_path[fid + 1],

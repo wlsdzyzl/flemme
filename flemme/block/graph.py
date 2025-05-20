@@ -36,8 +36,14 @@ class GraphConvBlock(nn.Module):
                 graph_normalize = True,
                 improved = False,
                 cached = False,  
-                bias = True):
+                bias = True,
+                condition_channel = 0, 
+                condition_injection = 'gate_bias',
+                condition_first = False,
+                **kwargs):
         super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters:{}".format(kwargs))
         # convolution layer
         self.conv = GCNConv(in_channels = in_channel, 
           out_channels = out_channel,
@@ -54,12 +60,18 @@ class GraphConvBlock(nn.Module):
         # activation function
         self.act = get_act(activation)
         self.order = order
-        self.time_channel = time_channel
-        if self.time_channel > 0:
-            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
-            
 
-    def forward(self, x, edge_index, t = None):
+        self.cinj = None
+        if time_channel > 0 or condition_channel > 0:
+            self.cinj = ContextInjectionBlock(time_channel = time_channel,
+                condition_channel = condition_channel,
+                out_channel = out_channel,
+                time_injection=time_injection,
+                condition_injection=condition_injection,
+                channel_dim = -1,
+                condition_first = condition_first)
+
+    def forward(self, x, edge_index, t = None, c = None):
         for m in self.order:
             if m == 'n':
                 x = self.norm(x)
@@ -71,22 +83,37 @@ class GraphConvBlock(nn.Module):
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
             x = self.time(x, t)
+        if c is not None:
+            assert self.condition_channel == c.shape[-1], \
+                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
+            x = self.cond(x, c)
         return x
 
 class ChebConvBlock(GraphConvBlock):
     def __init__(self, in_channel, 
                 out_channel, 
                 time_channel = 0,
+                time_injection = 'gate_bias',
                 activation = 'relu', 
                 norm = 'batch', 
                 num_norm_groups = 0, 
                 order = 'cn',
                 filter_size = 5,
                 graph_normalization = 'sym', 
-                bias = True):
+                bias = True,
+                condition_channel = 0, 
+                condition_injection = 'gate_bias',
+                condition_first = False,
+                **kwargs):
         super().__init__(time_channel = time_channel,
-          activation = activation, norm = norm,
-          num_norm_groups = num_norm_groups, order = order)
+            time_injection = time_injection,
+            condition_channel = condition_channel,
+            condition_injection = condition_injection,
+            condition_first=condition_first,
+            activation = activation, norm = norm,
+            num_norm_groups = num_norm_groups, order = order)
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters:{}".format(kwargs))
         # convolution layer
         self.conv = ChebConv(in_channels = in_channel, 
           out_channels = out_channel,
@@ -99,6 +126,7 @@ class TransConvBlock(GraphConvBlock):
                 out_channel, 
                 graph_conv,
                 time_channel = 0,
+                time_injection = 'gate_bias',
                 activation = 'relu', 
                 norm = 'batch', 
                 num_norm_groups = 0, 
@@ -107,10 +135,20 @@ class TransConvBlock(GraphConvBlock):
                 concat = True,
                 beta = False,
                 dropout = 0.0,
-                bias = True):
+                bias = True,
+                condition_channel = 0, 
+                condition_injection = 'gate_bias',
+                condition_first = False,
+                **kwargs):
         super().__init__(time_channel = time_channel,
-          activation = activation, norm = norm,
-          num_norm_groups = num_norm_groups, order = order)
+            time_injection = time_injection,
+            condition_channel = condition_channel,
+            condition_injection = condition_injection,
+            condition_first=condition_first,
+            activation = activation, norm = norm,
+            num_norm_groups = num_norm_groups, order = order)
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters:{}".format(kwargs))
         # convolution layer
         self.conv = TransformerConv(in_channels = in_channel, 
           out_channels = out_channel,

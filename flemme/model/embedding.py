@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from flemme.encoder import create_encoder, supported_encoders
-from flemme.block import OneHotEmbeddingBlock, TimeEmbeddingBlock, expand_as
+from flemme.block import OneHotEmbeddingBlock, TimeEmbeddingBlock, new_add, new_cat
 from flemme.logger import get_logger
 logger = get_logger('model.embedding')
 
@@ -51,44 +51,16 @@ def add_embedding(x, c_emb, channel_dim = 1):
     #### merge x and c_emb
     # channel should be the same
     ### x can be a tuple of data and time
-    if x is None: return c_emb
-    if c_emb is None: return x
     if isinstance(x, tuple) or isinstance(x, list):
         ### return the tuple
-        return type(x)((add_embedding(x[0], c_emb, channel_dim), ) )  + x[1:]
-    assert c_emb.shape[0] == x.shape[0], \
-        "Batch size inconsistency."
-    assert c_emb.shape[channel_dim] == x.shape[channel_dim], \
-        "Number of channels of x and condition encoder should be the same, get {} and {}".format(x.shape[1], c_emb.shape[1])
-    if len(c_emb.shape) == len(x.shape):
-        if len(x.shape) > 2 and c_emb.shape != x.shape:
-            c_emb = F.interpolate(c_emb, size = x.shape)
-    elif len(c_emb.shape) == 2:
-        c_emb = expand_as(c_emb, x, channel_dim)
-    else:
-        logger.error('Unknow embedding.')
-        raise NotImplementedError
-    return x + c_emb
+        return type(x)((new_add(x[0], c_emb, channel_dim), ) )  + x[1:]
+    return new_add(x, c_emb, channel_dim = channel_dim)
 ### concat over the channel dimension.
 def concat_embedding(x, c_emb, channel_dim = 1):
     #### merge x and c_emb
     # channel should be the same
     ### x can be a tuple of data and time
-    if x is None: return c_emb
-    if c_emb is None: return x
     if isinstance(x, tuple) or isinstance(x, list):
         ### return the tuple
-        return type(x)((concat_embedding(x[0], c_emb, channel_dim), ) )  + x[1:]
-
-    assert c_emb.shape[0] == x.shape[0], \
-        "Batch size inconsistency."
-    ## for concat, we don't need the number of channels to be the same.
-    if len(c_emb.shape) == len(x.shape):
-        if len(x.shape) > 2 and c_emb.shape != x.shape:
-            c_emb = F.interpolate(c_emb, size = x.shape)
-    elif len(c_emb.shape) == 2:
-        c_emb = expand_as(c_emb, x, channel_dim)
-    else:
-        logger.error('Unknow embedding.')
-        raise NotImplementedError
-    return torch.concat([x, c_emb], dim = channel_dim)
+        return type(x)((new_cat(x[0], c_emb, channel_dim), ) )  + x[1:]
+    return new_cat(x, c_emb, channel_dim = channel_dim)

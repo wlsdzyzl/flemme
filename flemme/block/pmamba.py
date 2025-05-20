@@ -69,7 +69,11 @@ class PointMambaBlock(NormBlock):
         dropout = None, skip_connection = True, mamba = 'Mamba', 
         activation = 'relu', norm='batch', num_norm_groups = -1, 
         post_normalization = False, 
-        time_injection = 'gate_bias', **kwargs):
+        time_injection = 'gate_bias', 
+        condition_channel = 0, 
+        condition_injection = 'gate_bias',
+        condition_first = False,
+        **kwargs):
         
         super().__init__(_channel_dim = -1)
         self.in_channel = in_channel
@@ -98,20 +102,25 @@ class PointMambaBlock(NormBlock):
         else:
             self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
         self.act = get_act(activation)
-        self.time_channel = time_channel
+
         self.skip_connection = skip_connection
         self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
         if dropout is None or dropout <= 0:
             self.dropout = nn.Identity()
         else:
             self.dropout = nn.Dropout(p=dropout)
-        if self.time_channel > 0:
-            ## Time Injection
-            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
-            
 
+        self.cinj = None
+        if time_channel > 0 or condition_channel > 0:
+            self.cinj = ContextInjectionBlock(time_channel = time_channel,
+                condition_channel = condition_channel,
+                out_channel = out_channel,
+                time_injection=time_injection,
+                condition_injection=condition_injection,
+                channel_dim = -1,
+                condition_first = condition_first)
 
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         res = self.mamba(x)
         res = self.dropout(res)
 
@@ -128,6 +137,10 @@ class PointMambaBlock(NormBlock):
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
             x = self.time(x, t)
+        if c is not None:
+            assert self.condition_channel == c.shape[-1], \
+                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
+            x = self.cond(x, c)
         return x
     @staticmethod
     def is_sequence_modeling():
@@ -252,7 +265,11 @@ class PointScanMambaBlock(PointScanMambaBaseBlock):
         norm = None, num_norm_groups = 0, 
         skip_connection = True,
         post_normalization = False, 
-        time_injection = 'gate_bias', **kwargs):
+        time_injection = 'gate_bias', 
+        condition_channel = 0, 
+        condition_injection = 'gate_bias',
+        condition_first = False,
+        **kwargs):
         super().__init__(in_channel = in_channel, 
             num_scan = num_scan,
             out_channel = out_channel, state_channel=state_channel, 
@@ -279,11 +296,16 @@ class PointScanMambaBlock(PointScanMambaBaseBlock):
         self.A_logs = self.A_log_init(self.state_channel, self.inner_channel, copies=self.K, merge=True) # (K=4, D, N)
         self.Ds = self.D_init(self.inner_channel, copies=self.K, merge=True) # (K=4, D, N)
         self.selective_scan = selective_scan_fn
-        self.time_channel = time_channel
-        if self.time_channel > 0:
-            ## Time Injection
-            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
-            
+
+        self.cinj = None
+        if time_channel > 0 or condition_channel > 0:
+            self.cinj = ContextInjectionBlock(time_channel = time_channel,
+                condition_channel = condition_channel,
+                out_channel = out_channel,
+                time_injection=time_injection,
+                condition_injection=condition_injection,
+                channel_dim = -1,
+                condition_first = condition_first)
     @staticmethod
     def dt_init(dt_rank, inner_channel, dt_scale=1.0, dt_init="random", dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4):
         dt_proj = nn.Linear(dt_rank, inner_channel, bias=True)
@@ -365,13 +387,17 @@ class PointScanMambaBlock(PointScanMambaBaseBlock):
         ).view(B, K, -1, L)
         assert out_y.dtype == torch.float
         return out_y
-    def forward(self, x, it):
-        sorted_index_list, t = it
+    def forward(self, x, itc):
+        sorted_index_list, t, c = itc
         x = super().forward(x, sorted_index_list)
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
             x = self.time(x, t)
+        if c is not None:
+            assert self.condition_channel == c.shape[-1], \
+                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
+            x = self.cond(x, c)
         return x
 
 class PointScanMamba2Block(PointScanMambaBaseBlock):
@@ -388,6 +414,9 @@ class PointScanMamba2Block(PointScanMambaBaseBlock):
         skip_connection = True,
         post_normalization = False, 
         time_injection = 'gate_bias', 
+        condition_channel = 0, 
+        condition_injection = 'gate_bias',
+        condition_first = False,
         **kwargs):
 
         super().__init__(in_channel = in_channel, 
@@ -427,11 +456,16 @@ class PointScanMamba2Block(PointScanMambaBaseBlock):
 
         self.selective_scan = mamba_chunk_scan_combined
         self.chunk_size = chunk_size
-        self.time_channel = time_channel
-        if self.time_channel > 0:
-            ## Time Injection
-            self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
-            
+
+        self.cinj = None
+        if time_channel > 0 or condition_channel > 0:
+            self.cinj = ContextInjectionBlock(time_channel = time_channel,
+                condition_channel = condition_channel,
+                out_channel = out_channel,
+                time_injection=time_injection,
+                condition_injection=condition_injection,
+                channel_dim = -1,
+                condition_first = condition_first)
 
     @staticmethod
     def dt_bias_init(num_heads, dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4):
@@ -498,11 +532,15 @@ class PointScanMamba2Block(PointScanMambaBaseBlock):
             )
         out_y = channel_recover(rearrange(out_y, "b l h p -> b l (h p)")).view(B, K, -1, L)
         return out_y
-    def forward(self, x, it):
-        sorted_index_list, t = it
+    def forward(self, x, itc):
+        sorted_index_list, t, c = it
         x = super().forward(x, sorted_index_list)
         if t is not None:
             assert self.time_channel == t.shape[-1], \
                 f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
             x = self.time(x, t)
+        if c is not None:
+            assert self.condition_channel == c.shape[-1], \
+                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
+            x = self.cond(x, c)
         return x

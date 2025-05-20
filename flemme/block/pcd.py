@@ -88,7 +88,11 @@ if module_config['transformer']:
             skip_connection = True, attention = 'SA', 
             activation = 'relu', norm='batch', num_norm_groups = -1, 
             post_normalization = False, 
-            time_injection = 'gate_bias', **kwargs):
+            time_injection = 'gate_bias', 
+            condition_channel = 0, 
+            condition_injection = 'gate_bias',
+            condition_first = False,
+            **kwargs):
             
             super().__init__(_channel_dim = -1)
             self.in_channel = in_channel
@@ -111,10 +115,16 @@ if module_config['transformer']:
             self.skip_connection = skip_connection
             self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
 
-            if self.time_channel > 0:
-                self.time = get_context_injection(time_injection, self.time_channel, out_channel, channel_dim=-1)
-                
-        def forward(self, x, t = None):
+            self.cinj = None
+            if time_channel > 0 or condition_channel > 0:
+                self.cinj = ContextInjectionBlock(time_channel = time_channel,
+                    condition_channel = condition_channel,
+                    out_channel = out_channel,
+                    time_injection=time_injection,
+                    condition_injection=condition_injection,
+                    channel_dim = -1,
+                    condition_first = condition_first)
+        def forward(self, x, t = None, c = None):
             res = self.atten(x)
             if not self.post_normalization:
                 res = self.act(self.normalize(res))
@@ -125,10 +135,15 @@ if module_config['transformer']:
             
             if self.post_normalization:
                 x = self.act(self.normalize(x))
+                
             if t is not None:
                 assert self.time_channel == t.shape[-1], \
                     f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
                 x = self.time(x, t)
+            if c is not None:
+                assert self.condition_channel == c.shape[-1], \
+                    f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
+                x = self.cond(x, c)
             return x
         @staticmethod
         def is_sequence_modeling():
@@ -166,7 +181,7 @@ class GroupSeqModelingLayer(nn.Module):
         self.bb = BuildingBlock(in_channel = in_channel,
                                 out_channel = out_channel) 
     ## input: grouped points (B, N, K, C)
-    def forward(self, x, t):
+    def forward(self, x, t, c):
         B, N, K, _ = x.shape
         # B * N * K * 2D -> (B * N) * K * 2D
         x = x.reshape(B * N, K, -1)
@@ -174,7 +189,7 @@ class GroupSeqModelingLayer(nn.Module):
         if t is not None:
             t = t.unsqueeze(1).expand(-1, N, -1)
             t = t.reshape(B * N, -1)
-        x = self.bb(x, t = t)
+        x = self.bb(x, t = t, c = c)
         # (B * N) * K * D -> B * N * K * D
         x = x.reshape(B, N, K, -1)
         return x
@@ -208,10 +223,10 @@ class LocalGraphLayer(nn.Module):
                                     BuildingBlock = partial(
                                         GroupSeqModelingLayer,
                                         BuildingBlock = BuildingBlock))
-    def forward(self, x, t=None):
+    def forward(self, x, t=None, c = None):
         ## x: B * N * D -> B * N * K * 2D
         x = get_graph_feature(x, k = self.k, knn = self.knn)
-        x = self.bb(x, t)
+        x = self.bb(x, t, c)
         ## x: B * N * D
         x, _ = x.max(dim=2)
         return x
@@ -233,6 +248,9 @@ class FoldingLayer(MultiLayerPerceptionBlock):
                 dropout=None, 
                 order="ln", 
                 time_injection = 'gate_bias',
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
                 **kwargs):
                 
         super().__init__(in_channel=in_channel,
@@ -246,12 +264,15 @@ class FoldingLayer(MultiLayerPerceptionBlock):
                             activation=activation,
                             dropout=dropout,
                             order=order,
+                            condition_channel = condition_channel,
+                            condition_injection = condition_injection,
+                            condition_first = condition_first,
                             final_activation=False)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.in_channel = in_channel
     ## codewords
-    def forward(self, shapes, codewords, t = None):
+    def forward(self, shapes, codewords, t = None, c = None):
         """
         Parameters
         ----------
@@ -262,7 +283,7 @@ class FoldingLayer(MultiLayerPerceptionBlock):
             f"channel of grid + channel of codewords should be equal to the channel of input, we get: {shapes.shape[-1]} {codewords.shape[-1]} and {self.in_channel}."
         # concatenate
         x = torch.cat([shapes, codewords], dim=-1)
-        return self.mlp(x, t)
+        return self.mlp(x, t, c)
         
 ### sampling and multi-scale grouping
 ### furthest point sampling
@@ -334,7 +355,7 @@ class SamplingAndGroupingLayer(nn.Module):
                             GroupSeqModelingLayer,
                             BuildingBlock = BuildingBlock),
                         ))
-    def forward(self, xyz, xyz_embed, features = None, t = None):
+    def forward(self, xyz, xyz_embed, features = None, t = None, c = None):
         r"""
         Parameters
         ----------
@@ -373,7 +394,7 @@ class SamplingAndGroupingLayer(nn.Module):
             ## (B, C (+3), M, k) -> (B, M, k, C (+3))
             grouped_features = channel_transfer(grouped_features_trans)
             ## (B, M, k, C (+3)) -> (B, M, k, C_out)
-            center_features = self.bb[gid](grouped_features, t)  
+            center_features = self.bb[gid](grouped_features, t, c)  
             # (B, M, out_channel)
             center_features = center_features.max(dim=2)[0]
             center_feature_list.append(center_features)
@@ -396,7 +417,7 @@ class FeaturePropogatingLayer(nn.Module):
                 hidden_channels = hidden_channels,
                 BuildingBlock = BuildingBlock)
 
-    def forward(self, unknown, known, unknown_feats, known_feats, t = None):
+    def forward(self, unknown, known, unknown_feats, known_feats, t = None, c = None):
         r"""
         Parameters
         ----------
@@ -439,7 +460,7 @@ class FeaturePropogatingLayer(nn.Module):
         else:
             new_features = interpolated_feats
         # print(new_features.shape, unknown_feats.shape, known_feats.shape)
-        new_features = self.bb(new_features, t)
+        new_features = self.bb(new_features, t, c)
 
         return new_features
 
@@ -455,7 +476,10 @@ class SampledFeatureCatLayer(nn.Module):
                 num_norm_groups = 0, 
                 activation = 'relu', 
                 dropout=None, 
-                order="ln"):
+                order="ln",
+                condition_channel = 0, 
+                condition_injection = 'gate_bias',
+                condition_first = False,):
         super().__init__()
         self.in_channels = in_channels
         self.mlp = MultiLayerPerceptionBlock(in_channel = sum(in_channels), 
@@ -469,8 +493,11 @@ class SampledFeatureCatLayer(nn.Module):
                             activation=activation,
                             dropout=dropout,
                             order=order,
+                            condition_channel = condition_channel,
+                            condition_injection = condition_injection,
+                            condition_first = condition_first,
                             final_activation=False)
-    def forward(self, feature_list, sample_id_list, t = None):
+    def forward(self, feature_list, sample_id_list, t = None, c = None):
         assert len(feature_list) - len(sample_id_list) == 1, \
             'Unmatched lengths of feature_list and sample_id_list.'
         assert len(feature_list) == len(self.in_channels) and sum( [ ic == tensor.shape[-1] for ic, tensor in zip(self.in_channels, feature_list)]),\
@@ -490,7 +517,7 @@ class SampledFeatureCatLayer(nn.Module):
                     channel_dim = -1, gather_dim = 1)
             gathered_feature_list.append(features)
         gathered_feature = torch.concat(gathered_feature_list[::-1], dim = -1)
-        return self.mlp(gathered_feature, t = t)
+        return self.mlp(gathered_feature, t = t, c = c)
         
 
 ### point-voxel
@@ -552,11 +579,11 @@ class VoxelLayer(nn.Module):
             else:
                 self.se3d = nn.Identity()
 
-    def forward(self, features, coords, t):
+    def forward(self, features, coords, t = None, c = None):
         if self.resolution > 0:
             feature_trans, coord_trans = channel_recover(features), channel_recover(coords)
             voxel_features, voxel_coords = self.voxelization(feature_trans, coord_trans)
-            voxel_features = self.se3d(self.vbb(voxel_features, t))
+            voxel_features = self.se3d(self.vbb(voxel_features, t, c))
             voxel_features = trilinear_devoxelize(voxel_features, voxel_coords, self.resolution, self.training)
             return channel_transfer(voxel_features)
         return 0.0

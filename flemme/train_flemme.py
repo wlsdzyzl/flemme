@@ -182,8 +182,8 @@ def main():
                 logger.warning('Input checkpoint doesn\'t exist.')
             logger.info('Model will be trained from scratch.')
     sampler = None
-    sampler_config = train_config.get('sampler', None)
-    if model.is_generative and sampler_config is not None:
+    sampler_config = train_config.get('sampler', {'name': 'NormalSampler'})
+    if model.is_generative and sampler_config:
         sampler = create_sampler(model=model, sampler_config = sampler_config)
 
 

@@ -25,12 +25,18 @@ class OnlyEncoder(nn.Module):
         cemb_config = model_config.get('condition_embedding', None)
         if cemb_config is not None:
             self.combine_condition = cemb_config.pop('combine_condition', 'add')
+            self.condition_injection = cemb_config.get('condition_injection', 'gate_bias')
+            self.condition_first = cemb_config.get('condition_first', False)
+            encoder_config['condition_injection'] = self.condition_injection
+            encoder_config['condition_first'] = self.condition_first
+
             logger.info("Create conditional embedding for encoder.")
             self.en_cemb = get_embedding(cemb_config)
             if self.combine_condition == 'cat':
                 encoder_config['encoder_additional_in_channel'] = \
                     encoder_config.get('encoder_additional_in_channel', 0) + self.en_cemb.out_channel
-
+            elif self.combine_condition == 'injection':
+                encoder_config['condition_channel'] = self.en_cemb.out_channel
             else:
                 assert self.in_channel == self.en_cemb.out_channel, \
                     "condition embedding of encoder and input data should have the same shape for addition."
@@ -49,20 +55,25 @@ class OnlyEncoder(nn.Module):
         _str = '********************* OnlyEncoder ({}) *********************\n------- Encoder -------\n{}'.format(self.encoder_name, self.encoder.__str__())
         return _str
     def encode(self, x, c = None):
-        if c is not None:
-            if hasattr(self, 'en_cemb'):
-                c_emb = self.en_cemb(c)
+        if self.is_conditional:
+            if c is not None:
+                c = self.en_cemb(c)
                 if self.combine_condition == 'add':
-                    # print(x.shape, c_emb.shape)
-                    x = add_embedding(x, c_emb, self.channel_dim)
+                    x = add_embedding(x, c, self.channel_dim)
+                    c = None
                 elif self.combine_condition == 'cat':
-                    x = concat_embedding(x, c_emb, self.channel_dim)
-        res = self.encoder(x)
+                    x = concat_embedding(x, c, self.channel_dim)
+                    c = None
+            elif self.combine_condition == 'cat':
+                logger.error('Condition is necessary for concatenation.')
+                exit(1)
+        else:
+            logger.debug('Model\'s encoder cannot compute condition embedding. Input condition will be ignored.')
+            c = None
+        res = self.encoder(x, c = c)
         return res
 
     def forward(self, x, c = None):
-        if (not self.is_conditional) and (c is not None):
-            logger.warning("There is no condition embedding for this model, the input condition will be ignored.")
         return self.encode(x, c = c)
 
     def get_input_shape(self):
@@ -104,11 +115,18 @@ class OnlyDecoder(nn.Module):
         cemb_config = model_config.get('condition_embedding', None)
         if cemb_config is not None:
             self.combine_condition = cemb_config.pop('combine_condition', 'add')
+            self.condition_injection = cemb_config.get('condition_injection', 'gate_bias')
+            self.condition_first = cemb_config.get('condition_first', False)
+            decoder_config['condition_injection'] = self.condition_injection
+            decoder_config['condition_first'] = self.condition_first
+
             logger.info("Create conditional embedding for decoder.")
             self.de_cemb = get_embedding(cemb_config)
             if self.combine_condition == 'cat':
                 decoder_config['decoder_additional_in_channel'] = \
                      decoder_config.get('decoder_additional_in_channel', 0) + self.de_cemb.out_channel
+            elif self.combine_condition == 'injection':
+                decoder_config['decoder_condition_channel'] = self.de_cemb.out_channel
             else:
                 assert self.in_channel == self.de_cemb.out_channel, \
                     "condition embedding of decoder and the output of encoder should have the same shape for addition."
@@ -126,18 +144,24 @@ class OnlyDecoder(nn.Module):
         return _str
     ### usually t-embedding should be the same for encoder and decoder
     def decode(self, z, c = None):
-        if c is not None:
-            if hasattr(self, 'de_cemb'):
-                c_emb = self.de_cemb(c)
+        if self.is_conditional:
+            if c is not None:
+                c = self.de_cemb(c)
                 if self.combine_condition == 'add':
-                    z = add_embedding(z, c_emb, self.channel_dim)
+                    z = add_embedding(z, c, self.channel_dim)
+                    c = None
                 elif self.combine_condition == 'cat':
-                    z = concat_embedding(z, c_emb, self.channel_dim)
-        return self.decoder(z)
+                    z = concat_embedding(z, c, self.channel_dim)
+                    c = None
+            elif self.combine_condition == 'cat':
+                logger.error('Condition is necessary for concatenation.')
+                exit(1)
+        else:
+            logger.debug('Model\'s decoder cannot compute condition embedding. Input condition will be ignored.')
+            c = None
+        return self.decoder(z, c = c)
 
     def forward(self, z, c = None):
-        if (not self.is_conditional) and (c is not None):
-            logger.warning("There is no condition embedding for this model, the input condition will be ignored.")
         return self.decode(z, c = c)
     ### decoder will always project the latent into original shape
     def get_output_shape(self):

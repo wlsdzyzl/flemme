@@ -37,6 +37,9 @@ class VMambaEncoder(nn.Module):
                 z_count = 1, 
                 channel_attention = None, 
                 time_injection = 'gate_bias', 
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -81,7 +84,10 @@ class VMambaEncoder(nn.Module):
                                 activation = activation, 
                                 scan_mode = scan_mode,
                                 flip_scan = flip_scan,
-                                time_injection = time_injection)
+                                time_injection = time_injection,
+                                condition_channel = condition_channel,
+                                condition_injection = condition_injection,
+                                condition_first = condition_first)
         ### construct patch
         self.patch_emb = PatchConstructionBlock(dim = self.dim, 
                                                 patch_size = self.patch_size,
@@ -157,22 +163,21 @@ class VMambaEncoder(nn.Module):
         ## set out_channel
         self.out_channel = dense_channels[-1]
         self.return_feature_list = return_feature_list
-        if time_channel > 0:
-            logger.info(f'Using time-step injection method: {time_injection}')
-    def forward(self, x, t = None):
+        
+    def forward(self, x, t = None, c = None):
         x = self.patch_emb(x)
         res = []
         if self.absolute_pos_embed is not None:
             x = x + self.absolute_pos_embed
         for did, (d_ssm, down) in enumerate(zip(self.d_ssm, self.down)):
-            x = d_ssm(x, t)
+            x = d_ssm(x, t, c)
             if hasattr(self, 'dca'):
                 x = self.dca[did](x)
             res = res + [x,]
             x = down(x)
 
         for mid, m_ssm in enumerate(self.middle):
-            x = m_ssm(x, t)
+            x = m_ssm(x, t, c)
             if hasattr(self, 'mca'):
                 x = self.mca[mid](x)
         ### The last dimension is feature channel
@@ -235,6 +240,9 @@ class VMambaDecoder(nn.Module):
                 return_feature_list = False,
                 channel_attention = None,
                 time_injection = 'gate_bias', 
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -276,7 +284,10 @@ class VMambaDecoder(nn.Module):
                                 state_channel = state_channel,
                                 activation = activation,
                                 scan_mode = scan_mode, flip_scan = flip_scan,
-                                time_injection = time_injection)
+                                time_injection = time_injection,
+                                condition_channel = condition_channel,
+                                condition_injection = condition_injection,
+                                condition_first = condition_first)
         ### use patch expansion block for up sampling
         ## fully connected layer
         dense_channels = [in_channel, ] + dense_channels 
@@ -345,8 +356,7 @@ class VMambaDecoder(nn.Module):
                                                 norm = None)
         self.final_path = final_channels + [self.image_channel]
         self.return_feature_list = return_feature_list
-        if time_channel > 0:
-            logger.info(f'Using time-step injection method: {time_injection}')
+        
     def __str__(self):
         _str = ''
         if self.vector_embedding:
@@ -368,7 +378,7 @@ class VMambaDecoder(nn.Module):
             _str += str(self.final_path[-1])
             _str += '\n'
         return _str 
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         if type(x) == tuple:
             x = x[0]
         if self.vector_embedding:
@@ -376,12 +386,12 @@ class VMambaDecoder(nn.Module):
             x = x.reshape(*self.view_shape)
         res = []
         for uid, (up, u_ssm) in enumerate(zip(self.up, self.u_ssm)):
-            x = u_ssm(up(x), t)
+            x = u_ssm(up(x), t, c)
             if hasattr(self, 'uca'):
                 x = self.uca[uid](x)
             res = res + [x,]
         for fid, f_ssm in enumerate(self.final):
-            x = f_ssm(x, t)
+            x = f_ssm(x, t, c)
             if hasattr(self, 'fca'):
                 x = self.fca[fid](x)
         x = self.patch_recov(x)

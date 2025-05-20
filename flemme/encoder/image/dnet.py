@@ -14,14 +14,18 @@ logger = get_logger('encoder.image.dnet')
 ### DenseNet encoder
 class DNetEncoder(CNNEncoder):
     def __init__(self, image_size, image_channel = 3,  patch_channel = 32, patch_size = 2, down_channels = [64, 128], 
-                 down_attens = [None, None], shape_scaling = [2, 2], middle_channels = [256, 256], middle_attens = [None, None],
-                 kernel_size = 3, depthwise = False, time_channel = 0, dsample_function = 'conv', num_blocks = 2,
-                 building_block='res_t', normalization = 'group', num_norm_groups = 8, cn_order = 'cn',
-                 activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
-                 qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 abs_pos_embedding = False, 
-                 channel_attention = None, 
-                 time_injection = 'gate_bias', **kwargs):
+                    down_attens = [None, None], shape_scaling = [2, 2], middle_channels = [256, 256], middle_attens = [None, None],
+                    kernel_size = 3, depthwise = False, time_channel = 0, dsample_function = 'conv', num_blocks = 2,
+                    building_block='res_t', normalization = 'group', num_norm_groups = 8, cn_order = 'cn',
+                    activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
+                    qkv_bias = True, qk_scale = None, atten_dropout = None, 
+                    abs_pos_embedding = False, 
+                    channel_attention = None, 
+                    time_injection = 'gate_bias', 
+                    condition_channel = 0,
+                    condition_injection = 'gate_bias',
+                    condition_first = False,
+                    **kwargs):
         '''
         ## check down channels and middle channels
         ## each value in down channels corresponds to a downsample layer and a convolution layer
@@ -38,7 +42,10 @@ class DNetEncoder(CNNEncoder):
             abs_pos_embedding=abs_pos_embedding, atten_dropout = atten_dropout,
             z_count = 1, dense_channels = [], return_feature_list = True,
             channel_attention = channel_attention,
-            time_injection = time_injection)
+            time_injection = time_injection,
+            condition_channel = condition_channel,
+            condition_injection=condition_injection,
+            condition_first = condition_first)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
         down_channels = [self.image_patch_channel, ] + down_channels
@@ -66,7 +73,7 @@ class DNetEncoder(CNNEncoder):
                                 func=dsample_function, scale_factor=np.prod(shape_scaling[i-1:]) ) for i in range(1, len(down_channels) - 1)]))
         
 
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         x = self.image_proj(x)
         res = []
         if self.absolute_pos_embed is not None:
@@ -78,7 +85,7 @@ class DNetEncoder(CNNEncoder):
                 for r, dd in zip(res[:-1], self.down_for_dense[i - 2]):
                     concat_feature.append(dd(r))
                 x = torch.cat(concat_feature + [x], dim=1)
-            x = d_conv(x, t)
+            x = d_conv(x, t, c)
             if hasattr(self, 'dca'):
                 x = self.dca[i](x)
 
@@ -88,7 +95,7 @@ class DNetEncoder(CNNEncoder):
         concat_feature = [dd(r) for r, dd in zip(res[:-1], self.down_for_dense[-1])]
         x = torch.cat(concat_feature + [x], dim=1)
         for mid, m_conv in enumerate(self.middle):
-            x = m_conv(x, t)
+            x = m_conv(x, t, c)
             if hasattr(self, 'mca'):
                 x = self.mca[mid](x)
 
@@ -110,7 +117,11 @@ class DNetDecoder(CNNDecoder):
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  return_feature_list = False, 
                  channel_attention = None, 
-                 time_injection = 'gate_bias', **kwargs):
+                 time_injection = 'gate_bias', 
+                 condition_channel = 0,
+                 condition_injection = 'gate_bias',
+                 condition_first = False,
+                 **kwargs):
         super().__init__(image_size = image_size, image_channel = image_channel, 
             in_channel = in_channel, time_channel = time_channel, patch_size=patch_size,
             up_channels = up_channels, up_attens = up_attens, 
@@ -122,7 +133,10 @@ class DNetDecoder(CNNDecoder):
             return_feature_list = return_feature_list,
             atten_dropout = atten_dropout, dense_channels = [],
             channel_attention = channel_attention,
-            time_injection = time_injection)
+            time_injection = time_injection,
+            condition_channel = condition_channel,
+            condition_injection = condition_injection,
+            condition_first = condition_first)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
         
@@ -163,7 +177,7 @@ class DNetDecoder(CNNDecoder):
                                         scale_factor=np.prod(shape_scaling[j:i+1])))
             self.sample_for_dense.append(nn.ModuleList(tmp_module))
 
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         ## existing features but without x
         x, existing_features = x
         ## x, t
@@ -174,12 +188,12 @@ class DNetDecoder(CNNDecoder):
                 concat_features.append(dus(tf))
             concat_features.append(up(x))
             existing_features = existing_features + [x,]
-            x = u_conv(torch.cat(concat_features, dim = 1), t)
+            x = u_conv(torch.cat(concat_features, dim = 1), t, c)
             if hasattr(self, 'uca'):
                 x = self.uca[i](x)
             res = res + [x,]
         for fid, f_conv in enumerate(self.final):
-            x = f_conv(x, t)
+            x = f_conv(x, t, c)
             if hasattr(self, 'fca'):
                 x = self.fca[fid](x)
 
@@ -206,6 +220,9 @@ if module_config['transformer']:
                     abs_pos_embedding = False,
                     channel_attention = None,
                     time_injection = 'gate_bias', 
+                    condition_channel = 0,
+                    condition_injection = 'gate_bias',
+                    condition_first = False,
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 patch_size = patch_size, patch_channel = patch_channel, time_channel = time_channel,
@@ -218,7 +235,10 @@ if module_config['transformer']:
                 abs_pos_embedding = abs_pos_embedding, 
                 z_count = 1, dense_channels = [], return_feature_list = True,
                 channel_attention = channel_attention,
-                time_injection = time_injection)
+                time_injection = time_injection,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
@@ -259,7 +279,7 @@ if module_config['transformer']:
                                     num_norm_groups = num_norm_groups,
                                     factor=2 ** (self.d_depth - i + 1) ) for i in range(1, len(down_channels) - 1)]))
 
-        def forward(self, x, t = None):
+        def forward(self, x, t = None, c = None):
 
             x = self.patch_emb(x)
             res = []
@@ -271,7 +291,7 @@ if module_config['transformer']:
                     for r, dd in zip(res[:-1], self.down_for_dense[i - 2]):
                         concat_feature.append(dd(r))
                     x = torch.cat(concat_feature + [x], dim=-1)
-                x = d_trans(x, t)
+                x = d_trans(x, t, c)
                 if hasattr(self, 'dca'):
                     x = self.dca[i](x)
 
@@ -281,7 +301,7 @@ if module_config['transformer']:
             x = torch.cat(concat_feature + [x], dim=-1)
 
             for mid, m_trans in enumerate(self.middle):
-                x = m_trans(x, t)
+                x = m_trans(x, t, c)
                 if hasattr(self, 'mca'):
                     x = self.mca[mid](x)
 
@@ -303,7 +323,11 @@ if module_config['transformer']:
                     num_blocks = 2, activation = 'silu', 
                     return_feature_list = False, 
                     channel_attention = None, 
-                    time_injection = 'gate_bias', **kwargs):
+                    time_injection = 'gate_bias', 
+                    condition_channel = 0,
+                    condition_injection = 'gate_bias',
+                    condition_first = False,
+                    **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 patch_size = patch_size, in_channel = in_channel, time_channel = time_channel,
                 building_block = building_block, mlp_hidden_ratio = mlp_hidden_ratio, qkv_bias = qkv_bias,
@@ -314,7 +338,10 @@ if module_config['transformer']:
                 num_blocks = num_blocks, activation = activation, dense_channels = [],
                 return_feature_list = return_feature_list,
                 channel_attention = channel_attention,
-                time_injection = time_injection)
+                time_injection = time_injection,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
@@ -364,7 +391,7 @@ if module_config['transformer']:
                                             factor=2**(i+1-j)))
                 self.sample_for_dense.append(nn.ModuleList(tmp_module))
 
-        def forward(self, x, t = None):
+        def forward(self, x, t = None, c = None):
             ## existing features but without x
             x, existing_features = x
             ## x, t
@@ -375,13 +402,13 @@ if module_config['transformer']:
                     concat_features.append(dus(tf))
                 concat_features.append(up(x))
                 existing_features = existing_features + [x,]
-                x = u_trans(torch.cat(concat_features, dim = -1), t)
+                x = u_trans(torch.cat(concat_features, dim = -1), t, c)
                 if hasattr(self, 'uca'):
                     x = self.uca[i](x)
 
                 res = res + [x,]
             for fid, f_trans in enumerate(self.final):
-                x = f_trans(x, t)
+                x = f_trans(x, t, c)
                 if hasattr(self, 'fca'):
                     x = self.fca[fid](x)
 
@@ -404,6 +431,9 @@ if module_config['transformer']:
                     abs_pos_embedding = False,
                     channel_attention = None,
                     time_injection = 'gate_bias', 
+                    condition_channel = 0,
+                    condition_injection = 'gate_bias',
+                    condition_first = False,
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 window_size = window_size, time_channel = time_channel,
@@ -417,7 +447,10 @@ if module_config['transformer']:
                 abs_pos_embedding = abs_pos_embedding, 
                 z_count = 1, dense_channels = [], return_feature_list = True,
                 channel_attention = channel_attention,
-                time_injection = time_injection)
+                time_injection = time_injection,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
             down_channels = [self.patch_channel, ] + down_channels
@@ -460,7 +493,7 @@ if module_config['transformer']:
                                     num_norm_groups = num_norm_groups,
                                     factor=2 ** (self.d_depth - i + 1) ) for i in range(1, len(down_channels) - 1)]))
 
-        def forward(self, x, t = None):
+        def forward(self, x, t = None, c = None):
 
             x = self.patch_emb(x)
             res = []
@@ -472,7 +505,7 @@ if module_config['transformer']:
                     for r, dd in zip(res[:-1], self.down_for_dense[i - 2]):
                         concat_feature.append(dd(r))
                     x = torch.cat(concat_feature + [x], dim=-1)
-                x = d_trans(x, t)
+                x = d_trans(x, t, c)
                 if hasattr(self, 'dca'):
                     x = self.dca[i](x)
 
@@ -481,7 +514,7 @@ if module_config['transformer']:
             concat_feature = [dd(r) for r, dd in zip(res[:-1], self.down_for_dense[-1])]
             x = torch.cat(concat_feature + [x], dim=-1)
             for mid, m_trans in enumerate(self.middle):
-                x = m_trans(x, t)
+                x = m_trans(x, t, c)
                 if hasattr(self, 'mca'):
                     x = self.mca[mid](x)
 
@@ -501,7 +534,11 @@ if module_config['transformer']:
                     num_blocks = 2, activation = 'silu', 
                     return_feature_list = False, 
                     channel_attention = None, 
-                    time_injection = 'gate_bias', **kwargs):
+                    time_injection = 'gate_bias', 
+                    condition_channel = 0,
+                    condition_injection = 'gate_bias',
+                    condition_first = False,
+                    **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 window_size = window_size, time_channel = time_channel,
                 patch_size = patch_size, in_channel = in_channel,
@@ -513,7 +550,10 @@ if module_config['transformer']:
                 num_blocks = num_blocks, activation = activation, dense_channels = [],
                 return_feature_list = return_feature_list,
                 channel_attention=channel_attention,
-                time_injection=time_injection)
+                time_injection=time_injection,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
@@ -565,7 +605,7 @@ if module_config['transformer']:
                                             factor=2**(i+1-j)))
                 self.sample_for_dense.append(nn.ModuleList(tmp_module))
 
-        def forward(self, x, t = None):
+        def forward(self, x, t = None, c = None):
             ## existing features but without x
             x, existing_features = x
             ## x, t
@@ -576,13 +616,13 @@ if module_config['transformer']:
                     concat_features.append(dus(tf))
                 concat_features.append(up(x))
                 existing_features = existing_features + [x,]
-                x = u_trans(torch.cat(concat_features, dim = -1), t)
+                x = u_trans(torch.cat(concat_features, dim = -1), t, c)
                 if hasattr(self, 'uca'):
                     x = self.uca[i](x)
 
                 res = res + [x,]
             for fid, f_trans in enumerate(self.final):
-                x = f_trans(x, t)
+                x = f_trans(x, t, c)
                 if hasattr(self, 'fca'):
                     x = self.fca[fid](x)
 
@@ -616,6 +656,9 @@ if module_config['mamba']:
                     chunk_size=256,
                     channel_attention = None,
                     time_injection = 'gate_bias', 
+                    condition_channel = 0,
+                    condition_injection = 'gate_bias',
+                    condition_first = False,
                     **kwargs):
             super().__init__(image_size, image_channel = image_channel, 
                     time_channel = time_channel,
@@ -640,7 +683,10 @@ if module_config['mamba']:
                     z_count = 1, dense_channels = [],
                     return_feature_list = True,
                     channel_attention=channel_attention,
-                    time_injection=time_injection)
+                    time_injection=time_injection,
+                    condition_channel = condition_channel,
+                    condition_injection = condition_injection,
+                    condition_first = condition_first)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
@@ -678,7 +724,7 @@ if module_config['mamba']:
                                     num_norm_groups = num_norm_groups,
                                     factor=2 ** (self.d_depth - i + 1) ) for i in range(1, len(down_channels) - 1)]))
 
-        def forward(self, x, t = None):
+        def forward(self, x, t = None, c = None):
 
             x = self.patch_emb(x)
             res = []
@@ -690,7 +736,7 @@ if module_config['mamba']:
                     for r, dd in zip(res[:-1], self.down_for_dense[i - 2]):
                         concat_feature.append(dd(r))
                     x = torch.cat(concat_feature + [x], dim=-1)
-                x = d_ssm(x, t)
+                x = d_ssm(x, t, c)
                 if hasattr(self, 'dca'):
                     x = self.dca[i](x)
 
@@ -699,7 +745,7 @@ if module_config['mamba']:
             concat_feature = [dd(r) for r, dd in zip(res[:-1], self.down_for_dense[-1])]
             x = torch.cat(concat_feature + [x], dim=-1)
             for mid, m_ssm in enumerate(self.middle):
-                x = m_ssm(x, t)
+                x = m_ssm(x, t, c)
                 if hasattr(self, 'mca'):
                     x = self.mca[mid](x)
 
@@ -731,7 +777,11 @@ if module_config['mamba']:
                     scan_mode = 'single', flip_scan = True, 
                     return_feature_list = False, 
                     channel_attention = None, 
-                    time_injection = 'gate_bias', **kwargs):
+                    time_injection = 'gate_bias', 
+                    condition_channel = 0,
+                    condition_injection = 'gate_bias',
+                    condition_first = False,
+                    **kwargs):
             super().__init__(image_size, image_channel = image_channel, 
                     patch_size = patch_size, in_channel = in_channel,
                     time_channel = time_channel,
@@ -753,7 +803,10 @@ if module_config['mamba']:
                     scan_mode = scan_mode, flip_scan=flip_scan, 
                     dense_channels = [], return_feature_list = return_feature_list,
                     channel_attention=channel_attention,
-                    time_injection=time_injection)
+                    time_injection=time_injection,
+                    condition_channel = condition_channel,
+                    condition_injection = condition_injection,
+                    condition_first = condition_first)
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
@@ -802,7 +855,7 @@ if module_config['mamba']:
                                             factor=2**(i+1-j)))
                 self.sample_for_dense.append(nn.ModuleList(tmp_module))
 
-        def forward(self, x, t = None):
+        def forward(self, x, t = None, c = None):
             ## existing features but without x
             x, existing_features = x
             ## x, t
@@ -813,13 +866,13 @@ if module_config['mamba']:
                     concat_features.append(dus(tf))
                 concat_features.append(up(x))
                 existing_features = existing_features + [x,]
-                x = u_ssm(torch.cat(concat_features, dim = -1), t)
+                x = u_ssm(torch.cat(concat_features, dim = -1), t, c)
                 if hasattr(self, 'uca'):
                     x = self.uca[i](x)
 
                 res = res + [x,]
             for fid, f_ssm in enumerate(self.final):
-                x = f_ssm(x, t)
+                x = f_ssm(x, t, c)
                 if hasattr(self, 'fca'):
                     x = self.fca[fid](x)
 

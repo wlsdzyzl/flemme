@@ -13,7 +13,7 @@ model:
     building_block: pct_oa
     # num_neighbors_k: 20
     local_feature_channels: [64, 64, 128, 256, 512]
-    # voxel_resolutions: [32, 32, 16, 16, 0]
+    voxel_resolutions: [32, 32, 16, 16, 0]
     dense_channels: [1024, 512, 256]
     activation: lrelu
     normalization: group

@@ -59,6 +59,9 @@ class Point2Encoder(nn.Module):
                  time_injection,
                  with_se,
                  coordinate_normalize,
+                 condition_channel,
+                 condition_injection,
+                 condition_first,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -74,7 +77,8 @@ class Point2Encoder(nn.Module):
         self.num_norm_groups = num_norm_groups
         self.point_proj = nn.Linear(point_dim, projection_channel)
         self.projection_channel = projection_channel
-        self.time_channel = time_channel
+        # self.time_channel = time_channel
+        # self.condition_channel = condition_channel
         self.num_fps_points = num_fps_points
         self.num_blocks = num_blocks
         # fps_depth
@@ -146,20 +150,24 @@ class Point2Encoder(nn.Module):
             dense_channels[0] += fps_feature_channels[-1]
         if last_activation:
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
-                                                time_channel = self.time_channel,
+                                                time_channel = time_channel,
                                                 activation = self.activation, dropout=self.dropout, 
                                                 norm = normalization, num_norm_groups=num_norm_groups,
-                                                time_injection=time_injection) for i in range(len(dense_channels) - 1)]
+                                                time_injection=time_injection,
+                                                condition_channel = condition_channel,
+                                                condition_injection = condition_injection,
+                                                condition_first = condition_first) for i in range(len(dense_channels) - 1)]
         else:
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
-                                                time_channel = self.time_channel,
+                                                time_channel = time_channel,
                                                 activation = self.activation, dropout=self.dropout, 
                                                 norm = normalization, num_norm_groups=num_norm_groups,
-                                                time_injection=time_injection) for i in range(len(dense_channels) - 2)]
+                                                time_injection=time_injection,
+                                                condition_channel = condition_channel,
+                                                condition_injection = condition_injection,
+                                                condition_first = condition_first) for i in range(len(dense_channels) - 2)]
             # the last layer is a linear layer, without batch normalization
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], 
-                                        time_channel = self.time_channel,
-                                        time_injection = time_injection,
                                         activation = None, norm = None), ]
         self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
         self.out_channel = dense_channels[-1]
@@ -168,24 +176,29 @@ class Point2Encoder(nn.Module):
         if final_concat:
             logger.info('This encoder will process a final concatenation of the sampled features from all previous MSG layers')
             self.final_concat = SFCLayer(in_channels = self.msg_path, out_channel = fps_feature_channels[-1],
-                                        num_blocks = self.num_blocks, time_channel = self.time_channel,
+                                        num_blocks = self.num_blocks, time_channel = time_channel,
                                         activation = self.activation, dropout=self.dropout, 
                                         norm = normalization, num_norm_groups=num_norm_groups,
-                                        time_injection=time_injection)
-        if time_channel > 0:
-            logger.info(f'Using time-step injection method: {time_injection}')
+                                        time_injection=time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
+        
 
         # point-voxel cnn
         if len(self.voxel_resolutions) > 0:
             logger.info('This model extracts voxel features.')
             VBuildingBlock = get_building_block('conv',
                                             dim = 3,
-                                            time_channel = self.time_channel, 
+                                            time_channel = time_channel, 
                                             activation=activation, 
                                             norm = 'batch', 
                                             num_norm_groups = num_norm_groups, 
                                             kernel_size = voxel_conv_kernel_size,
-                                            time_injection = time_injection)
+                                            time_injection = time_injection,
+                                            condition_channel = condition_channel,
+                                            condition_injection = condition_injection,
+                                            condition_first = condition_first)
             vlf_sequence = [VoxelLayer(resolution = self.voxel_resolutions[i], 
                                             in_channel = self.msg_path[i],
                                             out_channel = self.msg_path[i+1], 
@@ -196,7 +209,7 @@ class Point2Encoder(nn.Module):
                                             ) for i in range(len(self.msg_path) - 1) ]
             self.vlf = nn.ModuleList(vlf_sequence)
 
-    def forward(self, xyz, t = None):
+    def forward(self, xyz, t = None, c = None):
         if self.msg is None:
             raise NotImplementedError
         B, _, _ = xyz.shape
@@ -215,13 +228,13 @@ class Point2Encoder(nn.Module):
             if hasattr(self, 'lrm'):
                 if hasattr(self, 'scanners') and len(self.scanners) > 0: 
                     sorted_index_list = self.scan(xyz)
-                    features = self.lrm[lid](features, (sorted_index_list, t))
+                    features = self.lrm[lid](features, (sorted_index_list, t, c))
                 else:
-                    features = self.lrm[lid](features, t)
+                    features = self.lrm[lid](features, t, c)
             if hasattr(self, 'vlf'):
                 vfeatures = gather_features(vfeatures, index = sample_ids, 
                     channel_dim = -1, gather_dim = 1)
-                features = features + self.vlf[lid](vfeatures, xyz, t)
+                features = features + self.vlf[lid](vfeatures, xyz, t, c)
             if hasattr(self, 'ca'):
                 self.ca[lid](features)
 
@@ -229,7 +242,7 @@ class Point2Encoder(nn.Module):
             feature_list.append(features)
             sample_id_list.append(sample_ids)
         if hasattr(self, 'final_concat'):
-            features = self.final_concat(feature_list, sample_id_list, t)
+            features = self.final_concat(feature_list, sample_id_list, t, c)
         ## max and average pooling to get global feature
         f_max = F.adaptive_max_pool1d(features.transpose(1, 2), 1).transpose(1, 2)
         f_avg = F.adaptive_avg_pool1d(features.transpose(1, 2), 1).transpose(1, 2)
@@ -246,7 +259,7 @@ class Point2Encoder(nn.Module):
             features = global_features.reshape(B, -1)
         
         ## compute latent embeddings
-        features = [self.dense[i](features, t) for i in range(self.z_count)]
+        features = [self.dense[i](features, t, c) for i in range(self.z_count)]
         if self.z_count == 1:
             features = features[0]
 
@@ -283,6 +296,13 @@ class Point2Decoder(nn.Module):
                 num_norm_groups, activation, dropout, 
                 channel_attention,
                 time_injection,
+                voxel_resolutions,
+                voxel_conv_kernel_size,
+                with_se,
+                coordinate_normalize,
+                condition_channel,
+                condition_injection,
+                condition_first,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -290,25 +310,33 @@ class Point2Decoder(nn.Module):
         self.point_num = point_num
         self.point_dim = point_dim
         self.activation = activation
-        self.time_channel = time_channel
         # self.vector_embedding = False
         fp_channels = [in_channels[-1], ] + fp_channels
         self.fp_depth = len(fp_channels)
         self.fp_path = [in_channels[-1], ] + fp_channels
         self.num_blocks = num_blocks
+        if len(voxel_resolutions) > 0:
+            voxel_resolutions = [voxel_resolutions[0], ] + voxel_resolutions
+        self.voxel_resolutions = voxel_resolutions
 
         ## fully connected layer
         dense_channels = [fp_channels[-1],] + dense_channels 
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                        time_channel = self.time_channel,
+                                        time_channel = time_channel,
                                         norm = normalization, num_norm_groups=num_norm_groups, 
                                         activation = activation, dropout=dropout,
-                                        time_injection=time_injection) for i in range(len(dense_channels) - 1)]
+                                        time_injection=time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first) for i in range(len(dense_channels) - 1)]
         self.dense = SequentialT(*dense_sequence) 
         self.dense_path = dense_channels
         self.final = nn.Linear(dense_channels[-1], point_dim)
         self.fp = None
         assert len(in_channels) == len(fp_channels) + 1, 'The number of feature propagation layers is ambiguous .'
+        assert len(self.voxel_resolutions) == 0 or len(self.voxel_resolutions) == self.fp_depth,\
+            "Voxel resolutions should have a same size with feature-propagating channels."
+
         self.unknow_feature_channels = in_channels[-2:-len(in_channels) - 1:-1]
         self.known_feature_channels = [in_channels[-1],] + fp_channels[:-1]
 
@@ -321,9 +349,32 @@ class Point2Decoder(nn.Module):
             ca_sequence = [get_ca(dim = 1, channel = self.fp_path[fid + 1], channel_dim = -1, **channel_attention) 
                            for fid in range(self.fp_depth)]
             self.ca = nn.ModuleList(ca_sequence)
-        if time_channel > 0:
-            logger.info(f'Using time-step injection method: {time_injection}')
-    def forward(self, features_xyz, t = None):
+        
+
+        # point-voxel cnn
+        if len(self.voxel_resolutions) > 0:
+            logger.info('This model extracts voxel features.')
+            VBuildingBlock = get_building_block('conv',
+                                            dim = 3,
+                                            time_channel = time_channel, 
+                                            activation=activation, 
+                                            norm = 'batch', 
+                                            num_norm_groups = num_norm_groups, 
+                                            kernel_size = voxel_conv_kernel_size,
+                                            time_injection = time_injection,
+                                            condition_channel = condition_channel,
+                                            condition_injection = condition_injection,
+                                            condition_first = condition_first)
+            vf_sequence = [VoxelLayer(resolution = self.voxel_resolutions[i], 
+                                            in_channel = self.unknow_feature_channels[i],
+                                            out_channel = self.fp_path[i+1], 
+                                            BuildingBlock = VBuildingBlock,
+                                            num_blocks = self.num_blocks,
+                                            with_se = with_se,
+                                            coordinate_normalize=coordinate_normalize,
+                                            ) for i in range(len(self.fp_path) - 1) ]
+            self.vf = nn.ModuleList(vf_sequence)
+    def forward(self, features_xyz, t = None, c = None):
         feature_list, xyz_list = features_xyz
         if self.fp is None:
             raise NotImplementedError
@@ -331,8 +382,11 @@ class Point2Decoder(nn.Module):
         feature_list = feature_list[::-1]
         xyz_list = xyz_list[::-1]
         for i in range(1, len(feature_list)):
+            vfeatures = feature_list[i]
             feature_list[i] = self.fp[i-1]( xyz_list[i], xyz_list[i-1], feature_list[i], feature_list[i-1], t = t)
-        feature = self.dense(feature_list[-1], t)
+            if hasattr(self, 'vf'):
+                feature_list[i] = feature_list[i] + self.vf[i-1](vfeatures, xyz_list[i], t, c)
+        feature = self.dense(feature_list[-1], t, c)
         return self.final(feature)
     def __str__(self):
         _str = ''
@@ -377,6 +431,9 @@ class PointNet2Encoder(Point2Encoder):
                  voxel_conv_kernel_size = 3,
                  with_se = False,
                  coordinate_normalize = True,
+                 condition_channel = 0,
+                 condition_injection = 'gate_bias',
+                 condition_first = False,
                  **kwargs):
         super().__init__(point_dim=point_dim, 
                 projection_channel = projection_channel,
@@ -407,16 +464,22 @@ class PointNet2Encoder(Point2Encoder):
                 voxel_resolutions = voxel_resolutions,
                 voxel_conv_kernel_size = voxel_conv_kernel_size,
                 with_se = with_se,
-                coordinate_normalize = coordinate_normalize)
+                coordinate_normalize = coordinate_normalize,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = self.time_channel, 
+                                        time_channel = time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
                                         dropout = dropout,
-                                        time_injection = time_injection)
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
         msg_sequence = [MSGLayer(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
             num_fps_points = self.num_fps_points[fid],
@@ -447,6 +510,13 @@ class PointNet2Decoder(Point2Decoder):
                 activation = 'lrelu', dropout = 0., 
                 channel_attention = None,
                 time_injection = 'gate_bias',
+                voxel_resolutions = [],
+                voxel_conv_kernel_size = 3,
+                with_se = False,
+                coordinate_normalize = True,
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
@@ -460,16 +530,26 @@ class PointNet2Decoder(Point2Decoder):
                 activation = activation, 
                 dropout = dropout,
                 channel_attention = channel_attention,
-                time_injection=time_injection)
+                time_injection=time_injection,
+                voxel_resolutions = voxel_resolutions,
+                voxel_conv_kernel_size = voxel_conv_kernel_size,
+                with_se = with_se,
+                coordinate_normalize = coordinate_normalize,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = self.time_channel, 
+                                        time_channel = time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups,
                                         dropout = dropout,
-                                        time_injection = time_injection)
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
         fp_sequence = [  FPLayer( in_channel_known = self.known_feature_channels[fid],
                                 in_channel_unknown = self.unknow_feature_channels[fid],
                                 out_channel = self.fp_path[fid + 1],

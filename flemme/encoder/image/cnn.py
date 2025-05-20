@@ -33,6 +33,9 @@ class CNNEncoder(nn.Module):
                  abs_pos_embedding = False, last_activation = True, return_feature_list = False,
                  channel_attention = None,
                  time_injection = 'gate_bias', 
+                 condition_channel = 0,
+                 condition_injection = 'gate_bias',
+                 condition_first = False,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -62,7 +65,10 @@ class CNNEncoder(nn.Module):
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                         atten_dropout = atten_dropout,
-                                        time_injection = time_injection)
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
         ## down-sampling and convolution layers
         self.image_proj = DownSamplingBlock(dim=self.dim, scale_factor=patch_size, in_channel=image_channel, 
                                                out_channel=self.image_patch_channel, func=dsample_function)
@@ -136,8 +142,6 @@ class CNNEncoder(nn.Module):
         ## set out_channel
         self.out_channel = dense_channels[-1]
         self.return_feature_list = return_feature_list
-        if time_channel > 0:
-            logger.info(f'Using time-step injection method: {time_injection}')
     def __str__(self):
         _str = ''
         if len(self.down_path) > 1:
@@ -162,20 +166,20 @@ class CNNEncoder(nn.Module):
             _str += '\n'
         return _str 
     
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         x = self.image_proj(x)
         res = []
         if self.absolute_pos_embed is not None:
             x = x + self.absolute_pos_embed
         if self.d_depth > 0:
             for did, (d_conv, down) in enumerate(zip(self.d_conv, self.down)):
-                x = d_conv(x, t)
+                x = d_conv(x, t, c)
                 if hasattr(self, 'dca'):
                     x = self.dca[did](x)
                 res = res + [x,]
                 x = down(x)
         for mid, m_conv in enumerate(self.middle):
-            x = m_conv(x, t)
+            x = m_conv(x, t, c)
             if hasattr(self, 'mca'):
                 x = self.mca[mid](x)
 
@@ -212,7 +216,11 @@ class CNNDecoder(nn.Module):
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  return_feature_list = False, 
                  channel_attention = None, 
-                 time_injection = 'gate_bias', **kwargs):
+                 time_injection = 'gate_bias', 
+                 condition_channel = 0,
+                 condition_injection = 'gate_bias',
+                 condition_first = False,
+                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
@@ -237,7 +245,10 @@ class CNNDecoder(nn.Module):
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                         atten_dropout = atten_dropout,
-                                        time_injection = time_injection)
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
         ## fully connected layer
         dense_channels = [in_channel, ] + dense_channels 
         if not sum([im_size % (patch_size * math.prod(shape_scaling)) for im_size in self.image_size ]) == 0:
@@ -297,8 +308,6 @@ class CNNDecoder(nn.Module):
                                                        out_channel=self.image_channel, func=usample_function)
         self.final_path = final_channels + [self.image_channel]
         self.return_feature_list = return_feature_list
-        if time_channel > 0:
-            logger.info(f'Using time-step injection method: {time_injection}')
     def __str__(self):
         _str = ''
         if self.vector_embedding:
@@ -322,7 +331,7 @@ class CNNDecoder(nn.Module):
             _str += '\n'
         return _str 
     
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         ### ignore returned features
         if type(x) == tuple:
             x = x[0]
@@ -333,12 +342,12 @@ class CNNDecoder(nn.Module):
         res = []
         if self.u_depth > 0:
             for uid, (up, u_conv) in enumerate(zip(self.up, self.u_conv)):
-                x = u_conv(up(x), t)
+                x = u_conv(up(x), t, c)
                 if hasattr(self, 'uca'):
                     x = self.uca[uid](x)
                 res = res + [x,]
         for fid, f_conv in enumerate(self.final):
-            x = f_conv(x, t)
+            x = f_conv(x, t, c)
             if hasattr(self, 'fca'):
                 x = self.fca[fid](x)
         x = self.image_back_proj(x)

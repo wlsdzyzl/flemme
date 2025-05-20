@@ -10,18 +10,22 @@ import copy
 logger = get_logger("model.encoder.graph_neural_network")
 class GraphEncoder(nn.Module):
     def __init__(self, pos_dim=3, node_dim=0, 
-                 time_channel = 0,
-                 # concatenate position and node features
-                 pass_pos = True,
-                 pass_feature = True,
-                 ### wait to be implemented
-                 projection_channel = 64,
-                 message_passing_channels = [64, 64, 128, 256], 
-                 dense_channels = [],
-                 activation = 'lrelu', dropout = 0.,
-                 normalization = 'group', num_norm_groups = 8,  
-                 z_count = 1, nodewise = False, 
-                 time_injection = 'gate_bias', **kwargs):
+                    time_channel = 0,
+                    # concatenate position and node features
+                    pass_pos = True,
+                    pass_feature = True,
+                    ### wait to be implemented
+                    projection_channel = 64,
+                    message_passing_channels = [64, 64, 128, 256], 
+                    dense_channels = [],
+                    activation = 'lrelu', dropout = 0.,
+                    normalization = 'group', num_norm_groups = 8,  
+                    z_count = 1, nodewise = False, 
+                    time_injection = 'gate_bias', 
+                    condition_channel = 0,
+                    condition_injection = 'gate_bias',
+                    condition_first = False,
+                    **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
@@ -35,7 +39,8 @@ class GraphEncoder(nn.Module):
         self.num_norm_groups = num_norm_groups
         self.pass_pos = pass_pos
         self.pass_feature = pass_feature
-        self.time_channel = time_channel
+        # self.time_channel = time_channel
+        # self.condition_channel = condition_channel
         node_feature_dim = 0
         if self.pass_pos:
             node_feature_dim += pos_dim
@@ -51,10 +56,14 @@ class GraphEncoder(nn.Module):
             if self.nodewise:
                 dense_channels[0] += message_passing_channels[-1]
             dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
-                                                time_channel = self.time_channel,
+                                                time_channel = time_channel,
                                                 time_injection = time_injection,
                                                 activation = self.activation, dropout=self.dropout, 
-                                                norm = normalization, num_norm_groups=num_norm_groups) for i in range(len(dense_channels) - 2)]
+                                                norm = normalization, num_norm_groups=num_norm_groups,
+                                                condition_channel = condition_channel,
+                                                condition_injection = condition_injection,
+                                                condition_first = condition_first) 
+                                                for i in range(len(dense_channels) - 2)]
             # the last layer is a linear layer, without batch normalization
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], activation = None, norm = None), ]
             self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
@@ -78,7 +87,7 @@ class GraphEncoder(nn.Module):
         res = []
         x = self.node_proj(x)
         for mp in self.mp[:-1]:
-            x = mp(x, edge_index, t)
+            x = mp(x, edge_index, t, c)
             res.append(x)
         x = torch.concat(res, dim=-1)
         nf = self.mp[-1](x, edge_index)
@@ -95,7 +104,7 @@ class GraphEncoder(nn.Module):
                 x = torch.concat([x, nf], dim=-1)
 
             ## compute embedding vectors
-            x = [self.dense[i](x, t) for i in range(self.z_count)]
+            x = [self.dense[i](x, t, c) for i in range(self.z_count)]
         else:
             ## split nf to 
             x = list(torch.chunk(x, self.z_count, dim = -1))
@@ -126,6 +135,7 @@ class GCNEncoder(GraphEncoder):
                 cached = False,  
                 bias = True,
                 # concatenate position and node features
+                building_block = 'gcn',
                 pass_pos = True,
                 pass_feature = True,
                 projection_channel = 64,
@@ -133,19 +143,44 @@ class GCNEncoder(GraphEncoder):
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
                 normalization = 'group', num_norm_groups = 8,  
-                z_count = 1, nodewise = False, **kwargs):
-        super().__init__()
+                z_count = 1, nodewise = False, 
+                time_channel = 0, 
+                time_injection = 'gate_bias', 
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
+                **kwargs):
+        super().__init__(pos_dim=pos_dim, node_dim=node_dim, 
+                    time_channel = time_channel,
+                    # concatenate position and node features
+                    pass_pos = pass_pos,
+                    pass_feature = pass_feature,
+                    ### wait to be implemented
+                    projection_channel = projection_channel,
+                    message_passing_channels = message_passing_channels, 
+                    dense_channels = dense_channels,
+                    activation = activation, dropout = dropout,
+                    normalization = normalization, num_norm_groups = num_norm_groups,  
+                    z_count = z_count, nodewise = nodewise, 
+                    time_injection = time_injection, 
+                    condition_channel = condition_channel,
+                    condition_injection = condition_injection,
+                    condition_first = condition_first,)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = self.time_channel, 
+                                        time_channel = time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
                                         graph_normalize = graph_normalize,
                                         improved = improved,
                                         cached = cached,
-                                        bias = bias)
+                                        bias = bias,
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
         mp_sequence = [self.BuildingBlock(in_channel=self.mp_path[i], 
                                         out_channel=self.mp_path[i+1]) for i in range(len(self.mp_path) - 2) ]
             
@@ -160,6 +195,7 @@ class ChebEncoder(GraphEncoder):
                 filter_size = 5,
                 graph_normalization = 'sym', 
                 bias = True,
+                building_block = 'cheb',
                 # concatenate position and node features
                 pass_pos = True,
                 pass_feature = True,
@@ -168,18 +204,43 @@ class ChebEncoder(GraphEncoder):
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
                 normalization = 'group', num_norm_groups = 8,  
-                z_count = 1, nodewise = False, **kwargs):
-        super().__init__()
+                z_count = 1, nodewise = False, 
+                time_channel = 0, 
+                time_injection = 'gate_bias', 
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
+                **kwargs):
+        super().__init__(pos_dim=pos_dim, node_dim=node_dim, 
+                    time_channel = time_channel,
+                    # concatenate position and node features
+                    pass_pos = pass_pos,
+                    pass_feature = pass_feature,
+                    ### wait to be implemented
+                    projection_channel = projection_channel,
+                    message_passing_channels = message_passing_channels, 
+                    dense_channels = dense_channels,
+                    activation = activation, dropout = dropout,
+                    normalization = normalization, num_norm_groups = num_norm_groups,  
+                    z_count = z_count, nodewise = nodewise, 
+                    time_injection = time_injection, 
+                    condition_channel = condition_channel,
+                    condition_injection = condition_injection,
+                    condition_first = condition_first,)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = self.time_channel, 
+                                        time_channel = time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
                                         num_norm_groups = num_norm_groups, 
                                         filter_size = filter_size,
                                         graph_normalization = graph_normalization,
-                                        bias = bias)
+                                        bias = bias,
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
         mp_sequence = [self.BuildingBlock(in_channel=self.mp_path[i], 
                                         out_channel=self.mp_path[i+1]) for i in range(len(self.mp_path) - 2) ]
             
@@ -196,6 +257,7 @@ class TransConvEncoder(GraphEncoder):
                 beta = False,
                 bias = True,
                 # concatenate position and node features
+                building_block = 'gtrans',
                 pass_pos = True,
                 pass_feature = True,
                 projection_channel = 64,
@@ -203,19 +265,44 @@ class TransConvEncoder(GraphEncoder):
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
                 normalization = 'group', num_norm_groups = 8,  
-                z_count = 1, nodewise = False, **kwargs):
-        super().__init__()
+                z_count = 1, nodewise = False, 
+                time_channel = 0, 
+                time_injection = 'gate_bias', 
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
+                **kwargs):
+        super().__init__(pos_dim=pos_dim, node_dim=node_dim, 
+                    time_channel = time_channel,
+                    # concatenate position and node features
+                    pass_pos = pass_pos,
+                    pass_feature = pass_feature,
+                    ### wait to be implemented
+                    projection_channel = projection_channel,
+                    message_passing_channels = message_passing_channels, 
+                    dense_channels = dense_channels,
+                    activation = activation, dropout = dropout,
+                    normalization = normalization, num_norm_groups = num_norm_groups,  
+                    z_count = z_count, nodewise = nodewise, 
+                    time_injection = time_injection, 
+                    condition_channel = condition_channel,
+                    condition_injection = condition_injection,
+                    condition_first = condition_first,)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.BuildingBlock = get_building_block(building_block, 
-                                        time_channel = self.time_channel, 
+                                        time_channel = time_channel, 
                                         activation=activation, 
                                         norm = normalization, 
                                         num_heads = num_heads,
                                         concat = concat,
                                         beta = beta,
                                         dropout = self.dropout,
-                                        bias = bias)
+                                        bias = bias,
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
         mp_sequence = [self.BuildingBlock(in_channel=self.mp_path[i], 
                                         out_channel=self.mp_path[i+1]) for i in range(len(self.mp_path) - 2) ]
             
@@ -235,6 +322,10 @@ class GraphDecoder(nn.Module):
                 recon_feature = False,
                 recon_edge = False,
                 nodewise = False, 
+                time_injection = 'gate_bias', 
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -242,14 +333,17 @@ class GraphDecoder(nn.Module):
         self.node_dim = node_dim
         self.pos_dim = pos_dim
         self.node_num = node_num
-        self.time_channel = time_channel
         self.activation = activation
         self.nodewise = nodewise
         dense_channels = [in_channel,] + dense_channels 
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                        time_channel = self.time_channel,
+                                        time_channel = time_channel,
                                         norm = normalization, num_norm_groups=num_norm_groups, 
-                                        activation = activation, dropout=dropout) for i in range(len(dense_channels) - 1)]
+                                        activation = activation, dropout=dropout,
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first=condition_first) for i in range(len(dense_channels) - 1)]
         ## fully connected layer
         if recon_pos and pos_dim > 0:
             final_channel = pos_dim * node_num if not self.nodewise else self.pos_dim
@@ -302,20 +396,20 @@ class GraphDecoder(nn.Module):
                 _str += '{}->'.format(c)  
             _str += str(self.de_edge_path[-1])
         return _str 
-    def forward(self, x, t = None):
+    def forward(self, x, t = None, c = None):
         pos, feature, edge = None, None, None
         if hasattr(self, 'de_pos'):
-            pos = self.de_pos(x, t)
+            pos = self.de_pos(x, t, c)
             if not self.nodewise:
                 pos = pos.reshape(-1, self.pos_dim)
 
         if hasattr(self, 'de_feature'):
-            feature = self.de_feature(x, t)
+            feature = self.de_feature(x, t, c)
             if not self.nodewise:
                 feature = feature.reshape(-1, self.node_dim)
 
         if hasattr(self, 'de_edge'):
-            z = self.de_edge(x, t)
+            z = self.de_edge(x, t, c)
             batch_size = x.shape[0] // self.node_num
             ## 2, B * (node_num^2)
             edge_index = torch.concat([self.edge_index + bid * self.node_num for bid in batch_size], dim = -1).to(x.device)
