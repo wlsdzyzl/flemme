@@ -36,24 +36,23 @@ def cosine_schedule(num_steps, max_beta = 0.999):
 
 supported_eps_models = {'Base': Base, 'HBase': HBase}
 
-class DiffusionProbabilistic(nn.Module):
+def _create_eps_model(eps_config):
+    model_name = eps_config.pop('name', 'Base')
+    if not model_name in supported_eps_models:
+        raise RuntimeError(f'Unsupported model class: {model_name}')
+    eps_model = supported_eps_models[model_name](eps_config)
+    assert eps_model.with_time_embedding, \
+        'You need a encoder with time embedding for ddpm.'
+    return eps_model, model_name
 
-    @staticmethod
-    def __create_eps_model(eps_config):
-        model_name = eps_config.pop('name', 'Base')
-        if not model_name in supported_eps_models:
-            raise RuntimeError(f'Unsupported model class: {model_name}')
-        eps_model = supported_eps_models[model_name](eps_config)
-        assert eps_model.with_time_embedding, \
-            'You need a encoder with time embedding for ddpm.'
-        return eps_model, model_name
+class DiffusionProbabilistic(nn.Module):
     
     def __init__(self, model_config):
         super().__init__()
         # noise predictor should be a auto-encoder with time embedding.
         eps_config = model_config.get('eps_model')
         self.eps_model, self.eps_model_name = \
-            self.__create_eps_model(eps_config)
+            _create_eps_model(eps_config)
         self.num_steps = model_config.get('num_steps', 1000)
         # Create $\beta_1, \dots, \beta_T$ linearly increasing variance schedule
         self.is_conditional = self.eps_model.is_conditional
@@ -96,7 +95,7 @@ class DiffusionProbabilistic(nn.Module):
         self.register_buffer('sqrt_one_minus_alpha_bar', (1 - torch.cumprod(1 - beta, dim=0)) ** .5)
         # $\sigma^2 = \beta$
         self.register_buffer('sigma2', beta)
-        self.clipped = model_config.get('clipped', True)
+        self.clipped = model_config.get('clipped', False)
         self.clip_range = model_config.get('clip_range', [-1.0, 1.0])
         self.parameterization = model_config.get('parameterization', 'epsilon')
         assert self.parameterization in ['epsilon', 'velocity', 'start'], \
@@ -163,6 +162,7 @@ class DiffusionProbabilistic(nn.Module):
     def get_start_from_velocity(self, xt, t, v):
         return gather(self.sqrt_alpha_bar, t, self.gather_dim)*xt - \
             gather(self.sqrt_one_minus_alpha_bar, t, self.gather_dim)*v
+    
     def get_eps_from_model(self, xt, t, c):
         if self.eps_model.is_conditional and c is not None:
             model_out = self.eps_model(xt, t, c)
@@ -235,7 +235,6 @@ class DiffusionProbabilistic(nn.Module):
         return Gaussian(mean, var = var).sample()
         # return mean + (var ** .5) * torch.randn_like(xt)
 
-
     @torch.no_grad()
     def sample(self, xt, end_step = 100, c = None, clipped = None, 
                clip_range = None, return_processing = False):
@@ -279,6 +278,71 @@ class DiffusionProbabilistic(nn.Module):
         \epsilon - \textcolor{lightgreen}{\epsilon_\theta}(\sqrt{\bar\alpha_t} x_0 + \sqrt{1-\bar\alpha_t}\epsilon, t)
         \bigg\Vert^2 \Bigg]$$
         """
+        res = self.forward(x0, c = c)
+        model_out = res['model_out']
+        h_model_out = res['h_model_out']
+        t = res['t']
+        eps = res['eps']
+        
+        ### eps loss
+        if self.parameterization == 'epsilon':
+            target = eps
+        elif self.parameterization == 'start':
+            target = x0
+        else:
+            target = self.get_velocity(x0, t, eps)
+
+        losses = []
+        losses += [self.eps_loss(model_out, target), ]
+        if h_model_out:
+            sublosses = []
+            for h_x in h_model_out:
+                h_target = F.interpolate(target, size = h_x.shape[2:], mode = self.eps_model.inter_mode)
+                sublosses.append(self.eps_loss(h_x, h_target))
+            losses += [sum(sublosses) / len(sublosses), ]
+
+        
+        ### recon loss
+        if len(self.recon_losses) > 0:
+            x0_pred = res['recon']
+            xt = res['xt']
+            for l, w in zip(self.recon_losses, self.recon_loss_weights):
+                losses += [l(x0_pred, x0) * w, ]
+            
+            ## h-base eps_model
+            if h_model_out:            
+                for l, w in zip(self.recon_losses, self.recon_loss_weights):
+                    sublosses = []
+                    for h_mo in h_model_out:
+                        h_x0 = F.interpolate(x0, size = h_mo.shape[2:], mode = self.eps_model.inter_mode)
+                        if self.parameterization == 'epsilon':
+                            h_x0_pred = self.get_start_from_eps(xt = xt, t = t, eps = h_mo)
+                        elif self.parameterization == 'velocity':
+                            h_x0_pred = self.get_start_from_velocity(xt = xt, t = t, v = h_mo)
+                        else:
+                            h_x0_pred = h_mo
+                        sublosses += [l(h_x0_pred, h_x0) * w, ]
+                    losses.append(sum(sublosses) / len(sublosses))
+        return losses, res
+    ### run diffusion and reversed diffusion
+    ## input: raw data
+    ## return: reconstructed data
+    ## usually this funtion should be used in eval mode.
+    # def forward(self, x, c = None, end_step = 100, clipped = None, clip_range = None):
+    #     if clipped is None:
+    #         clipped = self.clipped
+    #     if clip_range is None:
+    #         clip_range = self.clip_range
+    #     batch_size = x.shape[0]
+    #     # Get random $t$ for each sample in the batch
+    #     assert end_step < self.num_steps, "End step is larger than or equal to the amount of sample steps."
+    #     if end_step < 0:
+    #         end_step = self.num_steps - 1
+
+    #     t = torch.ones((batch_size,), device=x.device, dtype=torch.long) * end_step
+    #     xt, _ = self.add_noise(x, t)
+    #     return {'recon':self.sample(xt, end_step = end_step, c=c, clipped = clipped, clip_range = clip_range)}
+    def forward(self, x0, c = None):
         # Get batch size
         batch_size = x0.shape[0]
         # Get random $t$ for each sample in the batch
@@ -291,73 +355,23 @@ class DiffusionProbabilistic(nn.Module):
             self.classifier_free and torch.rand(1).item() < self.condition_dropout:
             c = None
         model_out = self.eps_model(xt, t = t, c = c) 
-        ### eps loss
-        if self.parameterization == 'epsilon':
-            target = eps 
-        elif self.parameterization == 'start':
-            target = x0
-        else:
-            target = self.get_velocity(x0, t, eps)
-
-        losses = []
-        if not type(model_out) == tuple:
-            losses += [self.eps_loss(model_out, target), ]
-        else:
-            #### h-base model
-            loss = self.eps_loss(model_out[0], target)
-            sublosses = []
-            for h_x in model_out[1]:
-                h_target = F.interpolate(target, size = h_x.shape[2:], mode = self.eps_model.inter_mode)
-                sublosses.append(self.eps_loss(h_x, h_target))
-            losses += [loss, sum(sublosses) / len(sublosses)]
-
-        ### recon loss
-        if len(self.recon_losses) > 0:
-            if type(model_out) == tuple:
-                final_output = model_out[0]
-            else:
-                final_output = model_out
-
-            if self.parameterization == 'epsilon':
-                x0_pred = self.get_start_from_eps(xt = xt, t = t, eps = final_output)
-            elif self.parameterization == 'velocity':
-                x0_pred = self.get_start_from_velocity(xt = xt, t = t, v = final_output)
-            else:
-                x0_pred = final_output
-            for l, w in zip(self.recon_losses, self.recon_loss_weights):
-                losses += [l(x0_pred, x0) * w, ]
+        # hierarchical base model
+        h_model_out = None
+        
+        if type(model_out) == tuple:
+            model_out, h_model_out = model_out
             
-            ## h-base eps_model
-            if type(model_out) == tuple:                
-                for l, w in zip(self.recon_losses, self.recon_loss_weights):
-                    sublosses = []
-                    for h_mo in model_out[1]:
-                        h_x0 = F.interpolate(x0, size = h_mo.shape[2:], mode = self.eps_model.inter_mode)
-                        if self.parameterization == 'epsilon':
-                            h_x0_pred = self.get_start_from_eps(xt = xt, t = t, eps = h_mo)
-                        elif self.parameterization == 'velocity':
-                            h_x0_pred = self.get_start_from_velocity(xt = xt, t = t, v = h_mo)
-                        else:
-                            h_x0_pred = h_mo
-                        sublosses += [l(h_x0_pred, h_x0) * w, ]
-                    losses.append(sum(sublosses) / len(sublosses))
-        return losses, None
-    ### run diffusion and reversed diffusion
-    ## input: raw data
-    ## return: reconstructed data
-    ## usually this funtion should be used in eval mode.
-    def forward(self, x, c = None, end_step = 100, clipped = None, clip_range = None):
-        if clipped is None:
-            clipped = self.clipped
-        if clip_range is None:
-            clip_range = self.clip_range
-        batch_size = x.shape[0]
-        # Get random $t$ for each sample in the batch
-        assert end_step < self.num_steps, "End step is larger than or equal to the amount of sample steps."
-        if end_step < 0:
-            end_step = self.num_steps - 1
-
-        t = torch.ones((batch_size,), device=x.device, dtype=torch.long) * end_step
-        xt, _ = self.add_noise(x, t)
-        return {'recon':self.sample(xt, end_step = end_step, c=c, clipped = clipped, clip_range = clip_range)}
-    
+        
+        if self.parameterization == 'epsilon':
+            x0_pred = self.get_start_from_eps(xt = xt, t = t, eps = model_out)
+        elif self.parameterization == 'velocity':
+            x0_pred = self.get_start_from_velocity(xt = xt, t = t, v = model_out)
+        else:
+            x0_pred = model_out
+        res = {'recon':x0_pred,
+               'eps': eps,
+               'xt': xt,
+               't': t,
+               'model_out': model_out,
+               'h_model_out': h_model_out}
+        return res

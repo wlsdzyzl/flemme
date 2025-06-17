@@ -1,0 +1,71 @@
+# train ae or vae
+rand_seed: 2025
+model:
+  # can be AE, VAE and DDPM
+  name: DDIM
+  num_steps: 1000
+  beta_schedule: consine
+  eps_model:
+    # encoder config
+    time_channel: 128
+    encoder:
+      name: UNet
+      image_size: [32, 32]
+      in_channel: 3
+      patch_size: 1
+      down_channels: [128, 256, 512, 1024]
+      middle_channels: [2048, 2048]
+      ## allow an asummetrical architecture
+      # decode_down_channels: [32, 64]
+      ### with time embedding
+      building_block: single
+      activation: silu
+      num_blocks: 3
+      normalization: group
+      num_norm_groups: 32
+      dropout: 0.1
+    # condition_embedding:
+    #   combine_condition: add
+    #   merge_timestep_and_condition: true
+    #   encoder:
+    #     name: OneHot
+    #     type: categories
+    #     out_channel: 128
+    #     num_classes: 10
+  # classifier_free_guidance:
+  #   condition_dropout: 0.2
+  #   guidance_weight: 2.0
+  ## 2D ddpm
+  eps_loss:
+    name: MSE
+loader:
+  dataset: 
+    name: CIFAR10
+    data_path: /media/wlsdzyzl/DATA1/datasets/img/CIFAR10
+  batch_size: 64
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [32, 32]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.5, 0.5, 0.5]
+      std: [0.5, 0.5, 0.5]
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/CIFAR10/DDIM
+sampler:
+  rand_seed: 2024
+### parameter for optimizer
+optimizer:
+  name: AdamW
+  lr: 0.0003
+  weight_decay: 0.00000001
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 1000
+write_after_iters: 50
+save_after_epochs: 5

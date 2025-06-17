@@ -4,8 +4,9 @@ from flemme.model.ae import AutoEncoder as AE, HAutoEncoder as HAE
 from flemme.model.vae import VariationalAutoEncoder as VAE
 from flemme.model.ddpm import DiffusionProbabilistic as DDPM
 from flemme.model.ddim import DiffusionImplicit as DDIM
-from flemme.model.ldm import LatentDiffusionProbabilistic as LDPM, LatentDiffusionImplicit as LDIM, supported_ae_models
-from flemme.model.sdm import SupervisedDiffusionProbabilistic as SDPM, SupervisedDiffusionImplicit as SDIM
+from flemme.model.edm import EDM
+from flemme.model.ldm import LatentDiffusion as LDM, supported_ae_models, supported_diff_models
+from flemme.model.sdm import SupervisedDiffusion as SDM
 from flemme.model.half import OnlyDecoder, OnlyEncoder
 from flemme.model.clm import ClassificationModel as ClM
 from flemme.utils import load_config
@@ -32,14 +33,12 @@ supported_models = {
     'DDPM': DDPM,
     #### diffusion implicit model
     'DDIM': DDIM,
+    ### edm: Elucidating the Design Space of Diffusion-Based Generative Models
+    'EDM': EDM,
     #### latent diffusion model: diffusion model with a pre-trained auto-encoder
-    'LDPM': LDPM,
-    #### latent diffusion implicit model
-    'LDIM': LDIM,
+    'LDM': LDM,
     #### supervised diffusion model: use for reconstruction or segmentation
-    'SDPM': SDPM,
-    #### supervised diffusion implicit model
-    'SDIM': SDIM,
+    'SDM': SDM,
     #### model with only encoder
     'OnlyEncoder': OnlyEncoder,
     #### model with only decoder

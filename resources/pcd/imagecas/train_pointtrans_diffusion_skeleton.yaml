@@ -32,7 +32,7 @@ loader:
     data_dir: skeleton
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA/vcg-results/skeleton/imagecas_clean/sknet_pointtrans
+    - /media/wlsdzyzl/DATA1/vcg-results/skeleton/imagecas_clean/sknet_pointtrans
   batch_size: 16
   num_workers: 8
   shuffle: true
@@ -43,7 +43,7 @@ loader:
       num: 256
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/imagecas_clean/PointTrans_Diffusion_Skeleton
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas_clean/PointTrans_Diffusion_Skeleton
 ### parameter for optimizer
 optimizer:
   name: Adam

@@ -27,7 +27,7 @@ class CNNEncoder(nn.Module):
                  shape_scaling = [2, 2],  middle_channels = [256, 256], 
                  middle_attens = [None, None], depthwise = False, kernel_size = 3, 
                  dense_channels = [256], dsample_function = 'conv', building_block='single', 
-                 normalization = 'group', num_norm_groups = 8, cn_order = 'cn', num_blocks = 2,
+                 normalization = 'group', num_norm_groups = 8, num_blocks = 2,
                  activation = 'relu', z_count = 1, dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  abs_pos_embedding = False, last_activation = True, return_feature_list = False,
@@ -57,11 +57,12 @@ class CNNEncoder(nn.Module):
             logger.error('Please check your image size, patch size and downsample depth to make sure the image size can be divisible.')
             exit(1)
         ### use a 'AaaBbb' style for class name
-        self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
-                                        activation = activation, depthwise = depthwise,
+        self.BuildingBlock = get_building_block(building_block, dim=self.dim, 
+                                        time_channel = time_channel, 
+                                        activation = activation, depthwise = depthwise, 
                                         kernel_size = kernel_size, padding = (kernel_size - 1) // 2,
                                         norm = normalization, num_norm_groups = num_norm_groups, 
-                                        order = cn_order, dropout = dropout,  
+                                        dropout = dropout,  
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                         atten_dropout = atten_dropout,
@@ -82,7 +83,7 @@ class CNNEncoder(nn.Module):
         self.down = nn.ModuleList([DownSamplingBlock(dim=self.dim, in_channel=down_channels[i], 
                                                         func=dsample_function, scale_factor=shape_scaling[i-1]) for i in range(1, len(down_channels))])    
         self.d_conv = nn.ModuleList( [MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
-                                                        dim=self.dim, in_channel=down_channels[i], 
+                                                        in_channel=down_channels[i], 
                                                         out_channel=down_channels[i+1], 
                                                         atten=down_attens[i]) for i in range(len(down_channels) - 1) ])
         if channel_attention is not None:
@@ -125,8 +126,6 @@ class CNNEncoder(nn.Module):
         ### fully connected layers
         
         if self.vector_embedding:
-            
-
             dense_channels[0] = int( math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)  *dense_channels[0])
             if last_activation:
                 dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
@@ -211,7 +210,7 @@ class CNNDecoder(nn.Module):
                  shape_scaling = [2, 2], final_channels = [], 
                  final_attens = [], depthwise = False, kernel_size = 3, 
                  usample_function = 'conv', building_block='single', 
-                 normalization = 'group', num_norm_groups = 8, cn_order = 'cn', 
+                 normalization = 'group', num_norm_groups = 8, 
                  num_blocks = 2, activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
                  return_feature_list = False, 
@@ -241,7 +240,7 @@ class CNNDecoder(nn.Module):
                                         depthwise = depthwise, activation=activation, 
                                         kernel_size = kernel_size, padding = (kernel_size - 1) // 2,
                                         norm = normalization, num_norm_groups = num_norm_groups, 
-                                        order = cn_order, dropout = dropout,
+                                        dropout = dropout,
                                         num_heads = num_heads, d_k = d_k, 
                                         qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                         atten_dropout = atten_dropout,

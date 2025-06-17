@@ -96,14 +96,14 @@ class DiffusionImplicit(DDPM):
             return processing
         return xt
     
-    def forward(self, x, c = None, clipped = None, clip_range = None):
-        if clipped is None:
-            clipped = self.clipped
-        if clip_range is None:
-            clip_range = self.clip_range
-        batch_size = x.shape[0]
-        end_step = self.num_steps - 1
+    # def forward(self, x, c = None, clipped = None, clip_range = None):
+    #     if clipped is None:
+    #         clipped = self.clipped
+    #     if clip_range is None:
+    #         clip_range = self.clip_range
+    #     batch_size = x.shape[0]
+    #     end_step = self.num_steps - 1
 
-        t = torch.ones((batch_size,), device=x.device, dtype=torch.long) * end_step
-        xt, _ = self.add_noise(x, t)
-        return {'recon':self.sample(xt, c=c, clipped = clipped, clip_range = clip_range)}
+    #     t = torch.ones((batch_size,), device=x.device, dtype=torch.long) * end_step
+    #     xt, _ = self.add_noise(x, t)
+    #     return {'recon':self.sample(xt, c=c, clipped = clipped, clip_range = clip_range)}

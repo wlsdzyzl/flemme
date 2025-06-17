@@ -5,11 +5,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from scipy.ndimage import rotate, map_coordinates, gaussian_filter, convolve, binary_opening, binary_closing
-from skimage import measure
 from skimage.filters import gaussian
-from flemme.utils import label_to_onehot, relabel
+from flemme.utils import label_to_onehot
 from functools import partial
-
+from .img_transforms import DistMap, Relabel
 eps = 1e-8
 
 class RandomFlip:
@@ -355,29 +354,11 @@ class ToTensor:
         return torch.from_numpy(m.astype(dtype=self.dtype))
 
 
-class Relabel:
-    """
-    Relabel a numpy array of labels into a consecutive numbers, e.g.
-    [10, 10, 0, 6, 6] -> [2, 2, 0, 1, 1]. Useful when one has an instance segmentation volume
-    at hand and would like to create a one-hot-encoding for it. Without a consecutive labeling the task would be harder.
-    """
-
-    def __init__(self, map = [], **kwargs):
-        self.map = map
-    def __call__(self, m):
-        if len(self.map) > 0:
-            for kv in self.map:
-                k, v = kv
-                m[m == k] = v
-        else:
-            m = relabel(m)
-        return m
-
 class ToOneHot:
     """
     To one hot label, background value should be 0
     """
-    def __init__(self, num_classes = None, ignore_background = False, **kwargs):
+    def __init__(self, num_classes, ignore_background = False, **kwargs):
         self.to_onehot = partial(label_to_onehot, num_classes = num_classes, 
             ignore_background = ignore_background, channel_dim = 0)
     def __call__(self, m):

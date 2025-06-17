@@ -31,7 +31,6 @@ class GraphConvBlock(nn.Module):
                 activation = 'relu', 
                 norm = 'batch', 
                 num_norm_groups = 0, 
-                order = 'cn',
                 time_injection = 'gate_bias',
                 graph_normalize = True,
                 improved = False,
@@ -51,15 +50,14 @@ class GraphConvBlock(nn.Module):
           improved = improved,
           cached = cached,
           bias = bias)
-        norm_channel = out_channel
-        if order.index('n') < order.index('c'):
-            norm_channel = in_channel
+
+
         self.norm, self.norm_type = get_graph_norm(norm, 
-                        norm_channel = norm_channel, num_norm_groups = num_norm_groups)
+                        norm_channel = out_channel, num_norm_groups = num_norm_groups)
 
         # activation function
         self.act = get_act(activation)
-        self.order = order
+
 
         self.cinj = None
         if time_channel > 0 or condition_channel > 0:
@@ -72,21 +70,10 @@ class GraphConvBlock(nn.Module):
                 condition_first = condition_first)
 
     def forward(self, x, edge_index, t = None, c = None):
-        for m in self.order:
-            if m == 'n':
-                x = self.norm(x)
-            elif m == 'c':
-                x = self.conv(x, edge_index)
-        x = self.act(x)
-
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            x = self.time(x, t)
-        if c is not None:
-            assert self.condition_channel == c.shape[-1], \
-                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
-            x = self.cond(x, c)
+        x = self.conv(x, edge_index)                
+        x = self.act(self.normalize(x))
+        if self.cinj:
+            x = self.cinj(x, t, c)
         return x
 
 class ChebConvBlock(GraphConvBlock):
@@ -97,7 +84,6 @@ class ChebConvBlock(GraphConvBlock):
                 activation = 'relu', 
                 norm = 'batch', 
                 num_norm_groups = 0, 
-                order = 'cn',
                 filter_size = 5,
                 graph_normalization = 'sym', 
                 bias = True,
@@ -111,7 +97,7 @@ class ChebConvBlock(GraphConvBlock):
             condition_injection = condition_injection,
             condition_first=condition_first,
             activation = activation, norm = norm,
-            num_norm_groups = num_norm_groups, order = order)
+            num_norm_groups = num_norm_groups)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         # convolution layer
@@ -130,7 +116,6 @@ class TransConvBlock(GraphConvBlock):
                 activation = 'relu', 
                 norm = 'batch', 
                 num_norm_groups = 0, 
-                order = 'cn',
                 num_heads = 1,
                 concat = True,
                 beta = False,
@@ -146,7 +131,7 @@ class TransConvBlock(GraphConvBlock):
             condition_injection = condition_injection,
             condition_first=condition_first,
             activation = activation, norm = norm,
-            num_norm_groups = num_norm_groups, order = order)
+            num_norm_groups = num_norm_groups)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         # convolution layer

@@ -13,7 +13,8 @@ class TorchLoss(nn.Module):
         self.reduction = reduction
         self.torch_loss = torch_loss(reduction = 'none')
         self.channel_dim = channel_dim
-    def forward(self, x, y):
+    def forward(self, x, y, mask = 1.0, sample_weight = 1.0):
+        x, y = x * mask, y * mask
         #### channel mean, only matters for CrossEntropyLoss
         if self.channel_dim != 1:
             x, y = x.transpose(1, self.channel_dim), y.transpose(1, self.channel_dim)
@@ -21,6 +22,7 @@ class TorchLoss(nn.Module):
         #### spatial and channel mean
         if res.ndim > 1:
             res = res.mean(dim = tuple(range(1, res.ndim)))
+        res = res * sample_weight
         if self.reduction == 'none':    
             return res
         if self.reduction == 'sum':
@@ -37,7 +39,8 @@ class SSIMLoss(torch.nn.Module):
         if self.dim == 3:
             self.window = create_window_3D(window_size, self.channel, sigma = sigma)
         self.reduction = reduction
-    def forward(self, x, y):
+    def forward(self, x, y, mask = 1.0, sample_weight = 1.0):
+        x, y = x * mask, y * mask
         assert x.shape[1] == self.channel and y.shape[1] == self.channel, \
                 'Channel size mis-matched for SSIM loss.'
         assert (x.ndim - 2) == self.dim, 'Image dimension mis-matched for SSIM loss'
@@ -47,6 +50,7 @@ class SSIMLoss(torch.nn.Module):
         else:
             res = 1.0 - _ssim_3D(x, y, window)
         res = res.mean(dim = tuple(range(1, res.ndim)))
+        res = res * sample_weight
         if self.reduction == 'none':    
             return res
         if self.reduction == 'sum':
@@ -63,12 +67,12 @@ class KLLoss(nn.Module):
     def __init__(self, reduction = 'mean'):
         super().__init__()
         self.reduction = reduction
-    def forward(self, gauss1, gauss2=None):
+    def forward(self, gauss1, gauss2=None, sample_weight = 1.0):
         res = kl_distance(gauss1, gauss2)
         ### compute mean over channel and spatial
         if res.ndim > 1:
             res = res.mean(dim = tuple(range(1, res.ndim)))
-
+        res = res * sample_weight
         if self.reduction == 'sum':
             return torch.sum(res)
         elif self.reduction == "mean":
@@ -81,11 +85,12 @@ class DistriMSELoss(nn.Module):
     def __init__(self, reduction = 'mean'):
         super().__init__()
         self.reduction = reduction
-    def forward(self, gauss1, gauss2=None):
+    def forward(self, gauss1, gauss2=None, sample_weight = 1.0):
         res = ((gauss1.logvar - gauss2.logvar) ** 2 + (gauss1.mean - gauss2.mean) ** 2) / 2
         ### compute mean over channel and spatial
         if res.ndim > 1:
             res = res.mean(dim = tuple(range(1, res.ndim)))
+        res = res * sample_weight
         if self.reduction == 'sum':
             return torch.sum(res)
         elif self.reduction == "mean":
@@ -105,8 +110,9 @@ class DiceLoss(nn.Module):
         else:
             self.normalization = nn.Identity()
         self.channel_dim = channel_dim
-    def forward(self, x, y):
+    def forward(self, x, y, mask = 1.0, sample_weight = 1.0):
         x = self.normalization(x)
+        x, y = x * mask, y * mask
         if self.channel_dim != 1:
             x, y = x.transpose(1, self.channel_dim), y.transpose(1, self.channel_dim)
         B, C = x.shape[0], x.shape[1]
@@ -118,7 +124,7 @@ class DiceLoss(nn.Module):
         dice_score = numerator / denominator  
         ### per channel dice loss
         loss = (1 - dice_score).mean(dim = 1)
-
+        loss = loss * sample_weight
         if self.reduction == 'mean':
             return loss.mean()
         elif self.reduction == 'sum':
@@ -126,6 +132,44 @@ class DiceLoss(nn.Module):
         else:
             return loss
 
+### boundary loss
+class SurfaceLoss(nn.Module):
+    def __init__(self, idc = None, reduction = 'mean',
+                 normalization = 'sigmoid'):
+        # Self.idc is used to filter out some classes of the target mask. Use fancy indexing
+        self.idc = idc
+        logger.info(f"Initialized surface loss with idc = {idc}")
+        self.reduction = reduction
+        self.reduction = reduction
+        if normalization == 'sigmoid':
+            self.normalization = nn.Sigmoid()
+        elif normalization == 'softmax':
+            self.normalization = nn.Softmax(dim=0)
+        else:
+            self.normalization = nn.Identity()
+
+    def forward(self, probs, dist_maps, mask = 1.0, sample_weight = 1.0):
+        probs = self.normalization(probs)
+        pc, dc = probs * mask, dist_maps * mask
+        if self.idc is not None:
+            pc = pc[:, self.idc, ...]
+            dc = dc[:, self.idc, ...]
+        if pc.ndim == 4:
+            multipled = torch.einsum("bkwh,bkwh->bkwh", pc, dc)
+        elif pc.ndim == 5:
+            multipled = torch.einsum("bkxyz,bkxyz->bkxyz", pc, dc)
+        else:
+            logger.error(f'Unsupported image dimension: {pc.shape}')
+            exit(1)
+        loss = multipled.mean(dim = tuple(range(1, multipled.ndim)))
+        loss = loss * sample_weight
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
+        else:
+            return loss
+    
 if module_config['point-cloud']:    
     from .ext_modules import ChamferDistance, emdModule as EMD 
     ### The following loss can be used as reconstruction loss for point clouds
@@ -138,7 +182,7 @@ if module_config['point-cloud']:
             self.extended = extended
         def calc_cd(self, x, gt):
             return self.chamfer(x, gt)
-        def forward(self, x, y):
+        def forward(self, x, y, sample_weight = 1.0):
             d1, d2 = self.calc_cd(x, y)
             d1, d2 = d1.mean(dim=-1, keepdim=True), d2.mean(dim=-1, keepdim=True)
             if self.extended:
@@ -146,6 +190,7 @@ if module_config['point-cloud']:
                 dist, _ = torch.max(torch.cat([d1, d2], dim = -1), dim = -1)
             else:
                 dist = ((d1 + d2) * 0.5).squeeze(-1)
+            dist = dist * sample_weight
             if self.reduction == 'sum':
                 return dist.sum()
             elif self.reduction == "mean":
@@ -166,8 +211,8 @@ if module_config['point-cloud']:
         def calc_cd(self, x, gt):
             x = x.float()
             gt = gt.float()
-            batch_size, n_x, _ = x.shape
-            batch_size, n_gt, _ = gt.shape
+            _, n_x, _ = x.shape
+            _, n_gt, _ = gt.shape
             assert x.shape[0] == gt.shape[0]
 
             if self.non_reg:
@@ -202,9 +247,10 @@ if module_config['point-cloud']:
             super().__init__()
             self.loss = EMD(eps = eps, iters = iters)
             self.reduction = reduction
-        def forward(self, x, y):
+        def forward(self, x, y, sample_weight = 1.0):
             loss = torch.sqrt(self.loss(x, y)[0])
             loss = loss.mean(dim=-1)
+            loss = loss * sample_weight
             if self.reduction == 'sum':
                 return loss.sum()
             elif self.reduction == 'mean':
@@ -216,7 +262,7 @@ if module_config['point-cloud']:
             super().__init__()
             self.loss = SamplesLoss("sinkhorn", blur = blur, scaling = scaling)
             self.reduction = reduction
-        def forward(self, x, y, x_weight = None, y_weight = None):
+        def forward(self, x, y, x_weight = None, y_weight = None, sample_weight = 1.0):
             if not x_weight is  None or not y_weight is None:
                 if x_weight is None:
                     x_weight = torch.ones((x.shape[0], x.shape[1])).to(x.device).type(x.dtype) / x.shape[1]
@@ -225,6 +271,7 @@ if module_config['point-cloud']:
                 loss = self.loss(x_weight, x, y_weight, y)
             else:
                 loss = self.loss(x, y)
+            loss = loss * sample_weight
             if self.reduction == 'sum':
                 return loss.sum()
             elif self.reduction == 'mean':
@@ -241,36 +288,39 @@ if module_config['graph']:
             super().__init__()
             self.pos_loss = TorchLoss(torch_loss = nn.MSELoss, reduction = reduction)
             self.feature_loss = TorchLoss(torch_loss = nn.MSELoss, reduction = reduction)
-        def forward(self, pred, data):
+            self.lambda_pos = lambda_pos
+            self.lambda_feature = lambda_feature
+        def forward(self, pred, data, sample_weight = 1.0):
             assert type(pred) == tuple, 'the prediction of graph should be a tuple.'
             batch_size = data.batch_size
             recon_pos, recon_feature, _ = pred
-            gt_pos, gt_feature, batch = data.pos, data.x, data.batch
+            gt_pos, gt_feature, _ = data.pos, data.x, data.batch
             
             loss = 0
             if recon_pos is not None and gt_pos is not None:
                 # BN * F -> B * N * F
                 recon_pos = torch.stack(torch.chunk(recon_pos, batch_size, dim = 0), dim = 0)
                 gt_pos = torch.stack(torch.chunk(gt_pos, batch_size, dim=0), dim = 0)
-                loss = lambda_pos * self.pos_loss(recon_pos, gt_pos)
+                loss = self.lambda_pos * self.pos_loss(recon_pos, gt_pos, sample_weight = sample_weight)
                 
             if recon_feature is not None and gt_feature is not None:
                 recon_feature = torch.stack(torch.chunk(recon_feature, batch_size, dim = 0), dim = 0)
                 gt_feature = torch.stack(torch.chunk(gt_feature, batch_size, dim=0), dim = 0)
-                lf = lambda_feature * self.feature_loss(recon_feature, gt_feature)
+                lf = self.lambda_feature * self.feature_loss(recon_feature, gt_feature, sample_weight = sample_weight)
                 loss = lf + loss if loss is not None else lf
             return loss
     ### BCE loss
     class GraphEdgeLoss(nn.Module):
         def __init__(self, reduction = 'mean'):
             super().__init__()
-        def forward(self, pred, data):
+            self.reduction = reduction
+        def forward(self, pred, data, sample_weight = 1.0):
             assert type(pred) == tuple, 'the prediction of graph should be a tuple.'
             batch_size = data.batch_size
             recon_edge = pred[-1]
             gt_edge_index = data.edge_index
 
-            if recon_edge is not None and edge_index is not None:
+            if recon_edge is not None and gt_edge_index is not None:
                 pp_recon_edge = torch.sparse_coo_tensor(indices = recon_edge.indices(), 
                         values = torch.log(torch.sigmoid(recon_edge.values())), size = recon_edge.shape).coalesce()
                 np_recon_edge = torch.sparse_coo_tensor(indices = recon_edge.indices(), 
@@ -287,6 +337,7 @@ if module_config['graph']:
                 le = -(pp_recon_edge * gt_edge + np_recon_edge * one_minus_gt_edge) 
                 le = torch.stack(torch.chunk(le.values(), batch_size, dim = 0), dim = 0)
                 le = le.mean(dim = -1)
+                le = le * sample_weight
                 if self.reduction == 'mean':
                     le = le.mean()
                 elif self.reduction == 'sum':

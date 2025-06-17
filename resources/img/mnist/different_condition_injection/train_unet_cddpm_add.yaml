@@ -32,7 +32,7 @@ model:
       decoder:
         name: OneHot
         type: categories
-        out_channel: 128
+        out_channel: 1024
         num_classes: 10
       ## allow an asummetrical architecture
       # decoder_dense_channels: [128 256]
@@ -42,7 +42,7 @@ model:
 loader:
   dataset: 
     name: MNIST
-    data_path: /media/wlsdzyzl/DATA/datasets/img/MNIST
+    data_path: /media/wlsdzyzl/DATA1/datasets/img/MNIST
   batch_size: 256
   num_workers: 8
   shuffle: true
@@ -54,7 +54,7 @@ loader:
     - name: Normalize
       mean: [0.5]
       std: [0.5]
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CDDPM/CDDPM_add
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/CDDPM/CDDPM_add
 sampler:
   num_sample_steps: 100
   rand_seed: 2024

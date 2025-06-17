@@ -27,7 +27,7 @@ loader:
     data_dir: left
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/lrply/surface/
+    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/lrply/surface/
   batch_size: 32
   num_workers: 8
   shuffle: true
@@ -37,9 +37,9 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/imagecas/PointNet2_VAE_KL1eN4_DCD/ckp_best_loss.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas/PointNet2_VAE_KL1eN4_DCD/ckp_best_loss.pth
 
-recon_dir: /media/wlsdzyzl/DATA/flemme-resutls/recon/imagecas/lrply/surface/left/vae_pointnet2_dcd
+recon_dir: /media/wlsdzyzl/DATA1/flemme-resutls/recon/imagecas/lrply/surface/left/vae_pointnet2_dcd
 evaluation_metrics:
   recon:
     - name: Chamfer
@@ -48,7 +48,7 @@ evaluation_metrics:
 eval_gen:
   sampler:
     name: NormalSampler
-  gen_dir: /media/wlsdzyzl/DATA/flemme-resutls/gen/imagecas/lrply/surface/left/vae_pointnet2_dcd
+  gen_dir: /media/wlsdzyzl/DATA1/flemme-resutls/gen/imagecas/lrply/surface/left/vae_pointnet2_dcd
   interpolation:
     group_num: 2
     corner_num: 4

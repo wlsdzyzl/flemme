@@ -175,8 +175,8 @@ class PointEncoder(nn.Module):
         return x
 
     def __str__(self):
-        _str = f'projection layer: {self.point_dim}->{self.projection_channel}\n'
-        _str += 'Local feature extraction layers:'
+        _str = f'Projection layer: {self.point_dim}->{self.projection_channel}\n'
+        _str += 'Local feature extraction layers: '
         for c in self.lf_path[:-1]:
             _str += '{}->'.format(c)  
         _str += str(self.lf_path[-1])

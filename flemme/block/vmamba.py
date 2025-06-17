@@ -61,7 +61,7 @@ single_per_rec_table = {
 class MBaseBlock(nn.Module):
     def __init__(
         self, dim, in_channel, out_channel = None, state_channel=None, 
-        conv_kernel_size=3, inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], 
+        conv_kernel_size=3, inner_factor = 2.0,  mlp_hidden_ratios=[4.0,], 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False):
         super().__init__()
@@ -116,8 +116,8 @@ class MBaseBlock(nn.Module):
             self.dropout = nn.Dropout(p=dropout)
         self.drop_path = DropPath(
                     drop_path) if drop_path > 0. else nn.Identity()
-        self.mlp_hidden_ratio = mlp_hidden_ratio
-        mlp_hidden_channels = [int(in_channel * r) for r in mlp_hidden_ratio]
+        self.mlp_hidden_ratios = mlp_hidden_ratios
+        mlp_hidden_channels = [int(in_channel * r) for r in mlp_hidden_ratios]
         self.mlp = MultiLayerPerceptionBlock(in_channel=in_channel, out_channel=self.out_channel, 
                         hidden_channels=mlp_hidden_channels,
                         activation=activation, dropout=dropout)
@@ -210,7 +210,7 @@ class VMambaBlock(MBaseBlock):
     def __init__(
         self, dim, in_channel, out_channel = None, time_channel = 0, 
         state_channel=None, conv_kernel_size=3,
-        inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], dt_rank=None, dt_min=0.001, 
+        inner_factor = 2.0,  mlp_hidden_ratios=[4.0,], dt_rank=None, dt_min=0.001, 
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
@@ -221,7 +221,7 @@ class VMambaBlock(MBaseBlock):
         super().__init__(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
-            mlp_hidden_ratio=mlp_hidden_ratio,
+            mlp_hidden_ratios=mlp_hidden_ratios,
             dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
@@ -336,14 +336,8 @@ class VMambaBlock(MBaseBlock):
         return out_y
     def forward(self, x, t = None, c = None):
         x = super().forward(x)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            x = self.time(x, t)
-        if c is not None:
-            assert self.condition_channel == c.shape[-1], \
-                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
-            x = self.cond(x, c)
+        if self.cinj:
+            x = self.cinj(x, t, c)
         return x
     
 class DoubleVMambaBlock(nn.Module):
@@ -351,7 +345,7 @@ class DoubleVMambaBlock(nn.Module):
         self, dim, in_channel, 
         out_channel = None, time_channel = 0, 
         state_channel=None, conv_kernel_size=3,
-        inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], dt_rank=None, dt_min=0.001, 
+        inner_factor = 2.0,  mlp_hidden_ratios=[4.0,], dt_rank=None, dt_min=0.001, 
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
@@ -364,7 +358,7 @@ class DoubleVMambaBlock(nn.Module):
         self.mamba1 = VMambaBlock(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
-            mlp_hidden_ratio=mlp_hidden_ratio, dt_rank=dt_rank, dt_min=dt_min, 
+            mlp_hidden_ratios=mlp_hidden_ratios, dt_rank=dt_rank, dt_min=dt_min, 
             dt_max=dt_max, dt_init=dt_init, dt_scale=dt_scale, 
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
@@ -377,7 +371,7 @@ class DoubleVMambaBlock(nn.Module):
         self.mamba2 = VMambaBlock(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
-            mlp_hidden_ratio=mlp_hidden_ratio, dt_rank=dt_rank, dt_min=dt_min, 
+            mlp_hidden_ratios=mlp_hidden_ratios, dt_rank=dt_rank, dt_min=dt_min, 
             dt_max=dt_max, dt_init=dt_init, dt_scale=dt_scale, 
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
@@ -394,7 +388,7 @@ class ResVMambaBlock(nn.Module):
     def __init__(
         self, dim, in_channel, out_channel = None, time_channel = 0, 
         state_channel=None, conv_kernel_size=3,
-        inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], dt_rank=None, dt_min=0.001, 
+        inner_factor = 2.0,  mlp_hidden_ratios=[4.0,], dt_rank=None, dt_min=0.001, 
         dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
         dropout=0., drop_path=0.0, conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, scan_mode = 'single', flip_scan = False, 
@@ -407,7 +401,7 @@ class ResVMambaBlock(nn.Module):
         self.mamba1 = VMambaBlock(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
-            mlp_hidden_ratio=mlp_hidden_ratio, dt_rank=dt_rank, dt_min=dt_min, 
+            mlp_hidden_ratios=mlp_hidden_ratios, dt_rank=dt_rank, dt_min=dt_min, 
             dt_max=dt_max, dt_init=dt_init, dt_scale=dt_scale, 
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
@@ -420,14 +414,20 @@ class ResVMambaBlock(nn.Module):
         self.mamba2 = VMambaBlock(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
-            mlp_hidden_ratio=mlp_hidden_ratio, dt_rank=dt_rank, dt_min=dt_min, 
+            mlp_hidden_ratios=mlp_hidden_ratios, dt_rank=dt_rank, dt_min=dt_min, 
             dt_max=dt_max, dt_init=dt_init, dt_scale=dt_scale, 
             dt_init_floor=dt_init_floor, dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = None, norm = norm, 
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.act = get_act(activation)  
-        self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
+        if in_channel != out_channel:
+            ## without normalization
+            self.shortcut = DenseBlock(in_channel=in_channel, out_channel=out_channel, 
+                                      activation=None, linear_bias=False,
+                                      norm=norm, num_norm_groups=num_norm_groups, )
+        else:
+            self.shortcut = nn.Identity()    
         # self.time_channel = time_channel
         # self.condition_channel = condition_channel
     def forward(self, x, t = None, c = None):
@@ -440,7 +440,7 @@ class VMamba2Block(MBaseBlock):
     def __init__(
         self, dim, in_channel, out_channel = None, 
         time_channel = 0, state_channel=None, conv_kernel_size=3,
-        inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], 
+        inner_factor = 2.0,  mlp_hidden_ratios=[4.0,], 
         head_channel = 64, 
         learnable_init_states = True, chunk_size=256,
         dt_min=0.001, A_init_range=(1, 16),
@@ -454,7 +454,7 @@ class VMamba2Block(MBaseBlock):
         super().__init__(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
-            mlp_hidden_ratio=mlp_hidden_ratio,
+            mlp_hidden_ratios=mlp_hidden_ratios,
             dropout=dropout, 
             drop_path=drop_path, conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
@@ -563,20 +563,14 @@ class VMamba2Block(MBaseBlock):
         return out_y
     def forward(self, x, t = None, c = None):
         x = super().forward(x)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            x = self.time(x, t)
-        if c is not None:
-            assert self.condition_channel == c.shape[-1], \
-                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
-            x = self.cond(x, c)
+        if self.cinj:
+            x = self.cinj(x, t, c)
         return x
 class DoubleVMamba2Block(nn.Module):
     def __init__(
         self, dim, in_channel, out_channel = None, time_channel = 0, 
         state_channel=None, conv_kernel_size=3,
-        inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], 
+        inner_factor = 2.0,  mlp_hidden_ratios=[4.0,], 
         head_channel = 128, 
         learnable_init_states = True, chunk_size=256,
         dt_min=0.001, A_init_range=(1, 16),
@@ -593,7 +587,7 @@ class DoubleVMamba2Block(nn.Module):
         self.mamba1 = VMamba2Block(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
-            mlp_hidden_ratio=mlp_hidden_ratio, head_channel = head_channel,
+            mlp_hidden_ratios=mlp_hidden_ratios, head_channel = head_channel,
             learnable_init_states = learnable_init_states, chunk_size = chunk_size,
             A_init_range=A_init_range,
             dt_min=dt_min, dt_max=dt_max, dt_init=dt_init, 
@@ -607,7 +601,7 @@ class DoubleVMamba2Block(nn.Module):
         self.mamba2 = VMamba2Block(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
-            mlp_hidden_ratio=mlp_hidden_ratio, head_channel = head_channel,
+            mlp_hidden_ratios=mlp_hidden_ratios, head_channel = head_channel,
             learnable_init_states = learnable_init_states, chunk_size = chunk_size,
             A_init_range=A_init_range,
             dt_min=dt_min, dt_max=dt_max, dt_init=dt_init, 
@@ -626,7 +620,7 @@ class ResVMamba2Block(nn.Module):
     def __init__(
         self, dim, in_channel, out_channel = None, time_channel = 0, 
         state_channel=None, conv_kernel_size=3,
-        inner_factor = 2.0,  mlp_hidden_ratio=[4.0,], 
+        inner_factor = 2.0,  mlp_hidden_ratios=[4.0,], 
         head_channel = 128, 
         learnable_init_states = True, chunk_size=256,
         dt_min=0.001, A_init_range=(1, 16),
@@ -643,7 +637,7 @@ class ResVMamba2Block(nn.Module):
         self.mamba1 = VMamba2Block(dim = dim, in_channel = in_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
-            mlp_hidden_ratio=mlp_hidden_ratio, head_channel = head_channel,
+            mlp_hidden_ratios=mlp_hidden_ratios, head_channel = head_channel,
             learnable_init_states = learnable_init_states, chunk_size = chunk_size,
             A_init_range=A_init_range,
             dt_min=dt_min, dt_max=dt_max, dt_init=dt_init, 
@@ -658,7 +652,7 @@ class ResVMamba2Block(nn.Module):
         self.mamba2 = VMamba2Block(dim = dim, in_channel = out_channel, 
             out_channel = out_channel, state_channel=state_channel, 
             conv_kernel_size=conv_kernel_size, inner_factor = inner_factor,  
-            mlp_hidden_ratio=mlp_hidden_ratio, head_channel = head_channel,
+            mlp_hidden_ratios=mlp_hidden_ratios, head_channel = head_channel,
             learnable_init_states = learnable_init_states, chunk_size = chunk_size,
             A_init_range=A_init_range,
             dt_min=dt_min, dt_max=dt_max, dt_init=dt_init, 
@@ -667,7 +661,13 @@ class ResVMamba2Block(nn.Module):
             activation = None, norm = norm, 
             num_norm_groups = num_norm_groups, scan_mode = scan_mode, flip_scan = flip_scan)
         self.act = get_act(activation)  
-        self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
+        if in_channel != out_channel:
+            ## without normalization
+            self.shortcut = DenseBlock(in_channel=in_channel, out_channel=out_channel, 
+                                      activation=None, linear_bias=False,
+                                      norm=norm, num_norm_groups=num_norm_groups, )
+        else:
+            self.shortcut = nn.Identity()    
         # self.time_channel = time_channel
         # self.condition_channel = condition_channel
     def forward(self, x, t = None, c = None):

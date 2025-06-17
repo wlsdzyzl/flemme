@@ -24,10 +24,10 @@ loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold2
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold3
-  batch_size: 16
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold1
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold2
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold3
+  batch_size: 8
   num_workers: 8
   shuffle: true
   data_transforms:
@@ -48,8 +48,8 @@ val_loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold4
-  batch_size: 8
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold4
+  batch_size: 16
   num_workers: 8
   shuffle: true
   data_transforms:
@@ -64,8 +64,8 @@ val_loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba/PointMamba_CLS_test
-pretrained: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba/PointMamba_CLS/ckp_best_score.pth
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointMamba/PointMamba_CLS_test
+pretrained: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointMamba/PointMamba_CLS/ckp_best_score.pth
 ### parameter for optimizer
 optimizer:
   name: Adam

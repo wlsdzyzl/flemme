@@ -6,6 +6,8 @@ if module_config['mamba']:
     from .pmamba import get_psmamba_block, get_scanners,\
             PointMambaBlock
 
+
+
 if module_config['transformer']:
     ## insight from PCT: https://arxiv.org/pdf/2012.09688
     class OffSetAttentionBlock(nn.Module):
@@ -17,7 +19,7 @@ if module_config['transformer']:
 
         def __init__(self, in_channel, num_heads = 3, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
-            dropout = None, skip_connection = True):
+            dropout = None, skip_connection = False):
             """
             * `in_channel` is the number of channel in the input
             * `num_heads` is the number of heads in multi-head attention
@@ -80,70 +82,56 @@ if module_config['transformer']:
                 res = res + x
             return res
 
-    class PointTransformerBlock(NormBlock):
+    class PointTransformerBlock(nn.Module):
         def __init__(self, in_channel, out_channel = None, 
             time_channel = 0, num_heads = 3, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
-            dropout = None, residual_attention = False, 
-            skip_connection = True, attention = 'SA', 
+            mlp_hidden_ratios=[4.0,], 
+            dropout = None, attention = 'SA', 
             activation = 'relu', norm='batch', num_norm_groups = -1, 
-            post_normalization = False, 
             time_injection = 'gate_bias', 
             condition_channel = 0, 
             condition_injection = 'gate_bias',
             condition_first = False,
             **kwargs):
             
-            super().__init__(_channel_dim = -1)
+            super().__init__()
             self.in_channel = in_channel
             self.out_channel = out_channel or in_channel
             if attention == 'SA':
                 self.atten = SelfAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
                 qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-                dropout = dropout, skip_connection = residual_attention, channel_dim = -1)
+                dropout = dropout, skip_connection = False, channel_dim = -1)
             elif attention == 'OA':
                 self.atten = OffSetAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
                 qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-                dropout = dropout, skip_connection = residual_attention)
-            self.post_normalization = post_normalization 
-            if post_normalization:
-                self.norm, self.norm_type = get_norm(norm, out_channel, 1, num_norm_groups)
-            else:
-                self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
-            self.act = get_act(activation)
-            self.time_channel = time_channel
-            self.skip_connection = skip_connection
+                dropout = dropout, skip_connection = False)
+
+            self.norm1 = NormBlock(*(get_norm(norm, in_channel, 1, num_norm_groups) + (-1,)))
+            self.norm2 = NormBlock(*(get_norm(norm, in_channel, 1, num_norm_groups) + (-1,)))
+
+            # self.act = get_act(activation)
+            mlp_hidden_channels = [int(in_channel * r) for r in mlp_hidden_ratios]
+            self.mlp = MultiLayerPerceptionBlock(in_channel=in_channel, 
+                            out_channel=self.out_channel, 
+                            hidden_channels=mlp_hidden_channels,
+                            activation=activation, dropout=dropout)
             self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
 
             self.cinj = None
             if time_channel > 0 or condition_channel > 0:
                 self.cinj = ContextInjectionBlock(time_channel = time_channel,
                     condition_channel = condition_channel,
-                    out_channel = out_channel,
+                    out_channel = in_channel,
                     time_injection=time_injection,
                     condition_injection=condition_injection,
                     channel_dim = -1,
                     condition_first = condition_first)
         def forward(self, x, t = None, c = None):
-            res = self.atten(x)
-            if not self.post_normalization:
-                res = self.act(self.normalize(res))
-
-            if self.skip_connection:
-                res = x + res
-            x = self.dense(res)
-            
-            if self.post_normalization:
-                x = self.act(self.normalize(x))
-                
-            if t is not None:
-                assert self.time_channel == t.shape[-1], \
-                    f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-                x = self.time(x, t)
-            if c is not None:
-                assert self.condition_channel == c.shape[-1], \
-                    f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
-                x = self.cond(x, c)
+            x = self.atten(self.norm1(x)) + x
+            if self.cinj:
+                x = self.cinj(x, t, c)
+            x = self.dense(x) + self.mlp(self.norm2(x))
             return x
         @staticmethod
         def is_sequence_modeling():
@@ -246,7 +234,6 @@ class FoldingLayer(MultiLayerPerceptionBlock):
                 num_norm_groups = 0, 
                 activation = 'relu', 
                 dropout=None, 
-                order="ln", 
                 time_injection = 'gate_bias',
                 condition_channel = 0,
                 condition_injection = 'gate_bias',
@@ -263,7 +250,6 @@ class FoldingLayer(MultiLayerPerceptionBlock):
                             num_norm_groups=num_norm_groups,
                             activation=activation,
                             dropout=dropout,
-                            order=order,
                             condition_channel = condition_channel,
                             condition_injection = condition_injection,
                             condition_first = condition_first,
@@ -476,7 +462,6 @@ class SampledFeatureCatLayer(nn.Module):
                 num_norm_groups = 0, 
                 activation = 'relu', 
                 dropout=None, 
-                order="ln",
                 condition_channel = 0, 
                 condition_injection = 'gate_bias',
                 condition_first = False,):
@@ -492,7 +477,6 @@ class SampledFeatureCatLayer(nn.Module):
                             num_norm_groups=num_norm_groups,
                             activation=activation,
                             dropout=dropout,
-                            order=order,
                             condition_channel = condition_channel,
                             condition_injection = condition_injection,
                             condition_first = condition_first,

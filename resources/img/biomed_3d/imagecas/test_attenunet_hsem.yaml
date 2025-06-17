@@ -23,7 +23,7 @@ model:
   # in ddpm, it can be the time steps and so on.
 loader:
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/ImageCAS/fold5
+    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/ImageCAS/fold5
   dataset: 
     name: ImgSegDataset
     dim: 3
@@ -36,7 +36,7 @@ loader:
       size: [96, 192, 192]
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA/flemme-path/to/checkpointcheckpoint/ImageCAS/UNet_Atten_HSeg/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-path/to/checkpointcheckpoint/ImageCAS/UNet_Atten_HSeg/ckp_last.pth
 evaluation_metrics:
   seg:
     - name: Dice

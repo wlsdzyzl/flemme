@@ -26,7 +26,7 @@ loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold5
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold5
   batch_size: 16
   num_workers: 8
   shuffle: true
@@ -42,7 +42,7 @@ loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointNet/PointNet_LK20_CLS/ckp_best_loss.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointNet/PointNet_LK20_CLS/ckp_best_loss.pth
 
 
 evaluation_metrics:

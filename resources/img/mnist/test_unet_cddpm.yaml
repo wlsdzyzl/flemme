@@ -46,12 +46,12 @@ model:
   ## 2D ddpm
   eps_loss:
     name: MSE
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CDDPM/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/CDDPM/ckp_last.pth
 loader:
   dataset: 
     name: MNIST
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/img/MNIST
+    - /media/wlsdzyzl/DATA1/datasets/img/MNIST
   batch_size: 128
   num_workers: 8
   shuffle: true
@@ -64,9 +64,9 @@ loader:
       mean: [0.5]
       std: [0.5]
 eval_batch_num: 1
-recon_dir: /media/wlsdzyzl/DATA/flemme-results/recon/mnist/cddpm
+recon_dir: /media/wlsdzyzl/DATA1/flemme-results/recon/mnist/cddpm
 eval_gen:
-  gen_dir: /media/wlsdzyzl/DATA/flemme-results/gen/mnist/cddpm
+  gen_dir: /media/wlsdzyzl/DATA1/flemme-results/gen/mnist/cddpm
   sampler:
     name: NormalSampler
     clipped: true

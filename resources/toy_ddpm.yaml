@@ -6,9 +6,10 @@ model:
   name: DDIM
   num_steps: 1000
   beta_schedule: cosine
+  parameterization: start
   # pretrained: pretrained_model_path
   clipped: True
-  clip_range: [-15, 15]
+  clip_range: [-1, 1]
   eps_model:
     time_channel: 128
     encoder:
@@ -20,16 +21,15 @@ model:
       activation: silu
       normalization: layer
       dropout: 0.1
-      data_form: VEC
 loader:
   dataset: 
     name: ToyDataset
-    n_sample: 1024
+    n_sample: 10240
     dim: 2
   batch_size: 1024
   num_workers: 8
   shuffle: true
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/Toy/DDIM_Layer_res
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/Toy/DDIM_Layer_res
 ### parameter for optimizer
 optimizer:
   name: Adam
@@ -41,6 +41,6 @@ lr_scheduler:
   start_factor: 1.0
   end_factor: 0.01
 max_epoch: 10000
-write_after_iters: 10
+write_after_iters: 50
 save_after_epochs: 10
 write_sample_num: 1024

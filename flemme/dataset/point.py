@@ -30,7 +30,7 @@ class PointDataset(Dataset):
         return vec, 0, ''
 ### generate by algorithm
 class ToyDataset(Dataset):
-    def __init__(self, n_sample, noise = 0.0, dim = 3,transform = None, mode = 'train', **kwargs):
+    def __init__(self, n_sample, noise = 0.0, dim = 3, transform = None, mode = 'train', **kwargs):
         super().__init__()
         self.n_sample = n_sample
         self.points, self.t = make_swiss_roll(n_samples=n_sample, noise=noise)
@@ -38,7 +38,7 @@ class ToyDataset(Dataset):
             self.points =self.points[:, [0, 2]]
         self.mode = mode
         self.transform = transform
-        # self.points = normalize(self.points)
+        self.points = normalize(self.points)
 
     def __len__(self):
         return self.n_sample

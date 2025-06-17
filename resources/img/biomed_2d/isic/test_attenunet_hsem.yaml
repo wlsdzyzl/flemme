@@ -30,7 +30,7 @@ loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/ISIC/fold5/
+    - /media/wlsdzyzl/DATA1/datasets/ISIC/fold5/
   batch_size: 2
   num_workers: 8
   shuffle: false
@@ -40,8 +40,8 @@ loader:
       size: [384, 256]
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/ISIC/UNet_Atten_HSeg/ckp_best_loss.pth
-seg_dir: /media/wlsdzyzl/DATA/flemme-results/seg/ISIC/UNet_Atten_HSeg
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ISIC/UNet_Atten_HSeg/ckp_best_loss.pth
+seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/ISIC/UNet_Atten_HSeg
 evaluation_metrics:
   seg:
     - name: Dice

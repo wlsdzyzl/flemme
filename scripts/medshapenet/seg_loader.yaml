@@ -6,11 +6,11 @@ loader:
     data_suffix: .ply
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold1
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold2
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold3
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold4
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold5
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold1
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold2
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold3
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold4
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold5
   batch_size: 32
   num_workers: 8
   shuffle: true

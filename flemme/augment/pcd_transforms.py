@@ -8,6 +8,7 @@ from flemme.utils import label_to_onehot, normalize
 from functools import partial
 from .hilbert_sort import HilbertSort3D
 import fpsample
+from .img_transforms import Relabel
 #### transfoms for point cloud
 ## modified from diffusion-point-cloud
 class ToTensor(object):
@@ -20,7 +21,7 @@ class ToTensor(object):
         elif dtype == 'double':
             self.dtype = torch.double
     def __call__(self, data):
-        return torch.from_numpy(data).type(self.dtype)
+        return torch.tensor(data).type(self.dtype)
 
 
 
@@ -254,7 +255,7 @@ class ToOneHot:
     """
     To one hot label, background value should be 0
     """
-    def __init__(self, num_classes = None, ignore_background = False, **kwargs):
+    def __init__(self, num_classes, ignore_background = False, **kwargs):
         self.to_onehot = partial(label_to_onehot, num_classes = num_classes, 
             ignore_background = ignore_background, channel_dim = -1)
     def __call__(self, m):

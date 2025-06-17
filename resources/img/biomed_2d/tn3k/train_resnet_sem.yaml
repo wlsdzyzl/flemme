@@ -29,9 +29,9 @@ loader:
     data_dir: image
     label_dir: mask
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/thyroid/tn3k/fold1/
-    - /media/wlsdzyzl/DATA/datasets/thyroid/tn3k/fold2/
-    - /media/wlsdzyzl/DATA/datasets/thyroid/tn3k/fold3/
+    - /media/wlsdzyzl/DATA1/datasets/thyroid/tn3k/fold1/
+    - /media/wlsdzyzl/DATA1/datasets/thyroid/tn3k/fold2/
+    - /media/wlsdzyzl/DATA1/datasets/thyroid/tn3k/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
@@ -46,7 +46,7 @@ loader:
     data_dir: image
     label_dir: mask
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/thyroid/tn3k/fold4/
+    - /media/wlsdzyzl/DATA1/datasets/thyroid/tn3k/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
@@ -58,7 +58,7 @@ loader:
     # - name: Normalize
     #   mean: [0.485, 0.456, 0.406]
     #   std: [0.229, 0.224, 0.225]
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/thyroid/tn3k/ResNet
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/thyroid/tn3k/ResNet
 
 ### parameter for optimizer
 optimizer:
@@ -75,6 +75,6 @@ evaluation_metrics:
     - name: ACC
     - name: mIoU
 max_epoch: 500
-warmup_epoch: 2
+warmup_epochs: 2
 write_after_iters: 2
 save_after_epochs: 5

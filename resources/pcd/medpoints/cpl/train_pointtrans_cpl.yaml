@@ -45,9 +45,9 @@ loader:
     target_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold2
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold3
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold1
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold2
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold3
   batch_size: 64
   num_workers: 8
   shuffle: true
@@ -78,7 +78,7 @@ val_loader:
     target_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold4
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold4
   batch_size: 32
   num_workers: 8
   shuffle: true
@@ -100,8 +100,8 @@ val_loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointTrans/PointTran_CPL
-resume: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointTrans/PointTran_CPL/ckp_last.pth
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointTrans/PointTran_CPL
+resume: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointTrans/PointTran_CPL/ckp_last.pth
 ### parameter for optimizer
 optimizer:
   name: Adam

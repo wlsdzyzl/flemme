@@ -114,7 +114,7 @@ class GraphEncoder(nn.Module):
 
     def __str__(self):
         _str = f'node projection layer: {self.node_dim}->{self.projection_channel}\n'
-        _str += 'Message passing layers:'
+        _str += 'Message passing layers: '
         for c in self.mp_path[:-1]:
             _str += '{}->'.format(c)  
         _str += str(self.mp_path[-1])

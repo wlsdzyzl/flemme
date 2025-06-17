@@ -33,7 +33,7 @@ loader:
     data_dir: 02691156/points
     data_suffix: .pts
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/shapenetcore_v0  
+    - /media/wlsdzyzl/DATA1/datasets/shapenetcore_v0  
   batch_size: 32
   num_workers: 8
   shuffle: true
@@ -46,9 +46,9 @@ loader:
     - name: ToTensor
       dtype: float
 
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/02691156/PointNet/PointNet_AE_EMD_LOCALK_FOLDING/ckp_best_loss.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/02691156/PointNet/PointNet_AE_EMD_LOCALK_FOLDING/ckp_best_loss.pth
 #### directory that saves the reconstructed images
-recon_dir: /media/wlsdzyzl/DATA/flemme-results/recon/shapenet/ae_pointnet_folding
+recon_dir: /media/wlsdzyzl/DATA1/flemme-results/recon/shapenet/ae_pointnet_folding
 
 #### metrics used for evaluation (reconstruction accuracy)
 evaluation_metrics:

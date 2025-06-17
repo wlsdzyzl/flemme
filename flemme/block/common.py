@@ -165,7 +165,28 @@ def get_context_injection(method, context_channel, data_channel, channel_dim):
     else:
         logger.error('Unknown method to process time-step embedding.')
         exit(1)
-
+def get_atten(atten, in_channel, num_heads, d_k, 
+            qkv_bias, qk_scale, atten_dropout, 
+            dropout, skip_connection):
+    if not atten or not type(atten) == str:
+        return None
+    atten = atten.split('x')
+    num_atten = 1
+    if len(atten) == 2:
+        num_atten = int(atten[0])
+        atten = atten[1]
+    if atten == 'atten':
+        return nn.Sequential(*[SelfAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
+        qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
+        dropout = dropout, skip_connection = skip_connection) for _ in range(num_atten) ])
+    elif atten == 'fft_atten':
+        return nn.Sequential(*[FFTAttenBlock(dim = dim, in_channel=in_channel, num_heads=num_heads, 
+        d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
+        atten_dropout = atten_dropout, dropout = dropout, 
+        skip_connection = skip_connection)for _ in range(num_atten) ])
+    else:
+        logger.error('Unsupported attention block, should be one of [atten, ftt_atten].')
+        exit(1)
 def get_middle_channel(in_channel, out_channel, unit_channel = 16):
     tmp_channel = int(max(max(in_channel, out_channel) // 2, min(in_channel, out_channel)))
     return int(math.ceil(tmp_channel / unit_channel) * unit_channel)
@@ -214,9 +235,10 @@ class NormBlock(nn.Module):
         self._channel_dim = _channel_dim
         self.norm = norm
         self.norm_type = norm_type
-    def normalize(self, x):
+    def normalize(self, x, t = None):
         if (self._channel_dim == -1 and \
-            (self.norm_type == Norm.GROUP or self.norm_type == Norm.BATCH)):
+            (self.norm_type == Norm.GROUP or self.norm_type == Norm.BATCH \
+             or self.norm_type == Norm.INSTANCE)):
             x = channel_recover(x)
             x = self.norm(x)
             x = channel_transfer(x)
@@ -251,8 +273,8 @@ class MultipleBuildingBlocks(nn.Module):
                                               out_channel = channels[i+1],
                                               **kwargs))
         self.building_blocks = SequentialT(*building_blocks)
-    def forward(self, x, t = None, c = None):
-        x = self.building_blocks(x, t, c)
+    def forward(self, x, *args):
+        x = self.building_blocks(x, *args)
         return x
         
 class DownSamplingBlock(nn.Module):
@@ -290,11 +312,11 @@ class DownSamplingBlock(nn.Module):
                     self.pooling = nn.AvgPool3d(pooling_size)
             if in_channel != out_channel:
                 if dim == 1:
-                    self.proj = nn.Conv1d(in_channel, out_channel, kernel_size=1, padding=0)
+                    self.proj = nn.Conv1d(in_channel, out_channel, kernel_size=1, padding=0, bias = False)
                 if dim == 2:
-                    self.proj = nn.Conv2d(in_channel, out_channel, kernel_size=1, padding=0)
+                    self.proj = nn.Conv2d(in_channel, out_channel, kernel_size=1, padding=0, bias = False)
                 if dim == 3:
-                    self.proj = nn.Conv3d(in_channel, out_channel, kernel_size=1, padding=0)
+                    self.proj = nn.Conv3d(in_channel, out_channel, kernel_size=1, padding=0, bias = False)
             else:
                 self.proj = nn.Identity()
     def forward(self, x, _ = None):
@@ -315,31 +337,33 @@ class UpSamplingBlock(nn.Module):
         self.conv = None
         self.scale_factor = scale_factor
         out_channel = out_channel or in_channel
-        if func == 'conv':
+        if func == 'conv' and scale_factor > 1:
             stride = scale_factor
             padding = scale_factor // 2
             kernel_size = 2 * scale_factor - scale_factor % 2
             if dim == 1:
-                self.conv = nn.ConvTranspose1d(in_channel, out_channel, kernel_size=kernel_size, stride=stride, padding = padding)
+                self.conv = nn.ConvTranspose1d(in_channel, in_channel, kernel_size=kernel_size, stride=stride, padding = padding)
             if dim == 2:
-                self.conv = nn.ConvTranspose2d(in_channel, out_channel, kernel_size=kernel_size, stride=stride, padding = padding)
+                self.conv = nn.ConvTranspose2d(in_channel, in_channel, kernel_size=kernel_size, stride=stride, padding = padding)
             if dim == 3:
-                self.conv = nn.ConvTranspose3d(in_channel, out_channel, kernel_size=kernel_size, stride=stride, padding = padding)
+                self.conv = nn.ConvTranspose3d(in_channel, in_channel, kernel_size=kernel_size, stride=stride, padding = padding)
+
+        if in_channel != out_channel:
+            if dim == 1:
+                self.proj = nn.Conv1d(in_channel, out_channel, kernel_size=1, padding=0)
+            if dim == 2:
+                self.proj = nn.Conv2d(in_channel, out_channel, kernel_size=1, padding=0)
+            if dim == 3:
+                self.proj = nn.Conv3d(in_channel, out_channel, kernel_size=1, padding=0)
         else:
-            if in_channel != out_channel:
-                if dim == 1:
-                    self.proj = nn.Conv1d(in_channel, out_channel, kernel_size=1, padding=0)
-                if dim == 2:
-                    self.proj = nn.Conv2d(in_channel, out_channel, kernel_size=1, padding=0)
-                if dim == 3:
-                    self.proj = nn.Conv3d(in_channel, out_channel, kernel_size=1, padding=0)
-            else:
-                self.proj = nn.Identity()
+            self.proj = nn.Identity()
     
     def forward(self, x, _ = None):
         if self.conv is not None:
-            return self.conv(x)
-        return self.proj(F.interpolate(x, scale_factor=self.scale_factor))
+            x = self.conv(x)
+        else:
+            x = F.interpolate(x, scale_factor=self.scale_factor)
+        return self.proj(x)
 class TimeEmbeddingBlock(nn.Module):
     """
     ### Embeddings for time step t
@@ -382,7 +406,7 @@ class GateBlock(nn.Module):
     def forward(self, x, t):
         if t is None: return x
         gate = expand_as(self.hyper_gate(t), x, channel_dim = self.channel_dim)
-        return gate * x
+        return (gate + 1) * x
 class BiasBlock(nn.Module):
     def __init__(self, context_channel, data_channel, channel_dim):
         super().__init__()
@@ -403,7 +427,7 @@ class GateBiasBlock(nn.Module):
         if t is None: return x
         gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=self.channel_dim)
         bias = expand_as(self.hyper_bias(t), x, channel_dim = self.channel_dim)
-        x = x * gate + bias
+        x = x * (1 + gate) + bias
         return x
     
 ## transfer class label to one-hot vector which is encoded through FC block.
@@ -462,7 +486,7 @@ class SelfAttentionBlock(AttentionBlock):
 
     def __init__(self, in_channel, num_heads = 3, d_k = None, 
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
-        dropout = None, skip_connection = True, channel_dim = 1):
+        dropout = None, skip_connection = False, channel_dim = 1):
         """
         * `in_channel` is the number of channel in the input
         * `num_heads` is the number of heads in multi-head attention
@@ -522,7 +546,7 @@ class CrossAttentionBlock(AttentionBlock):
 
     def __init__(self, in_channel, context_channel = None, num_heads = 3, d_k = None, 
         qkv_bias = False, qk_scale = None, atten_dropout = None, 
-        dropout = None, skip_connection = True, channel_dim = 1):
+        dropout = None, skip_connection = False, channel_dim = 1):
         self.d_k = d_k or int(in_channel / num_heads)
         scale = qk_scale or self.d_k ** -0.5
         super().__init__(scale=scale, atten_dropout=atten_dropout)
@@ -640,8 +664,8 @@ class ContextInjectionBlock(nn.Module):
 
 class DenseBlock(NormBlock):
     def __init__(self, in_channel, out_channel, time_channel = 0, 
-                norm = None, num_norm_groups = 0, 
-                activation = 'relu', dropout=None, order="ln", 
+                norm = None, num_norm_groups = 0, bias = True,
+                activation = 'relu', dropout=None, 
                 time_injection = 'gate_bias', 
                 condition_channel = 0, 
                 condition_injection = 'gate_bias',
@@ -651,19 +675,16 @@ class DenseBlock(NormBlock):
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         # print(in_channel, out_channel)
-        self.linear = nn.Linear(in_channel, out_channel)
+        self.linear = nn.Linear(in_channel, out_channel, bias = bias)
         ## normalization layer
-        norm_channel = out_channel
-        if order.index('n') < order.index('l'):
-            norm_channel = in_channel
-        self.norm, self.norm_type = get_norm(norm, norm_channel, 1, num_norm_groups)
+
+        self.norm, self.norm_type = get_norm(norm, out_channel, 1, num_norm_groups)
         if dropout is None or dropout <= 0:
             self.dropout = nn.Identity()
         else:
             self.dropout = nn.Dropout(p=dropout)
         # activation function
         self.act = get_act(activation)
-        self.order = order
         self.cinj = None
         if time_channel > 0 or condition_channel > 0:
             self.cinj = ContextInjectionBlock(time_channel = time_channel,
@@ -678,11 +699,8 @@ class DenseBlock(NormBlock):
         size = x.shape[1:-1]
         if len(size) > 1:
             x = x.reshape(x.shape[0], -1, x.shape[-1])
-        for m in self.order:
-            if m == 'l':
-                x = self.linear(x)
-            elif m == 'n':
-                x = self.normalize(x)
+        x = self.linear(x)
+        x = self.normalize(x)
         x = self.dropout(self.act(x))
         if self.cinj:
             x = self.cinj(x, t, c)
@@ -697,9 +715,11 @@ class DenseBlock(NormBlock):
 class MultiLayerPerceptionBlock(nn.Module):
     def __init__(self, in_channel, out_channel, 
                 n = 1, hidden_channels = None, 
-                time_channel = 0, norm = None, num_norm_groups = 0, 
+                time_channel = 0, norm = None, 
+                bias = True,
+                num_norm_groups = 0, 
                 activation = 'relu', dropout=None, 
-                order="ln", final_activation = True,
+                final_activation = True,
                 time_injection = 'gate_bias',
                 condition_channel = 0, 
                 condition_injection = 'gate_bias',
@@ -719,7 +739,7 @@ class MultiLayerPerceptionBlock(nn.Module):
                     time_injection = time_injection, norm = norm,
                     num_norm_groups = num_norm_groups, 
                     activation = activation, dropout = dropout, 
-                    order=order,
+                    bias = bias,
                     condition_channel = condition_channel,
                     condition_injection = condition_injection,
                     condition_first = condition_first,
@@ -727,9 +747,9 @@ class MultiLayerPerceptionBlock(nn.Module):
         if not final_activation:
             module_sequence = module_sequence + [DenseBlock( in_channel = channels[-2], 
                         out_channel = channels[-1], 
+                        bias = bias,
                         norm = None,
                         activation = None, 
-                        order=order,
                         ), ]
         else:
             module_sequence = module_sequence + [DenseBlock( in_channel = channels[-2], 
@@ -737,7 +757,7 @@ class MultiLayerPerceptionBlock(nn.Module):
                     time_injection = time_injection, norm = norm,
                     num_norm_groups = num_norm_groups, 
                     activation = activation, dropout = dropout, 
-                    order=order,
+                    bias = bias,
                     condition_channel = condition_channel,
                     condition_injection = condition_injection,
                     condition_first = condition_first,
@@ -750,8 +770,8 @@ class MultiLayerPerceptionBlock(nn.Module):
 class DoubleDenseBlock(nn.Module):
     def __init__(self, in_channel, out_channel, 
         time_channel = 0, norm = None, num_norm_groups = 0, 
-        activation = 'relu', dropout=None, 
-        order="ln", time_injection = 'gate_bias', 
+        activation = 'relu', dropout=None, bias = True,
+        time_injection = 'gate_bias', 
         condition_channel = 0, condition_injection = 'gate_bias',
         condition_first = False,
         **kwargs):
@@ -760,7 +780,8 @@ class DoubleDenseBlock(nn.Module):
             logger.debug("redundant parameters:{}".format(kwargs))
         self.dense1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
             norm=norm, num_norm_groups = num_norm_groups, activation = activation, 
-            dropout = dropout, order = order, 
+            dropout = dropout, 
+            bias = bias,
             time_channel = time_channel, 
             time_injection = time_injection,
             condition_channel = condition_channel, 
@@ -768,7 +789,8 @@ class DoubleDenseBlock(nn.Module):
             condition_first=condition_first)
         self.dense2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
             norm=norm, num_norm_groups = num_norm_groups, activation = activation, 
-            dropout = dropout, order = order)    
+            dropout = dropout, 
+            bias=bias)    
         self.time_channel = time_channel
         self.condition_channel = condition_channel
     def forward(self, x, t = None, c = None):
@@ -781,8 +803,8 @@ class DoubleDenseBlock(nn.Module):
     
 class ResDenseBlock(nn.Module):
     def __init__(self, in_channel, out_channel, time_channel = 0, norm = None,
-        num_norm_groups = 0, activation = 'relu', dropout=None, 
-        order="ln", time_injection = 'gate_bias', 
+        num_norm_groups = 0, activation = 'relu', dropout=None, bias = True,
+        time_injection = 'gate_bias', 
         condition_channel = 0, condition_injection = 'gate_bias', 
         condition_first = False, **kwargs):
         super().__init__()
@@ -790,7 +812,7 @@ class ResDenseBlock(nn.Module):
             logger.debug("redundant parameters:{}".format(kwargs))
         self.dense1 = DenseBlock(in_channel = in_channel, out_channel = out_channel, 
             norm=norm, num_norm_groups = num_norm_groups, activation = activation, 
-            dropout = dropout, order = order,
+            dropout = dropout, bias=bias,
             time_channel = time_channel,
             time_injection = time_injection,
             condition_channel = condition_channel,
@@ -798,9 +820,15 @@ class ResDenseBlock(nn.Module):
             condition_first=condition_first)
         self.dense2 = DenseBlock(in_channel = out_channel, out_channel = out_channel, 
             norm=norm, num_norm_groups = num_norm_groups, activation = None, 
-            dropout = dropout, order = order)  
+            dropout = dropout, bias=bias)  
         self.act = get_act(activation)  
-        self.shortcut = nn.Linear(in_channel, out_channel) if not in_channel == out_channel else nn.Identity()
+        if in_channel != out_channel:
+            ## without normalization
+            self.shortcut = DenseBlock(in_channel=in_channel, out_channel=out_channel, 
+                                      activation=None, bias=False,
+                                      norm=norm, num_norm_groups=num_norm_groups, )
+        else:
+            self.shortcut = nn.Identity()    
         self.time_channel = time_channel
         self.condition_channel = condition_channel
     def forward(self, x, t = None, c = None):
@@ -813,7 +841,7 @@ class ResDenseBlock(nn.Module):
         return False
 
 class CABlock(nn.Module):
-    """Constructs a ECA module.
+    """Constructs a CA module.
 
     Args:
         channel: Number of channels of the input feature map
@@ -925,10 +953,10 @@ class ECANSBlock(nn.Module):
 class ConvBlock(NormBlock):
     def __init__(self, dim, in_channel, out_channel, 
             time_channel = 0, kernel_size = 3, 
-            padding = 1, depthwise = False, activation = 'relu', 
+            padding = 1, depthwise = False, bias = True, activation = 'relu', 
             norm='batch', num_norm_groups = 0, time_injection = 'gate_bias',
             condition_channel = 0, condition_injection = 'gate_bias',
-            order = 'cn', atten = None, num_heads = 1, d_k = None, 
+            atten = None, num_heads = 1, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
             dropout = None, skip_connection = True, 
             condition_first = False, **kwargs):
@@ -942,37 +970,32 @@ class ConvBlock(NormBlock):
             groups = in_channel
             conv_out_channel = in_channel
         if dim ==1:
-            self.conv = nn.Conv1d(in_channel, conv_out_channel, kernel_size, padding = padding, groups = groups)
+            self.conv = nn.Conv1d(in_channel, conv_out_channel, kernel_size, padding = padding, groups = groups,
+                                  bias = bias)
         elif dim== 2:
-            self.conv = nn.Conv2d(in_channel, conv_out_channel, kernel_size, padding = padding, groups = groups)
+            self.conv = nn.Conv2d(in_channel, conv_out_channel, kernel_size, padding = padding, groups = groups,
+                                  bias = bias)
         elif dim == 3:
-            self.conv = nn.Conv3d(in_channel, conv_out_channel, kernel_size, padding = padding, groups = groups)
+            self.conv = nn.Conv3d(in_channel, conv_out_channel, kernel_size, padding = padding, groups = groups,
+                                  bias = bias)
         self.proj = nn.Identity()
         if not conv_out_channel == out_channel:
             if dim ==1:
-                self.proj = nn.Conv1d(conv_out_channel, out_channel, kernel_size=1)
+                self.proj = nn.Conv1d(conv_out_channel, out_channel, kernel_size=1, bias = False)
             elif dim== 2:
-                self.proj = nn.Conv2d(conv_out_channel, out_channel, kernel_size=1)
+                self.proj = nn.Conv2d(conv_out_channel, out_channel, kernel_size=1, bias = False)
             elif dim == 3:
-                self.proj = nn.Conv3d(conv_out_channel, out_channel, kernel_size=1)
+                self.proj = nn.Conv3d(conv_out_channel, out_channel, kernel_size=1, bias = False)
 
-        norm_channel = out_channel
-        if order.index('n') < order.index('c'):
-            norm_channel = in_channel
-        self.norm, self.norm_type = get_norm(norm, norm_channel, dim, num_norm_groups)
-        
-        if atten == 'atten':
-            self.atten = SelfAttentionBlock(in_channel=out_channel, num_heads=num_heads, d_k = d_k, 
-            qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-            dropout = dropout, skip_connection = skip_connection)
-        elif atten == 'fft_atten':
-            self.atten = FFTAttenBlock(dim = dim, in_channel=out_channel, num_heads=num_heads, 
-            d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
-            atten_dropout = atten_dropout, dropout = dropout, 
-            skip_connection = skip_connection)
+        self.norm, self.norm_type = get_norm(norm, out_channel, dim, num_norm_groups)
+        self.atten = get_atten(atten, out_channel, num_heads=num_heads, d_k=d_k, 
+                               qkv_bias = qkv_bias, qk_scale = qk_scale, 
+                               atten_dropout = atten_dropout, 
+                               dropout = dropout, 
+                               skip_connection = skip_connection)
         # activation function
         self.act = get_act(activation)
-        self.order = order
+
         self.cinj = None
         if time_channel > 0 or condition_channel > 0:
             self.cinj = ContextInjectionBlock(time_channel = time_channel,
@@ -983,13 +1006,9 @@ class ConvBlock(NormBlock):
                 channel_dim = 1,
                 condition_first = condition_first)       
     def forward(self, x, t = None, c = None):
-        for m in self.order:
-            if m == 'n':
-                x = self.normalize(x)
-            elif m == 'c':
-                x = self.proj(self.conv(x))
-        x = self.act(x)
-        if hasattr(self, 'atten'):
+        x = self.proj(self.conv(x))
+        x = self.act(self.normalize(x))
+        if self.atten:
             x = self.atten(x)
 
         if self.cinj:
@@ -999,9 +1018,9 @@ class ConvBlock(NormBlock):
 class DoubleConvBlock(nn.Module):
     def __init__(self, dim, in_channel, out_channel, 
             time_channel = 0, kernel_size = 3, 
-            padding = 1, depthwise = False, 
+            padding = 1, depthwise = False, bias = True, 
             activation = 'relu', norm='batch', num_norm_groups = 0, 
-            time_injection = 'gate_bias', order = 'cn', 
+            time_injection = 'gate_bias', 
             atten = None, num_heads = 1, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
             dropout = None, skip_connection = True,  
@@ -1013,21 +1032,20 @@ class DoubleConvBlock(nn.Module):
            logger.debug("redundant parameters:{}".format(kwargs))
         self.conv1 = ConvBlock(dim = dim, in_channel=in_channel, out_channel=out_channel, 
                                kernel_size=kernel_size, padding=padding, 
-                               depthwise = depthwise, activation=activation, 
-                               norm=norm, num_norm_groups=num_norm_groups, order = order, 
-                               atten=atten, num_heads=num_heads, d_k=d_k, 
-                               qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-                               dropout = dropout, skip_connection = skip_connection,
+                               depthwise = depthwise, bias = bias, activation=activation, 
+                               norm=norm, num_norm_groups=num_norm_groups,
                                time_channel=time_channel, time_injection=time_injection,
                                condition_channel = condition_channel, condition_injection=condition_injection,
                                condition_first=condition_first)
         self.conv2 = ConvBlock(dim = dim, in_channel=out_channel, out_channel=out_channel, 
                                kernel_size=kernel_size, padding=padding, 
-                               depthwise = depthwise, activation=activation,
-                               norm=norm, num_norm_groups=num_norm_groups, order = order, 
-                               atten=atten, num_heads=num_heads, d_k=d_k, 
-                               qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-                               dropout = dropout, skip_connection = skip_connection)
+                               depthwise = depthwise, bias = bias, activation=activation,
+                               norm=norm, num_norm_groups=num_norm_groups)
+        self.atten = get_atten(atten, out_channel, num_heads=num_heads, d_k=d_k, 
+                               qkv_bias = qkv_bias, qk_scale = qk_scale, 
+                               atten_dropout = atten_dropout, 
+                               dropout = dropout, 
+                               skip_connection = skip_connection)
         self.time_channel = time_channel
         self.condition_channel = condition_channel
     def forward(self, x, t = None, c = None):
@@ -1035,14 +1053,16 @@ class DoubleConvBlock(nn.Module):
         x = self.conv1(x, t, c)
         # Second convolution layer
         x = self.conv2(x)
+        if self.atten:
+            x = self.atten(x)
         return x 
 
 # residual double convolution
 class ResConvBlock(nn.Module):
     def __init__(self, dim, in_channel, out_channel, 
         time_channel = 0, kernel_size = 3, 
-        padding = 1, depthwise = False, 
-        activation = 'relu', norm='batch', num_norm_groups = 0, order = 'cn', 
+        padding = 1, depthwise = False, bias = True, 
+        activation = 'relu', norm='batch', num_norm_groups = 0, 
         atten = None, num_heads = 1, d_k = None,
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
         dropout = None, skip_connection = True, 
@@ -1055,11 +1075,8 @@ class ResConvBlock(nn.Module):
            logger.debug("redundant parameters:{}".format(kwargs))
         self.conv1 = ConvBlock(dim = dim, in_channel=in_channel, out_channel=out_channel, 
                                kernel_size=kernel_size, padding=padding, 
-                               depthwise = depthwise, activation=activation, 
-                               norm=norm, num_norm_groups=num_norm_groups, order = order, 
-                               atten=atten, num_heads=num_heads, d_k=d_k, 
-                               qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-                               dropout = dropout, skip_connection = skip_connection,
+                               depthwise = depthwise, bias = bias, activation=activation, 
+                               norm=norm, num_norm_groups=num_norm_groups, 
                                time_channel=time_channel, time_injection=time_injection,
                                condition_channel = condition_channel,
                                condition_injection = condition_injection,
@@ -1067,18 +1084,21 @@ class ResConvBlock(nn.Module):
         
         self.conv2 = ConvBlock(dim = dim, in_channel=out_channel, out_channel=out_channel, 
                                kernel_size=kernel_size, padding=padding, 
-                               depthwise = depthwise, activation=None,
-                               norm=norm, num_norm_groups=num_norm_groups, order = order, 
-                               atten=atten, num_heads=num_heads, d_k=d_k, 
-                               qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-                               dropout = dropout, skip_connection = skip_connection)
+                               depthwise = depthwise, bias = bias, activation=None,
+                               norm=norm, num_norm_groups=num_norm_groups, )
         self.act = get_act(activation)
+        self.atten = get_atten(atten, out_channel, num_heads=num_heads, d_k=d_k, 
+                               qkv_bias = qkv_bias, qk_scale = qk_scale, 
+                               atten_dropout = atten_dropout, 
+                               dropout = dropout, 
+                               skip_connection = skip_connection)
         # If the number of input channel is not equal to the number of output channel we have to
         # project the shortcut connection
         if in_channel != out_channel:
-            ## without normalization
+            ## with un-biased normalization
             self.shortcut = ConvBlock(dim=dim, in_channel=in_channel, out_channel=out_channel, 
-                                      kernel_size=1, padding = 0, activation=None, norm = None)
+                                      kernel_size=1, padding = 0, activation=None, bias=False,
+                                      norm=norm, num_norm_groups=num_norm_groups, )
         else:
             self.shortcut = nn.Identity()        
         self.time_channel = time_channel
@@ -1090,6 +1110,8 @@ class ResConvBlock(nn.Module):
         # Second convolution layer
         _x = self.conv2(_x)
         out = self.act( _x + self.shortcut(x))
+        if self.atten:
+            out = self.atten(out)
         return out
 
 
@@ -1150,3 +1172,4 @@ class CombineLayer(nn.Module):
                     x[i] = x[i] + self.pos_emb[i]
         com_x = self.combine(x)
         return self.final_conv(com_x)
+

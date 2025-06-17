@@ -22,7 +22,6 @@ def colorize_by_label(labels):
         
     colors = _color_table[labels.flatten()].reshape(labels.shape + (-1,))
     return colors
-
 ### 2D image
 def colorize_img_by_label(label, img, gt = None, background = 0, threshold = 0.5, alpha = 0.65):
     assert label.shape[0] == 1, \
@@ -171,6 +170,21 @@ class Vec2PCDTensorboardFormatter:
             plt.scatter(batch[:, 0].detach().cpu().numpy(), 
                         batch[:, 1].detach().cpu().numpy(), s = 10, alpha=0.3)
             return [(name, plt.gcf()),]  
+
+class WarmupScheduler:
+    def __init__(self, optimizer, warmup_steps = 100, start_scale = 0.05):
+        super().__init__()
+        self.optimizer = optimizer
+        self.warmup_steps = warmup_steps
+        self.start_scale = start_scale
+        self.each_step_scale = (1.0 - start_scale) / warmup_steps 
+    def step(self, step_num):
+        if step_num <= self.warmup_steps:
+            # Linear warm-up
+            scale = step_num * self.each_step_scale + self.start_scale
+            for group in self.optimizer.param_groups:
+                group['lr'] = group['initial_lr'] * scale
+                
 def create_formatter(data_form):
     if data_form == DataForm.IMG:
         return ImageTensorboardFormatter()
@@ -251,7 +265,8 @@ def tsne(X, n_components = 2):
     return TSNE(n_components=n_components, learning_rate='auto', init='random').fit_transform(X)
 #### wait to be implemented: save optimizer.
 def save_checkpoint(ckp_dir, model, optimizer = None, 
-                    scheduler = None, epoch = -1, best_loss = 1e10,
+                    scheduler = None, 
+                    epoch = -1, best_loss = 1e10,
                     best_score = -1e10, is_best_loss = False, 
                     is_best_score = False):
     
@@ -276,7 +291,8 @@ def save_checkpoint(ckp_dir, model, optimizer = None,
     if is_best_score:
         shutil.copyfile(path, "{}/ckp_best_score.pth".format(ckp_dir))
     
-def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None, ignore_mismatched_keys = [], specified_model_componets = None):
+def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None, 
+    ignore_mismatched_keys = [], specified_model_componets = None):
     logger.info('load model from {}'.format(ckp_path))
     state_dict = torch.load(ckp_path, map_location='cpu', weights_only=False)
     if 'trained_model' in state_dict:

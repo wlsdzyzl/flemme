@@ -27,7 +27,7 @@ loader:
     data_dir: left
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/lrply/mask/
+    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/lrply/mask/
   batch_size: 8
   num_workers: 8
   shuffle: true
@@ -37,7 +37,7 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/vcg-ckp/imagecas/PointNet_AE_EMD
+check_point_dir: /media/wlsdzyzl/DATA1/vcg-ckp/imagecas/PointNet_AE_EMD
 ### parameter for optimizer
 optimizer:
   name: Adam

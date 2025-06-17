@@ -24,9 +24,9 @@ model:
   # in ddpm, it can be the time steps and so on.
 loader:
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/ImageCAS/fold1
-    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/ImageCAS/fold2
-    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/ImageCAS/fold3 
+    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/ImageCAS/fold1
+    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/ImageCAS/fold2
+    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/ImageCAS/fold3 
   dataset: 
     name: ImgSegDataset
     dim: 3
@@ -44,7 +44,7 @@ val_loader:
     dim: 3
     data_suffix: .nii.gz
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/ImageCAS/fold4  
+    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/ImageCAS/fold4  
   batch_size: 2
   num_workers: 8
   shuffle: false
@@ -52,7 +52,7 @@ val_loader:
     - name: Resize
       size: [96, 192, 192]
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA/flemme-path/to/checkpointcheckpoint/ImageCAS/MambaU_HSeg
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-path/to/checkpointcheckpoint/ImageCAS/MambaU_HSeg
 
 ### parameter for optimizer
 optimizer:
@@ -70,6 +70,6 @@ evaluation_metrics:
     - name: ACC
     - name: mIoU
 max_epoch: 500
-warmup_epoch: 2
+warmup_epochs: 2
 write_after_iters: 2
 save_after_epochs: 5

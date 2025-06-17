@@ -1,0 +1,40 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: train
+model:
+  # can be AE, VAE and DDPM
+  name: EDM
+  eps_model:
+    time_channel: 128
+    encoder:
+      ## name is fixed: PointWise
+      name: FCN
+      in_channel: 2
+      dense_channels: [128, 256]
+      building_block: res_fc
+      activation: silu
+      normalization: layer
+      dropout: 0.1
+loader:
+  dataset: 
+    name: ToyDataset
+    n_sample: 10240
+    dim: 2
+  batch_size: 1024
+  num_workers: 8
+  shuffle: true
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/Toy/EDM_Layer_res
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0003
+  weight_decay: 0.00000001
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 10000
+write_after_iters: 50
+save_after_epochs: 10
+write_sample_num: 1024

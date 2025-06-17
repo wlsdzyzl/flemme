@@ -25,10 +25,13 @@ supported_buildingblocks_for_encoder = {'CNN': ['single', 'conv', 'double', 'dou
                         'VMambaU': ['vmamba', 'double_vmamba', 'res_vmamba', 'vmamba2', 'double_vmamba2', 'res_vmamba2'],
                         'VMambaD': ['vmamba', 'double_vmamba', 'res_vmamba', 'vmamba2', 'double_vmamba2', 'res_vmamba2'],
                         'FCN': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
+                        'SeqNet': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
                         'PointNet': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
                         'PointNet2': ['dense', 'double_dense', 'res_dense', 'fc', 'double_fc', 'res_fc'],
+                        'SeqTrans': ['pct_sa', 'pct_oa'],
                         'PointTrans': ['pct_sa', 'pct_oa'],
                         'PointTrans2': ['pct_sa', 'pct_oa'],
+                        'SeqMamba': ['pmamba', 'pmamba2'],
                         'PointMamba': ['pmamba', 'pmamba2'],
                         'PointMamba2': ['pmamba', 'pmamba2'],
                         'GCN': ['gcn'],
@@ -54,22 +57,24 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         ### construct encoder and decoder
         if encoder_name in ('CNN', 'UNet', 'DNet', 'ViT', 'ViTU', 'ViTD', 'Swin', 'SwinU', 'SwinD', 'VMamba',  'VMambaU', 'VMambaD'):
             data_form = DataForm.IMG
-        elif encoder_name in ('PointNet', 'PointTrans', 'PointMamba', 'PointNet2', 'PointTrans2', 'PointMamba2'):
+        elif encoder_name in ('PointNet', 'PointTrans', 'PointMamba', 'PointNet2', 'PointTrans2', 'PointMamba2', 'SeqNet', 'SeqTrans', 'SeqMamba'):
             data_form = DataForm.PCD
         ### point-wise encoder can be applied on various data forms.
         elif encoder_name in ('FCN', ):
-            data_form = encoder_config.pop('data_form', 'PCD')
-            if data_form == 'PCD':
-                data_form = DataForm.PCD
-            elif data_form == 'VEC':
-                data_form = DataForm.VEC
-            else:
-                raise RuntimeError(f'Unsupported data form for point-wise encoder: {data_form}')
+            data_form = DataForm.VEC
+            # data_form = encoder_config.pop('data_form', 'PCD')
+            # if data_form == 'PCD':
+            #     data_form = DataForm.PCD
+            # elif data_form == 'VEC':
+            #     data_form = DataForm.VEC
+            # else:
+            #     raise RuntimeError(f'Unsupported data form for point-wise encoder: {data_form}')
                 
         else:
             raise RuntimeError(f'Unsupported encoder: {encoder_name}')
-        if not building_block in supported_buildingblocks_for_encoder[encoder_name] and \
-             not (return_encoder == False and encoder_name in ['PointNet', 'PointTrans', 'PointMamba']):
+        if not building_block in supported_buildingblocks_for_encoder[encoder_name]\
+            and not (return_encoder == False and encoder_name in ['PointNet', 'PointTrans', 'PointMamba']):
+            ### pointnet decoder doesn't need building block
             logger.error(f'Unsupported building block \'{building_block}\' for encoder {encoder_name}, please use one of {supported_buildingblocks_for_encoder[encoder_name]}.')
             exit(1)
         ### FC channels
@@ -93,7 +98,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
 
         if encoder_name == 'FCN':
             if return_encoder:
-                encoder = Encoder(point_dim=in_channel + eai_channel, 
+                encoder = Encoder(vec_dim=in_channel + eai_channel, 
                                             time_channel=time_channel, 
                                             condition_channel = condition_channel,
                                             dense_channels=dense_channels,
@@ -101,7 +106,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                             **encoder_config)
                 decoder_in_channel = encoder.out_channel
             if return_decoder:
-                decoder = Decoder(point_dim=out_channel, 
+                decoder = Decoder(vec_dim=out_channel, 
                                         in_channel=decoder_in_channel + dai_channel,
                                         time_channel=time_channel, 
                                         condition_channel = decoder_condition_channel,
@@ -109,6 +114,9 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                         building_block=building_block,
                                         **encoder_config)
         if data_form == DataForm.IMG:
+            ### images' vector embedding is determined by dense_channels.
+            if not len(de_dense_channels):
+                de_dense_channels = dense_channels[::-1]
             logger.info('Model is constructed for images.')
             image_size = encoder_config.pop('image_size', None)
             assert image_size is not None, "Image size need to be specified."
@@ -280,9 +288,9 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             logger.info('Model is constructed for point cloud.')
             #### point cloud encoder
             point_num = encoder_config.pop('point_num', 2048)
-            if not encoder_name == 'FCN':
+            projection_channel = encoder_config.pop('projection_channel', 64)
+            if not 'Seq' in encoder_name:
                 # encoder
-                projection_channel = encoder_config.pop('projection_channel', 64)
                 voxel_resolutions = encoder_config.pop('voxel_resolutions', [])
                 assert type(voxel_resolutions) == list, "voxel_resolutions should be a list."
 
@@ -365,6 +373,29 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                     building_block=building_block,
                                                     fp_channels = fp_channels,
                                                     voxel_resolutions = de_voxel_resolutions,
+                                                    **encoder_config)
+            ### sequential net
+            else:
+                    seq_feature_channels = encoder_config.pop('seq_feature_channels', [64, 128, 256])
+                    decoder_seq_feature_channels = encoder_config.pop('decoder_seq_feature_channels', [])
+                    if return_encoder:
+                        encoder = Encoder(point_dim=in_channel + eai_channel, 
+                                                    projection_channel = projection_channel,
+                                                    time_channel = time_channel,
+                                                    condition_channel = condition_channel,
+                                                    seq_feature_channels = seq_feature_channels,
+                                                    building_block=building_block,
+                                                    # voxel_resolutions = voxel_resolutions,
+                                                    **encoder_config)
+                        decoder_in_channel = encoder.out_channel
+                    ## Different encoders of point clouds could use the same decoder.
+                    if return_decoder:
+                        decoder = Decoder(point_dim=out_channel, 
+                                                    time_channel = time_channel, 
+                                                    condition_channel = decoder_condition_channel,
+                                                    in_channel=decoder_in_channel + dai_channel, 
+                                                    seq_feature_channels = decoder_seq_feature_channels,
+                                                    building_block=building_block,
                                                     **encoder_config)
             if return_encoder:
                 encoder.point_num = point_num

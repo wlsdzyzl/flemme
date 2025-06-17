@@ -36,9 +36,9 @@ loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold1
-    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold2
-    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold3
+    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold1
+    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold2
+    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold3
   batch_size: 2
   num_workers: 8
   shuffle: true
@@ -70,7 +70,7 @@ val_loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold4
+    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold4
   batch_size: 2
   num_workers: 8
   shuffle: false
@@ -88,7 +88,7 @@ val_loader:
       num_classes: 4
       ignore_background: False
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA/flemme-path/to/checkpointcheckpoint/BRATS21/MambaU
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-path/to/checkpointcheckpoint/BRATS21/MambaU
 
 ### parameter for optimizer
 optimizer:
@@ -106,6 +106,6 @@ evaluation_metrics:
     - name: ACC
     - name: mIoU
 max_epoch: 500
-warmup_epoch: 2
+warmup_epochs: 2
 write_after_iters: 5
 save_after_epochs: 2

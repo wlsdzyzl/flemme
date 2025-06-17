@@ -35,7 +35,7 @@ loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold5
+    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold5
   batch_size: 4
   num_workers: 8
   shuffle: false
@@ -54,7 +54,7 @@ loader:
       ignore_background: False
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA/flemme-path/to/checkpointcheckpoint/BRATS21/ResNet_HSeg/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-path/to/checkpointcheckpoint/BRATS21/ResNet_HSeg/ckp_last.pth
 seg_dir: /work/guoqingzhang/results/BRATS21/ResNet_HSeg
 # evaluation_metrics:
 #   seg:

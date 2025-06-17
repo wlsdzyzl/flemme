@@ -41,12 +41,12 @@ model:
   ## 2D ddpm
   eps_loss:
     name: MSE
-# resume: /media/wlsdzyzl/DATA/flemme-ckp/CIFAR10/CDDPM_CFree_2.0/ckp_last.pth
+# resume: /media/wlsdzyzl/DATA1/flemme-ckp/CIFAR10/CDDPM_CFree_2.0/ckp_last.pth
 loader:
   dataset: 
     name: CIFAR10
-    data_path: /media/wlsdzyzl/DATA/datasets/img/CIFAR10
-  batch_size: 256
+    data_path: /media/wlsdzyzl/DATA1/datasets/img/CIFAR10
+  batch_size: 4
   num_workers: 8
   shuffle: true
   data_transforms:
@@ -57,7 +57,7 @@ loader:
     - name: Normalize
       mean: [0.5, 0.5, 0.5]
       std: [0.5, 0.5, 0.5]
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/CIFAR10/CDDPM_CFree_2.0
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/CIFAR10/CDDPM_CFree_2.0
 sampler:
   num_sample_steps: 100
   rand_seed: 2024

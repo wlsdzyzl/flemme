@@ -29,9 +29,9 @@ loader:
     label_dir: masks
     data_suffix: jpg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold1/
-    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold2/
-    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold3/
+    - /media/wlsdzyzl/DATA1/datasets/img/CVC-ClinicDB/fold1/
+    - /media/wlsdzyzl/DATA1/datasets/img/CVC-ClinicDB/fold2/
+    - /media/wlsdzyzl/DATA1/datasets/img/CVC-ClinicDB/fold3/
   batch_size: 2
   num_workers: 8
   shuffle: true
@@ -47,7 +47,7 @@ val_loader:
     label_dir: masks
     data_suffix: jpg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/CVC-ClinicDB/fold4/
+    - /media/wlsdzyzl/DATA1/datasets/img/CVC-ClinicDB/fold4/
   batch_size: 2
   num_workers: 8
   shuffle: false
@@ -56,7 +56,7 @@ val_loader:
       ## the value must be list
       size: [320, 256]
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/CVC-ClinicDB/UNet_Atten
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/CVC-ClinicDB/UNet_Atten
 
 ### parameter for optimizer
 optimizer:
@@ -73,6 +73,6 @@ evaluation_metrics:
     - name: ACC
     - name: mIoU
 max_epoch: 500
-warmup_epoch: 2
+warmup_epochs: 2
 write_after_iters: 5
 save_after_epochs: 2

@@ -56,7 +56,7 @@ def get_psmamba_block(name, **kwargs):
     elif name == 'pmamba2':
         return partial(PointScanMamba2Block, **kwargs)
 
-class PointMambaBlock(NormBlock):
+class PointMambaBlock(nn.Module):
     def __init__(self, in_channel, out_channel = None, 
         time_channel = 0, state_channel = 64, 
         conv_kernel_size = 4, inner_factor = 2,  
@@ -66,16 +66,17 @@ class PointMambaBlock(NormBlock):
         dt_min=0.001, A_init_range=(1, 16),
         dt_max=0.1, dt_init_floor=1e-4, 
         dt_rank = None, dt_scale = 1.0,
-        dropout = None, skip_connection = True, mamba = 'Mamba', 
+        mlp_hidden_ratios=[4.0,], 
+        dropout = None, mamba = 'Mamba', 
         activation = 'relu', norm='batch', num_norm_groups = -1, 
-        post_normalization = False, 
         time_injection = 'gate_bias', 
         condition_channel = 0, 
         condition_injection = 'gate_bias',
         condition_first = False,
         **kwargs):
-        
-        super().__init__(_channel_dim = -1)
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters:{}".format(kwargs))
         self.in_channel = in_channel
         self.out_channel = out_channel or in_channel
         inner_factor = int(inner_factor)
@@ -96,14 +97,16 @@ class PointMambaBlock(NormBlock):
                         dt_max = dt_max, dt_min = dt_min, 
                         dt_init_floor = dt_init_floor,
                         A_init_range = A_init_range)
-        self.post_normalization = post_normalization
-        if post_normalization:
-            self.norm, self.norm_type = get_norm(norm, out_channel, 1, num_norm_groups)
-        else:
-            self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
-        self.act = get_act(activation)
 
-        self.skip_connection = skip_connection
+        self.norm1 = NormBlock(*(get_norm(norm, in_channel, 1, num_norm_groups) + (-1,)))
+        self.norm2 = NormBlock(*(get_norm(norm, in_channel, 1, num_norm_groups) + (-1,)))
+        # self.act = get_act(activation)
+        mlp_hidden_channels = [int(in_channel * r) for r in mlp_hidden_ratios]
+        self.mlp = MultiLayerPerceptionBlock(in_channel=in_channel, 
+                        out_channel=self.out_channel, 
+                        hidden_channels=mlp_hidden_channels,
+                        activation=activation, dropout=dropout)
+
         self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
         if dropout is None or dropout <= 0:
             self.dropout = nn.Identity()
@@ -114,49 +117,36 @@ class PointMambaBlock(NormBlock):
         if time_channel > 0 or condition_channel > 0:
             self.cinj = ContextInjectionBlock(time_channel = time_channel,
                 condition_channel = condition_channel,
-                out_channel = out_channel,
+                out_channel = in_channel,
                 time_injection=time_injection,
                 condition_injection=condition_injection,
                 channel_dim = -1,
                 condition_first = condition_first)
 
     def forward(self, x, t = None, c = None):
-        res = self.mamba(x)
-        res = self.dropout(res)
+        x = self.dropout(self.mamba(self.norm1(x))) + x
+        if self.cinj:
+            x = self.cinj(x, t, c)
+        x = self.dense(x) + self.mlp(self.norm2(x))
 
-        if not self.post_normalization:
-            res = self.act(self.normalize(res))
-        
-        if self.skip_connection:
-            res = x + res
-        x = self.dense(res)
-
-        if self.post_normalization:
-            x = self.act(self.normalize(x))
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            x = self.time(x, t)
-        if c is not None:
-            assert self.condition_channel == c.shape[-1], \
-                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
-            x = self.cond(x, c)
         return x
     @staticmethod
     def is_sequence_modeling():
         return True
 
 ### contains different scan strategies
-class PointScanMambaBaseBlock(NormBlock):
+class PointScanMambaBaseBlock(nn.Module):
     def __init__(
         self, in_channel, num_scan, 
         out_channel, state_channel, 
         conv_kernel_size, inner_factor, 
         dropout, conv_bias, bias, activation,
-        norm, num_norm_groups, 
-        skip_connection,
-        post_normalization):
-        super().__init__(_channel_dim = -1)
+        norm, num_norm_groups, mlp_hidden_ratios,
+        time_channel, condition_channel,
+        time_injection, condition_injection,
+        condition_first,
+        ):
+        super().__init__()
         self.in_channel = in_channel
         ### out channel should be equal to in channel
         self.out_channel = out_channel or in_channel
@@ -175,12 +165,8 @@ class PointScanMambaBaseBlock(NormBlock):
         )
         self.K = num_scan
         self.act = get_act(activation)
-        self.skip_connection = skip_connection
-        self.post_normalization = post_normalization
-        if post_normalization:
-            self.norm, self.norm_type = get_norm(norm, out_channel, 1, num_norm_groups)
-        else:
-            self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
+        self.norm1 = NormBlock(*(get_norm(norm, in_channel, 1, num_norm_groups) + (-1,)))
+        self.norm2 = NormBlock(*(get_norm(norm, in_channel, 1, num_norm_groups) + (-1,)))
 
         self.out_proj = nn.Linear(self.inner_channel, self.in_channel, bias=bias)
 
@@ -191,8 +177,22 @@ class PointScanMambaBaseBlock(NormBlock):
 
         ### to make sure the output is equal to input
         #### run reconstruction needed.
-        self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
+        mlp_hidden_channels = [int(in_channel * r) for r in mlp_hidden_ratios]
+        self.mlp = MultiLayerPerceptionBlock(in_channel=in_channel, 
+                        out_channel=self.out_channel, 
+                        hidden_channels=mlp_hidden_channels,
+                        activation=activation, dropout=dropout)
 
+        self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
+        self.cinj = None
+        if time_channel > 0 or condition_channel > 0:
+            self.cinj = ContextInjectionBlock(time_channel = time_channel,
+                condition_channel = condition_channel,
+                out_channel = in_channel,
+                time_injection=time_injection,
+                condition_injection=condition_injection,
+                channel_dim = -1,
+                condition_first = condition_first)
     def scan(self, xyz_features, sorted_index_list):
         
         assert len(sorted_index_list) == self.K, \
@@ -226,11 +226,8 @@ class PointScanMambaBaseBlock(NormBlock):
         return y
     def ssm(self, xs):
         raise NotImplementedError
-    
-    def forward(self, x, sorted_index_list):
-        ### scan mamba block
-        # print(x.shape)
-        shortcut = x
+    def mamba(self, x, sorted_index_list):
+        x = self.norm1(x)
         L = x.shape[1]
         xz = self.in_proj(x)
         x, z = xz.chunk(2, dim=-1) 
@@ -242,29 +239,25 @@ class PointScanMambaBaseBlock(NormBlock):
         y = channel_transfer(y)
         y = y * self.act(z)
         out = self.out_proj(y)
-        out = self.dropout(out)
-        
-        if not self.post_normalization:
-            out = self.act(self.normalize(out))
-
-        if self.skip_connection:
-            out = shortcut + out
-        out = self.dense(out)
-
-        if self.post_normalization:
-            out = self.act(self.normalize(out))
         return out
+    def forward(self, x, sorted_index_list, t, c):
+        ### scan mamba block
+        # print(x.shape)
+        x = self.dropout(self.mamba(self.norm1(x), sorted_index_list)) + x
+        if self.cinj:
+            x = self.cinj(x, t, c)
+        x = self.dense(x) + self.mlp(self.norm2(x))
+        return x
 
 class PointScanMambaBlock(PointScanMambaBaseBlock):
     def __init__(
         self, in_channel, num_scan, out_channel = None, time_channel = 0, 
         state_channel=None, conv_kernel_size=4,
         inner_factor = 2.0,  dt_rank=None, dt_min=0.001, 
-        dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4, 
+        dt_max=0.1, dt_init="random", dt_scale=1.0, dt_init_floor=1e-4,
+        mlp_hidden_ratios=[4.0,],  
         dropout=0., conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, 
-        skip_connection = True,
-        post_normalization = False, 
         time_injection = 'gate_bias', 
         condition_channel = 0, 
         condition_injection = 'gate_bias',
@@ -278,8 +271,12 @@ class PointScanMambaBlock(PointScanMambaBaseBlock):
             conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
             num_norm_groups = num_norm_groups, 
-            skip_connection = skip_connection,
-            post_normalization = post_normalization)
+            mlp_hidden_ratios = mlp_hidden_ratios,
+            time_channel = time_channel,
+            time_injection = time_injection,
+            condition_channel = condition_channel,
+            condition_injection = condition_injection,
+            condition_first=condition_first)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.dt_rank = dt_rank or math.ceil(self.in_channel / 16)        
@@ -297,15 +294,6 @@ class PointScanMambaBlock(PointScanMambaBaseBlock):
         self.Ds = self.D_init(self.inner_channel, copies=self.K, merge=True) # (K=4, D, N)
         self.selective_scan = selective_scan_fn
 
-        self.cinj = None
-        if time_channel > 0 or condition_channel > 0:
-            self.cinj = ContextInjectionBlock(time_channel = time_channel,
-                condition_channel = condition_channel,
-                out_channel = out_channel,
-                time_injection=time_injection,
-                condition_injection=condition_injection,
-                channel_dim = -1,
-                condition_first = condition_first)
     @staticmethod
     def dt_init(dt_rank, inner_channel, dt_scale=1.0, dt_init="random", dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4):
         dt_proj = nn.Linear(dt_rank, inner_channel, bias=True)
@@ -387,18 +375,7 @@ class PointScanMambaBlock(PointScanMambaBaseBlock):
         ).view(B, K, -1, L)
         assert out_y.dtype == torch.float
         return out_y
-    def forward(self, x, itc):
-        sorted_index_list, t, c = itc
-        x = super().forward(x, sorted_index_list)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            x = self.time(x, t)
-        if c is not None:
-            assert self.condition_channel == c.shape[-1], \
-                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
-            x = self.cond(x, c)
-        return x
+
 
 class PointScanMamba2Block(PointScanMambaBaseBlock):
     def __init__(
@@ -409,10 +386,9 @@ class PointScanMamba2Block(PointScanMambaBaseBlock):
         learnable_init_states = True, chunk_size=256,
         dt_min=0.001, A_init_range=(1, 16),
         dt_max=0.1, dt_init_floor=1e-4, 
+        mlp_hidden_ratios=[4.0,], 
         dropout=0., conv_bias=True, bias=False, activation = 'silu',
         norm = None, num_norm_groups = 0, 
-        skip_connection = True,
-        post_normalization = False, 
         time_injection = 'gate_bias', 
         condition_channel = 0, 
         condition_injection = 'gate_bias',
@@ -427,8 +403,12 @@ class PointScanMamba2Block(PointScanMambaBaseBlock):
             conv_bias=conv_bias, bias=bias, 
             activation = activation, norm = norm, 
             num_norm_groups = num_norm_groups, 
-            skip_connection = skip_connection,
-            post_normalization = post_normalization)
+            mlp_hidden_ratios = mlp_hidden_ratios,
+            time_channel = time_channel,
+            time_injection = time_injection,
+            condition_channel = condition_channel,
+            condition_injection = condition_injection,
+            condition_first=condition_first)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.head_channel = head_channel
@@ -457,15 +437,7 @@ class PointScanMamba2Block(PointScanMambaBaseBlock):
         self.selective_scan = mamba_chunk_scan_combined
         self.chunk_size = chunk_size
 
-        self.cinj = None
-        if time_channel > 0 or condition_channel > 0:
-            self.cinj = ContextInjectionBlock(time_channel = time_channel,
-                condition_channel = condition_channel,
-                out_channel = out_channel,
-                time_injection=time_injection,
-                condition_injection=condition_injection,
-                channel_dim = -1,
-                condition_first = condition_first)
+
 
     @staticmethod
     def dt_bias_init(num_heads, dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4):
@@ -532,15 +504,3 @@ class PointScanMamba2Block(PointScanMambaBaseBlock):
             )
         out_y = channel_recover(rearrange(out_y, "b l h p -> b l (h p)")).view(B, K, -1, L)
         return out_y
-    def forward(self, x, itc):
-        sorted_index_list, t, c = it
-        x = super().forward(x, sorted_index_list)
-        if t is not None:
-            assert self.time_channel == t.shape[-1], \
-                f'time channel mismatched: want {self.time_channel} but got {t.shape[-1]}.'  
-            x = self.time(x, t)
-        if c is not None:
-            assert self.condition_channel == c.shape[-1], \
-                f'context channel mismatched: want {self.condition_channel} but got {c.shape[-1]}.' 
-            x = self.cond(x, c)
-        return x

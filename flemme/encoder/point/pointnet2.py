@@ -95,7 +95,7 @@ class Point2Encoder(nn.Module):
             logger.info(f'Perform ball query on xyz space.')
         self.return_xyz = return_xyz
         if pos_embedding:
-            self.pos_embed = nn.Linear(point_dim, projection_channel)
+            self.pos_embed = nn.Linear(3, projection_channel)
             logger.info("Using point cloud positional embedding.")
         if not type(self.num_fps_points) == list:
             self.num_fps_points = [self.num_fps_points,] * len(fps_feature_channels)
@@ -216,7 +216,7 @@ class Point2Encoder(nn.Module):
         ## N * Np * d
         features = self.point_proj(xyz)
         if hasattr(self, 'pos_embed'):
-            xyz_embed = self.pos_embed(xyz)
+            xyz_embed = self.pos_embed(xyz[...,:3])
         else:
             xyz_embed = xyz
         xyz = xyz[...,0:3]
@@ -228,7 +228,7 @@ class Point2Encoder(nn.Module):
             if hasattr(self, 'lrm'):
                 if hasattr(self, 'scanners') and len(self.scanners) > 0: 
                     sorted_index_list = self.scan(xyz)
-                    features = self.lrm[lid](features, (sorted_index_list, t, c))
+                    features = self.lrm[lid](features, sorted_index_list, t, c)
                 else:
                     features = self.lrm[lid](features, t, c)
             if hasattr(self, 'vlf'):
@@ -272,8 +272,8 @@ class Point2Encoder(nn.Module):
         return features
 
     def __str__(self):
-        _str = f'projection layer: {self.point_dim}->{self.projection_channel}\n'
-        _str += 'Furthest Point Sampling and Grouping layers:'
+        _str = f'Projection layer: {self.point_dim}->{self.projection_channel}\n'
+        _str += 'Furthest Point Sampling and Grouping layers: '
         for c in self.msg_path[:-1]:
             _str += '{}->'.format(c)  
         _str += str(self.msg_path[-1])
@@ -390,7 +390,7 @@ class Point2Decoder(nn.Module):
         return self.final(feature)
     def __str__(self):
         _str = ''
-        _str += 'Feature Propagating layers:'
+        _str += 'Feature Propagating layers: '
         for c in self.fp_path[:-1]:
             _str += '{}->'.format(c)  
         _str += str(self.fp_path[-1])

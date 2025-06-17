@@ -16,7 +16,7 @@ model:
       down_channels: [32, 64]
       middle_channels: [128, 128]
       building_block: vmamba
-    normalization: layer2
+      normalization: layer
       scan_mode: single
       flip_scan: false
       abs_pos_embedding: false
@@ -27,7 +27,7 @@ loader:
   dataset: 
     name: MNIST
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/MNIST
+    - /media/wlsdzyzl/DATA1/datasets/img/MNIST
   batch_size: 128
   num_workers: 8
   shuffle: true
@@ -39,7 +39,7 @@ loader:
     - name: Normalize
       mean: [0.5]
       std: [0.5]
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/DDPM_swin
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/DDPM_mamba
 sampler:
   num_sample_steps: 200
   rand_seed: 2024

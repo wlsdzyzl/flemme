@@ -1,8 +1,8 @@
 import torch
 import numpy as np
-from flemme.model import DDPM, DDIM
+from flemme.model import DDPM, DDIM, EDM
 from flemme.logger import get_logger
-from flemme.config import module_config
+
 logger = get_logger('sampler')
 def create_sampler(model, sampler_config):
     sampler_name = sampler_config.pop('name', 'NormalSampler')
@@ -13,6 +13,25 @@ def create_sampler(model, sampler_config):
     #     return MultinomialSampler(model = model, device = device, **sampler_config)
     # if sampler_name == 'HybridSampler':
     #     return HybridSampler(model = model, device = device, **sampler_config)
+
+## batch generator with different random seed.
+# class StackedRandomGenerator:
+#     def __init__(self, device, seeds):
+#         super().__init__()
+#         self.generators = [torch.Generator(device).manual_seed(int(seed) % (1 << 32)) for seed in seeds]
+
+#     def randn(self, size, **kwargs):
+#         assert size[0] == len(self.generators)
+#         return torch.stack([torch.randn(size[1:], generator=gen, **kwargs) for gen in self.generators])
+
+#     def randn_like(self, input):
+#         return self.randn(input.shape, dtype=input.dtype, layout=input.layout, device=input.device)
+
+#     def randint(self, *args, size, **kwargs):
+#         assert size[0] == len(self.generators)
+#         return torch.stack([torch.randint(*args, size=size[1:], generator=gen, **kwargs) for gen in self.generators])
+
+
 
 ### sample from normal distribution
 class NormalSampler:
@@ -28,8 +47,10 @@ class NormalSampler:
                     "NormalSampler can only be constructed with generative model."
         self.is_conditional = model.is_conditional or model.is_supervised
         self.device = model.device
+        self.random_generator = torch.Generator(self.device)
         if rand_seed is not None:
-            torch.manual_seed(rand_seed)
+            self.random_generator = self.random_generator.manual_seed(rand_seed)
+
         self.clipped = clipped
         self.clip_range = clip_range
         self.num_sample_steps = num_sample_steps
@@ -50,12 +71,17 @@ class NormalSampler:
             c_batch = [None, ] * len(z_batch)
         res = []
         for bid, zb in enumerate(z_batch):
-            if isinstance(self.model, DDIM):
+            if isinstance(self.model, DDIM) or \
+                hasattr(self.model, 'diff_model') and isinstance(self.model.diff_model, DDIM):
                 y = self.model.sample(zb, c = c_batch[bid], clipped=self.clipped,
                                     clip_range=self.clip_range)
-            elif isinstance(self.model, DDPM):
+            elif isinstance(self.model, DDPM) or \
+                hasattr(self.model, 'diff_model') and isinstance(self.model.diff_model, DDPM):
                 y = self.model.sample(zb, end_step=self.num_sample_steps - 1, c = c_batch[bid],
                                             clipped=self.clipped, clip_range=self.clip_range)
+            elif isinstance(self.model, EDM) or\
+                hasattr(self.model, 'diff_model') and isinstance(self.model.diff_model, EDM):
+                y = self.model.sample(zb, c = c_batch[bid])
             else:
                 y = self.model.decode(zb, c_batch[bid])
         
@@ -76,7 +102,8 @@ class NormalSampler:
             corner_num = 2
             
         if corner_latents is None:
-            latents = torch.randn(*( [corner_num, ] + self.model.get_latent_shape())).to(self.device)
+            latents = torch.randn(*( [corner_num, ] + self.model.get_latent_shape()), 
+                                  generator=self.random_generator, device = self.device)
         else:
             latents = corner_latents[0:corner_num].to(self.device)
             if latents.shape[0] < corner_num:
@@ -118,7 +145,8 @@ class NormalSampler:
     def generate_rand(self, n = 16, cond = None):
         if not self.is_conditional:
             cond = None
-        z = torch.randn(*( [n, ] + self.model.get_latent_shape())).to(self.device)
+        z = torch.randn(*( [n, ] + self.model.get_latent_shape()),
+                        generator=self.random_generator, device = self.device)
         if cond is not None and (len(cond.shape) == 0 
                                  or not cond.shape[0] == n):
             ## all data use the same condition

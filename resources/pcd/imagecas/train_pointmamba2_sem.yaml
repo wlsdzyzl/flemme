@@ -34,7 +34,7 @@ loader:
     data_suffix: .pts
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0/03001627
+    - /media/wlsdzyzl/DATA1/datasets/pcd/shapenetcore_v0/03001627
   batch_size: 2
   num_workers: 8
   shuffle: true
@@ -53,7 +53,7 @@ loader:
       ignore_background: true
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/03001627/PointNet2_Seg
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/03001627/PointNet2_Seg
 ### parameter for optimizer
 optimizer:
   name: Adam

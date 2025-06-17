@@ -15,7 +15,7 @@ class SwinEncoder(nn.Module):
                  window_size = 8, time_channel = 0,
                  patch_size = 2, patch_channel = 32,
                  building_block = 'swin', dense_channels = [256], 
-                 mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
+                 mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
                  down_channels = [128, 256], middle_channels = [256, 256], 
                  down_num_heads = [3, 3], middle_num_heads = [3, 3],
                  dropout=0., atten_dropout=0., drop_path=0.1, 
@@ -51,9 +51,7 @@ class SwinEncoder(nn.Module):
         self.window_size = window_size
         if not isinstance(window_size, tuple) and not isinstance(window_size, list):
             self.window_size = [self.window_size for _ in range(self.dim)]
-        self.mlp_hidden_ratio = mlp_hidden_ratio
-        self.qkv_bias = qkv_bias
-        self.qk_scale = qk_scale
+
         self.patch_size = patch_size
         self.patch_channel = patch_channel
         self.patch_image_pyramid = [ [s // patch_size // (2 **i) for s in self.image_size] 
@@ -62,7 +60,7 @@ class SwinEncoder(nn.Module):
         ### building block: swin transformer block
         self.BuildingBlock = get_building_block(building_block, 
                                 window_size = self.window_size, 
-                                mlp_hidden_ratio = mlp_hidden_ratio,
+                                mlp_hidden_ratios = mlp_hidden_ratios,
                                 time_channel = time_channel, 
                                 qkv_bias = qkv_bias,
                                 qk_scale = qk_scale,
@@ -211,7 +209,7 @@ class SwinDecoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, in_channel = 64,
                  window_size = 8, patch_size = 2, dense_channels = [32], 
                  building_block = 'swin', time_channel = 0,
-                 mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
+                 mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
                  up_channels = [128, 64], final_channels = [64, 64], 
                  up_num_heads = [3, 3], final_num_heads = [3, 3],
                  dropout=0., atten_dropout=0., drop_path=0.1, 
@@ -244,9 +242,6 @@ class SwinDecoder(nn.Module):
         self.window_size = window_size
         if not isinstance(window_size, tuple) and not isinstance(window_size, list):
             self.window_size = [self.window_size for _ in range(self.dim)]
-        self.mlp_hidden_ratio = mlp_hidden_ratio
-        self.qkv_bias = qkv_bias
-        self.qk_scale = qk_scale
         self.patch_size = patch_size
         self.in_channel = in_channel
         self.patch_image_pyramid = [ [s //patch_size // (2 **i) for s in self.image_size] for i in range(self.u_depth + 1)][::-1]
@@ -258,7 +253,7 @@ class SwinDecoder(nn.Module):
                                 time_injection = time_injection,
                                 condition_channel = condition_channel,
                                 condition_injection = condition_injection,
-                                mlp_hidden_ratio = mlp_hidden_ratio,
+                                mlp_hidden_ratios = mlp_hidden_ratios,
                                 qkv_bias = qkv_bias,
                                 qk_scale = qk_scale,
                                 dropout = dropout,

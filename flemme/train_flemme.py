@@ -111,20 +111,20 @@ def main():
     model = model.to(device)
     optimizer = create_optimizer(optim_config, model)
     max_epoch = train_config.get('max_epoch', 1000)
-    warmup_epoch = train_config.get('warmup_epoch', 1)
+    warmup_epochs = train_config.get('warmup_epochs', 0)
     scheduler_config = train_config.get('lr_scheduler', None)
     eval_batch_num = train_config.get('eval_batch_num', 8)
     write_sample_num= train_config.get('write_sample_num', 16)
     ignore_mismatched_keys = train_config.get('ignore_mismatched_keys', [])
-
+    clip_grad = train_config.get('clip_grad', None)
     ## if scheduler is OneCycleLR, set as True
     ## otherwise, scheduler is called after a training epoch
     if scheduler_config is not None:
         if scheduler_config['name'] == "OneCycleLR":
-            scheduler_config['total_steps'] = max_epoch - warmup_epoch
+            scheduler_config['total_steps'] = max_epoch - warmup_epochs
             scheduler_config['max_lr'] = optim_config.get('lr')
         if scheduler_config['name'] == "LinearLR":
-            scheduler_config['total_iters'] = max_epoch - warmup_epoch
+            scheduler_config['total_iters'] = max_epoch - warmup_epochs
         lr_scheduler = create_scheduler(scheduler_config, optimizer)
         logger.info('using {}'.format(type(lr_scheduler)))
     else:
@@ -181,6 +181,13 @@ def main():
             if resume == resume_pth:
                 logger.warning('Input checkpoint doesn\'t exist.')
             logger.info('Model will be trained from scratch.')
+    if warmup_epochs:
+        warmup_start_scale = train_config.get('warmup_start_scale', 0.05)
+        warmup_scheduler = WarmupScheduler(optimizer, warmup_epochs * len(data_loader), 
+                            warmup_start_scale)
+        logger.info('Warmup for {} epochs ({} iterations) with start scale {}.'.format(warmup_epochs, 
+                        warmup_epochs * len(data_loader), warmup_start_scale))
+
     sampler = None
     sampler_config = train_config.get('sampler', {'name': 'NormalSampler'})
     if model.is_generative and sampler_config:
@@ -224,6 +231,10 @@ def main():
             loss = sum(losses)
             optimizer.zero_grad()
             loss.backward()
+            if clip_grad:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad)
+            if epoch <= warmup_epochs:
+                warmup_scheduler.step(iter_id + 1)
             optimizer.step()
             iter_id += 1
             if iter_id % write_after_iters == 0:
@@ -285,7 +296,7 @@ def main():
         remaining_time = (datetime.now() - start_time) * (max_epoch - epoch)
         logger.info(f'The training is expected to be completed in {str(remaining_time)}.')
 
-        if epoch > warmup_epoch and lr_scheduler is not None:
+        if epoch > warmup_epochs and lr_scheduler is not None:
             if isinstance(lr_scheduler, ReduceLROnPlateau):
                 lr_scheduler.step(loss)
             else:

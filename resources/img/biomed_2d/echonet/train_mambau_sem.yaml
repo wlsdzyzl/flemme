@@ -30,9 +30,9 @@ loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/Echonet/fold1/
-    - /media/wlsdzyzl/DATA/datasets/Echonet/fold2/
-    - /media/wlsdzyzl/DATA/datasets/Echonet/fold3/
+    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold1/
+    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold2/
+    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
@@ -49,7 +49,7 @@ val_loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/Echonet/fold4/
+    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
@@ -59,7 +59,7 @@ val_loader:
       size: [128, 128]
     - name: GrayScale
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/Echonet/MambaU_Cross
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/MambaU_Cross
 
 ### parameter for optimizer
 optimizer:
@@ -76,6 +76,6 @@ evaluation_metrics:
     - name: ACC
     - name: mIoU
 max_epoch: 500
-warmup_epoch: 2
+warmup_epochs: 2
 write_after_iters: 5
 save_after_epochs: 2

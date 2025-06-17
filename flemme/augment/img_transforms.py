@@ -1,17 +1,20 @@
 from torchvision.transforms import Resize as TResize, InterpolationMode, ToTensor,\
     RandomHorizontalFlip, RandomVerticalFlip, Normalize,\
-    RandomRotation, GaussianBlur, CenterCrop, RandomCrop
+    RandomRotation, GaussianBlur, CenterCrop, RandomCrop, Compose
 from torchvision.transforms.functional import rgb_to_grayscale
 from functools import partial
+import numpy as np
 import torch
 import torch.nn.functional as F
 from flemme.utils import label_to_onehot
+from scipy.ndimage import distance_transform_edt as eucl_distance
+
 
 class ToOneHot:
     """
     To one hot label, background value should be 0
     """
-    def __init__(self, num_classes = None, ignore_background = False, **kwargs):
+    def __init__(self, num_classes, ignore_background = False, **kwargs):
         self.to_onehot = partial(label_to_onehot, num_classes = num_classes, 
             ignore_background = ignore_background, channel_dim = 0)
     def __call__(self, m):
@@ -120,3 +123,48 @@ class ElasticDeform:
                 return np.stack(channels, axis=0)
 
         return m
+
+
+def one_hot2dist(seg, resolution = [1, 1]):
+    # assert one_hot(torch.tensor(seg), axis=0)
+    is_tensor = False
+    if torch.is_tensor(seg):
+        seg = seg.cpu.numpy()
+        is_tensor = True
+    K: int = len(seg)
+    res = np.zeros_like(seg)
+    for k in range(K):
+        posmask = seg[k].astype(bool)
+        if posmask.any():
+            negmask = ~posmask
+            res[k] = eucl_distance(negmask, sampling=resolution) * negmask \
+                - (eucl_distance(posmask, sampling=resolution) - 1) * posmask
+        # The idea is to leave blank the negative classes
+        # since this is one-hot encoded, another class will supervise that pixel
+    if is_tensor:
+        res = torch.tensor(res, dtype=torch.float32)
+    return res
+
+class DistMap:
+    def __init__(self, resolution = [1, 1]):
+        self.to_distmap = partial(one_hot2dist, resolution=resolution)
+    def __call__(self, m):
+        ## m need to be one-hot embedding.
+        m = self.to_distmap(m)
+        return m
+
+def _convert_image_to_rgb(image):
+    return image.convert("RGB")
+
+class ClipTransform:
+    def __init__(self):
+        size = 224
+        self.comp = Compose([
+            TResize(size, interpolation=BICUBIC),
+            CenterCrop(size),
+            _convert_image_to_rgb,
+            ToTensor(),
+            Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+        ])
+    def __call__(self, m):
+        return self.comp(m)

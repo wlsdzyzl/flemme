@@ -15,13 +15,13 @@ class ViTEncoder(nn.Module):
                     patch_size = 2, patch_channel = 32,
                     building_block = 'vit', dense_channels = [256], 
                     time_channel = 0,
-                    mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
+                    mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
                     down_channels = [128, 256], middle_channels = [256, 256], 
                     down_num_heads = [3, 3], middle_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
                     normalization = 'group', num_norm_groups = 8, 
                     num_blocks = 2, activation = 'silu', 
-                    abs_pos_embedding = False,
+                    abs_pos_embedding = True,
                     last_activation = True,
                     return_feature_list = False,
                     z_count = 1, 
@@ -48,7 +48,7 @@ class ViTEncoder(nn.Module):
         # stochastic depth decay rule
         self.drop_path = [x.item() for x in torch.linspace(0, drop_path,
                                                 (self.d_depth + self.m_depth) * self.num_blocks)]
-        self.mlp_hidden_ratio = mlp_hidden_ratio
+        self.mlp_hidden_ratios = mlp_hidden_ratios
         self.qkv_bias = qkv_bias
         self.qk_scale = qk_scale
         self.patch_size = patch_size
@@ -58,7 +58,7 @@ class ViTEncoder(nn.Module):
         self.BuildingBlock = get_building_block(building_block, 
                                 dim = self.dim,
                                 time_channel = time_channel,
-                                mlp_hidden_ratio = mlp_hidden_ratio,
+                                mlp_hidden_ratios = mlp_hidden_ratios,
                                 qkv_bias = qkv_bias,
                                 qk_scale = qk_scale,
                                 dropout = dropout,
@@ -205,7 +205,7 @@ class ViTDecoder(nn.Module):
                     patch_size = 2, dense_channels = [32], 
                     building_block = 'vit',
                     time_channel = 0,
-                    mlp_hidden_ratio=[4., ], qkv_bias=True, qk_scale=None, 
+                    mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
                     up_channels = [128, 64], final_channels = [64, 64], 
                     up_num_heads = [3, 3], final_num_heads = [3, 3],
                     dropout=0., atten_dropout=0., drop_path=0.1, 
@@ -234,7 +234,7 @@ class ViTDecoder(nn.Module):
         # stochastic depth decay rule
         self.drop_path = [x.item() for x in torch.linspace(0, drop_path,
                                                 (self.u_depth + self.f_depth) * self.num_blocks)][::-1]
-        self.mlp_hidden_ratio = mlp_hidden_ratio
+        self.mlp_hidden_ratios = mlp_hidden_ratios
         self.qkv_bias = qkv_bias
         self.qk_scale = qk_scale
         self.patch_size = patch_size
@@ -242,7 +242,7 @@ class ViTDecoder(nn.Module):
         ### building block: vision transformer block
         assert 'vit' in building_block, 'ViTDecoder only support transformer-related building blocks.'
         self.BuildingBlock = get_building_block(building_block, 
-                                mlp_hidden_ratio = mlp_hidden_ratio,
+                                mlp_hidden_ratios = mlp_hidden_ratios,
                                 dim = self.dim,
                                 time_channel = time_channel,
                                 qkv_bias = qkv_bias,

@@ -1,0 +1,67 @@
+# train ae or vae
+model:
+  # can be AE, VAE and DDPM
+  name: DDIM
+  num_steps: 1000
+  sample_num_steps: 100
+  beta_schedule: consine
+  eps_model:
+    name: Base
+    # encoder config
+    time_channel: 128
+    encoder:
+      name: UNet
+      image_size: [28, 28]
+      in_channel: 1
+      patch_size: 1
+      patch_channel: 256
+      dsample_function: max_pooling
+      down_channels: [256, 512]
+      middle_channels: [1024]
+      ## allow an asummetrical architecture
+      # decode_down_channels: [32, 64]
+      ### with time embedding
+      building_block: res
+      activation: gelu
+      num_blocks: 2
+      normalization: batch
+      # num_norm_groups: 16
+      dropout: 0.1
+  ## 2D ddpm
+  eps_loss:
+    name: MSE
+loader:
+  dataset: 
+    name: MNIST
+    data_path: /media/wlsdzyzl/DATA1/datasets/img/MNIST
+  batch_size: 128
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      ## the value must be list
+      size: [28, 28]
+    - name: ToTensor
+    - name: Normalize
+      mean: [0.5]
+      std: [0.5]
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/CDDPM/DDPM-resu-batch
+resume: True
+sampler:
+  num_sample_steps: 100
+  rand_seed: 2024
+  clipped: true
+  clip_range: [-1.0, 1.0]
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0003
+  weight_decay: 0.00000001
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 100
+write_after_iters: 100
+save_after_epochs: 5

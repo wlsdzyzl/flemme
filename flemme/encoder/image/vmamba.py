@@ -15,7 +15,7 @@ class VMambaEncoder(nn.Module):
                 patch_size = 2, patch_channel = 32,
                 time_channel = 0,
                 down_channels = [128, 256], middle_channels = [256, 256], 
-                mlp_hidden_ratio=[4., ], state_channel=None, 
+                mlp_hidden_ratios=[4., ], state_channel=None, 
                 building_block = 'vmamba', dense_channels = [256], 
                 conv_kernel_size=3,
                 inner_factor = 2.0,
@@ -58,7 +58,7 @@ class VMambaEncoder(nn.Module):
         # stochastic depth decay rule
         self.drop_path = [x.item() for x in torch.linspace(0, drop_path,
                                                 (self.d_depth + self.m_depth) * self.num_blocks)]
-        self.mlp_hidden_ratio = mlp_hidden_ratio
+        self.mlp_hidden_ratios = mlp_hidden_ratios
         self.patch_size = patch_size
         self.patch_channel = patch_channel
 
@@ -66,7 +66,7 @@ class VMambaEncoder(nn.Module):
         ### building block: mamba SSM block
         self.BuildingBlock = get_building_block(building_block, dim = self.dim,
                                 time_channel = time_channel,
-                                mlp_hidden_ratio = mlp_hidden_ratio,
+                                mlp_hidden_ratios = mlp_hidden_ratios,
                                 inner_factor = inner_factor, 
                                 conv_kernel_size = conv_kernel_size,
                                 dt_min = dt_min, dt_max = dt_max,
@@ -219,7 +219,7 @@ class VMambaEncoder(nn.Module):
 class VMambaDecoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
                 patch_size = 2, in_channel = 64,
-                mlp_hidden_ratio=[4., ], dense_channels = [32], 
+                mlp_hidden_ratios=[4., ], dense_channels = [32], 
                 up_channels = [128, 64], final_channels = [64, 64], 
                 time_channel = 0,
                 building_block = 'vmamba',
@@ -258,7 +258,7 @@ class VMambaDecoder(nn.Module):
         # stochastic depth decay rule
         self.drop_path = [x.item() for x in torch.linspace(0, drop_path,
                                                 (self.u_depth + self.f_depth) * self.num_blocks)]
-        self.mlp_hidden_ratio = mlp_hidden_ratio
+        self.mlp_hidden_ratios = mlp_hidden_ratios
         self.patch_size = patch_size
         self.in_channel = in_channel
         self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
@@ -266,7 +266,7 @@ class VMambaDecoder(nn.Module):
         ### building block: mamba SSM block
         assert 'vmamba' in building_block, 'VMambaDecoder only support mamba-related building blocks.'
         self.BuildingBlock = get_building_block(building_block, dim = self.dim,
-                                mlp_hidden_ratio = mlp_hidden_ratio,
+                                mlp_hidden_ratios = mlp_hidden_ratios,
                                 time_channel = time_channel,
                                 inner_factor = inner_factor, 
                                 conv_kernel_size = conv_kernel_size,

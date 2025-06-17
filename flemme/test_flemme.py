@@ -265,7 +265,12 @@ def main():
                         if save_input and len(results['input']) > 0:
                             input_x = results['input'][idx]
                             save_data(input_x, data_form=model.data_form, output_path=output_path+'_input')
-            cond = c[0] if is_conditional and is_supervised else (y[0] if is_conditional else None)
+            ## for generation with fixed condition
+            input_x = x[0]
+            if y is not None:
+                input_y = y[0]
+            if c is not None:
+                input_c = z[0]
         else:
             logger.warning('loader_config is None, reconstruction, segmentation, conditional generation and interpolation will be ignored.')
             cond = None
@@ -320,8 +325,15 @@ def main():
                 if random_sample_num > 0:
                     logger.info('Gererating new samples from random noise ...')
                     ### ddpm
-                    if is_conditional or is_supervised:                      
-                        x_bar = sampler.generate_rand(n=random_sample_num, cond = cond)
+                    if is_conditional and is_supervised:
+                        ### this should be happened:
+                        logger.error("Currently conditional and supervised generative model is not supported.")
+                        exit(1)
+                        # x_bar = sampler.generate_rand(n=random_sample_num, cond = input_c)
+                    elif is_conditional:
+                        x_bar = sampler.generate_rand(n=random_sample_num, cond = input_y)
+                    elif is_supervised:                      
+                        x_bar = sampler.generate_rand(n=random_sample_num, cond = input_x)
                     else:
                         x_bar = sampler.generate_rand(n=random_sample_num)
                     ## save the images.

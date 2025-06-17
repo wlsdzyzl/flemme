@@ -36,11 +36,11 @@ model:
   classifier_free_guidance:
     condition_dropout: 0.2
     guidance_weight: 2.0
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/CIFAR10/CDDPM/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/CIFAR10/CDDPM/ckp_last.pth
 loader:
   dataset: 
     name: CIFAR10
-    data_path: /media/wlsdzyzl/DATA/datasets/CIFAR10
+    data_path: /media/wlsdzyzl/DATA1/datasets/CIFAR10
   batch_size: 64
   num_workers: 8
   shuffle: true
@@ -53,9 +53,9 @@ loader:
       mean: [0.5, 0.5, 0.5]
       std: [0.5, 0.5, 0.5]
 eval_batch_num: 1
-recon_dir: /media/wlsdzyzl/DATA/flemme-results/recon/cifar10/cddim
+recon_dir: /media/wlsdzyzl/DATA1/flemme-results/recon/cifar10/cddim
 eval_gen:
-  gen_dir: /media/wlsdzyzl/DATA/flemme-results/gen/cifar10/cddim
+  gen_dir: /media/wlsdzyzl/DATA1/flemme-results/gen/cifar10/cddim
   sampler:
     name: NormalSampler
     rand_seed: 2024

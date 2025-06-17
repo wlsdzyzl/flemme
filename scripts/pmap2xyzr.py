@@ -4,11 +4,12 @@ import sys, getopt
 import os
 import glob
 import shutil
-from scipy.ndimage import measurements as mea, binary_erosion, binary_dilation
+from scipy.ndimage import binary_erosion, binary_dilation, label
 from skimage.morphology import skeletonize as skeletonize
 from scipy.spatial import cKDTree
 
-def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xyzr_file = None, normalized = True, prob_threshold = None, label_value = None):
+def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xyzr_file = None, normalized = True, prob_threshold = None, 
+        label_value = None, cc_axis = None):
     if (inputfile[-3:] == 'npy'):
         mask_array = load_npy(inputfile)
     else:
@@ -18,57 +19,81 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
     else:
         mask_array = (mask_array == label_value)
 
-    assert label_value is not None or prob_threshold is not None, "At least one of [prob_threshold, label_value] should not be None."
+    
     mask_array = binary_erosion(binary_dilation(mask_array, iterations=4), iterations=4)
-
-
     vol_coor = get_coordinates(mask_array.shape)
     # normalize to [-1, 1]
     if normalized:
         vol_coor = vol_coor / np.array(mask_array.shape).astype(float) * 2 - 1.0
-    selector = (mask_array).reshape((-1))
+    def save_points(_mask_array, suffix = ''):
+        selector = (_mask_array).reshape((-1))
+        mask = vol_coor[selector]
+        ## save mask
+        if mask_file is not None:
+            save_ply(mask_file + suffix +'.ply', mask)        
 
-    mask = vol_coor[selector]
+            print('extract {} points for mask, save to {}'.format(len(mask), mask_file + suffix +'.ply'))
+        ## save surface
+        if surface_file is not None:
+            sur_array = np.logical_xor(_mask_array, binary_erosion(_mask_array))
+            
+            selector = sur_array.reshape((-1))
+            
+            sur = vol_coor[selector]
 
-    ## save mask
-    if mask_file is not None:
-        save_ply(mask_file, mask)        
-
-        print('extract {} points for mask, save to {}'.format(len(mask), mask_file))
-    ## save surface
-    if surface_file is not None:
-        sur_array = np.logical_xor(mask_array, binary_erosion(mask_array))
+            save_ply(surface_file + suffix +'.ply', sur)
         
-        selector = sur_array.reshape((-1))
+
+            print('extract {} points for surface, save to {}'.format(len(sur), surface_file + suffix +'.ply'))  
+        ## save skeleton
+        if skeleton_file is not None:
+            ske_array = skeletonize(_mask_array)
+            # print('finish skeletonization')
+            selector = (ske_array >= 0.5).reshape((-1))
+            ske = vol_coor[selector]
+            # print(len(ske))
+            save_ply(skeleton_file + suffix +'.ply', ske)
+            print('extract {} points for skeleton, save to {}'.format(len(ske), skeleton_file + suffix +'.ply'))  
+        if xyzr_file is not None and surface_file is not None and skeleton_file is not None:
+            # find radius of left skeleton
+            tree = cKDTree(sur)
+            dist, _ = tree.query(ske, k = 16)
+            # compute the average distance to the nearest 4 points
+            radius = np.mean(dist, axis = 1)
+            # save radius to npy file
+            xyzr = np.hstack((ske, radius[:, None]))
+            np.savetxt(xyzr_file + suffix +'.xyzr', xyzr)      
+
+    if not cc_axis:
+        save_points(mask_array)
+    else:
+        assert cc_axis in ['x', 'y', 'z'], "Axis should be one of ['x', 'y','z']"
+        label_array, num_features = label(mask_array, structure = np.ones((3, 3, 3), dtype = int))
+        mask_mean = []
+        along_axis = 0 if cc_axis == 'x' else 1 if cc_axis == 'y' else 2 
+        print(f'found {num_features} connected components.')
+        valid_label = []
+        for l in range(1, num_features + 1):
+            selector = (label_array == l).reshape((-1))
+            if selector.sum() < 1000:
+                print(f'remove label {l}')
+                continue
+            valid_label.append(l)
+            mask = vol_coor[selector]
+            mask_mean.append(mask.mean(axis=0)[along_axis])
+        idx = np.array(valid_label)[np.argsort(np.array(mask_mean))]
+
+        for i, l in enumerate(idx):
+            _mask_array = (label_array == l)
+            save_points(_mask_array, suffix = f'_{i}')
         
-        sur = vol_coor[selector]
 
-        save_ply(surface_file, sur)
-    
-
-        print('extract {} points for surface, save to {}'.format(len(sur), surface_file))  
-    ## save skeleton
-    if skeleton_file is not None:
-        ske_array = skeletonize(mask_array)
-        # print('finish skeletonization')
-        selector = (ske_array >= 0.5).reshape((-1))
-        ske = vol_coor[selector]
-        # print(len(ske))
-        save_ply(skeleton_file, ske)
-        print('extract {} points for skeleton, save to {}'.format(len(ske), skeleton_file))  
-    if xyzr_file is not None and surface_file is not None and skeleton_file is not None:
-        # find radius of left skeleton
-        tree = cKDTree(sur)
-        dist, _ = tree.query(ske, k = 4)
-        # compute the average distance to the nearest 4 points
-        radius = np.mean(dist, axis = 1)
-        # save radius to npy file
-        xyzr = np.hstack((ske, radius[:, None]))
-        np.savetxt(xyzr_file, xyzr)          
+## command: python -u pmap2xyzr.py -i /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/label/ -o /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/output_lr/ -p 0.5 --cc_axis x --mask --surface --skeleton --xyzr --no_normalized > extract_xyzr.out
 def main(argv):
     inputfile = ''
     outputdir = ''
-    opts, args = getopt.getopt(argv, "hi:o:p:v:", ['help', 'input=', 'input_suffix=', 'output=', 'prob_threshold=', 'label_value=' , 'mask', 'surface','skeleton', 'xyzr', 'no_normalized'])
+    opts, args = getopt.getopt(argv, "hi:o:p:v:", ['help', 'input=', 'input_suffix=', 'output=', 'prob_threshold=', 
+                                                   'label_value=', 'cc_axis=' , 'mask', 'surface','skeleton', 'xyzr', 'no_normalized'])
     mask = False
     surface = False
     skeleton = False
@@ -77,12 +102,13 @@ def main(argv):
     prob_threshold = None
     label_value = None
     suffix = 'nii.gz'
+    cc_axis = None
     if len(opts) == 0:
-        print('unknow options, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --mask --surface --skeleton --xyzr --no_normalized')
+        print('unknow options, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            print('usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --mask --surface --skeleton --xyzr --no_normalized')
+            print('usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
             sys.exit()
         elif opt in ("-i", '--input'):
             inputfile = arg
@@ -94,6 +120,8 @@ def main(argv):
             prob_threshold = float(arg)
         elif opt in ('-v', '--label_value'):
             label_value = int(arg)
+        elif opt in ('--cc_axis',):
+            cc_axis = arg
         elif opt in ('--mask',):
             mask = True
         elif opt in ('--surface',):
@@ -105,13 +133,13 @@ def main(argv):
         elif opt in ('--no_normalized',):
             normalized = False
         else:
-            print('unknow option, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --mask --surface --skeleton --xyzr --no_normalized')
+            print('unknow option, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
             sys.exit()
-
+    assert label_value is not None or prob_threshold is not None, "At least one of [prob_threshold, label_value] should not be None."
     input_files = []
     filenames = []
     if os.path.isdir(outputdir):
-        shutil.rmtree(outputdir)
+        rkdirs(outputdir)
     if os.path.isdir(inputfile):
         input_files = sorted(glob.glob(os.path.join(inputfile, "*" + suffix)))
         filenames = [os.path.splitext(os.path.splitext(os.path.split(ifile)[1])[0])[0] for ifile in input_files]
@@ -125,18 +153,18 @@ def main(argv):
     xyzr_file_list = [None for _ in range(len(input_files))]
     if mask:
         os.makedirs(outputdir+'/mask')
-        mask_file_list = [ outputdir+'/mask/'+ filename + '.ply' for filename in filenames]
+        mask_file_list = [ outputdir+'/mask/'+ filename  for filename in filenames]
     if surface:
         os.makedirs(outputdir+'/surface')
-        surface_file_list = [ outputdir+'/surface/'+ filename + '.ply' for filename in filenames]
+        surface_file_list = [ outputdir+'/surface/'+ filename  for filename in filenames]
     if skeleton:
         os.makedirs(outputdir+'/skeleton')
-        skeleton_file_list = [ outputdir+'/skeleton/'+ filename + '.ply' for filename in filenames]
+        skeleton_file_list = [ outputdir+'/skeleton/'+ filename  for filename in filenames]
     if xyzr:
         os.makedirs(outputdir+'/xyzr')
-        xyzr_file_list = [ outputdir+'/xyzr/'+ filename + '.xyzr' for filename in filenames]
+        xyzr_file_list = [ outputdir+'/xyzr/'+ filename for filename in filenames]
 
     for ifile, mask_file, surface_file, skeleton_file, xyzr_file in zip(input_files, mask_file_list, surface_file_list, skeleton_file_list, xyzr_file_list):
-        f(ifile, mask_file, surface_file, skeleton_file, xyzr_file, normalized, prob_threshold = prob_threshold, label_value = label_value)
+        f(ifile, mask_file, surface_file, skeleton_file, xyzr_file, normalized, prob_threshold = prob_threshold, label_value = label_value, cc_axis=cc_axis)
 if __name__ == "__main__":
     main(sys.argv[1:])

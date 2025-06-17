@@ -356,6 +356,7 @@ class QueryAndGroup(nn.Module):
                 _, idx = self.knn(features.transpose(1, 2), new_features.transpose(1, 2))
             else:
                 _, idx = self.knn(xyz_embed, new_xyz_embed)
+            ## index is long
             idx = idx.int()
         else:
             idx, dist = ball_query(self.radius, self.nsample, xyz, new_xyz)
@@ -497,3 +498,13 @@ class AvgVoxelization(Function):
 
 
 avg_voxelize = AvgVoxelization.apply
+
+# class LayerScale(nn.Module):
+#     def __init__(self, in_channel, init_values=1e-5, inplace=False):
+#         super().__init__()
+#         self.inplace = inplace
+#         self.gamma = nn.Parameter(init_values * torch.ones(in_channel))
+
+#     def forward(self, x):
+#         return x.mul_(self.gamma) if self.inplace else x * self.gamma
+
