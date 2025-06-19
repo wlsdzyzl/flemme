@@ -270,7 +270,39 @@ class DiffusionProbabilistic(nn.Module):
             return [self.eps_loss_name, 'hierarchical_' + self.eps_loss_name] +\
                 self.recon_loss_names + [ 'hierarchical_' + rln for rln in self.recon_loss_names]
         return [self.eps_loss_name,] + self.recon_loss_names
-    def compute_loss(self, x0: torch.Tensor, c = None):
+    def forward(self, x0, c = None):
+        # Get batch size
+        batch_size = x0.shape[0]
+        # Get random $t$ for each sample in the batch
+        t = torch.randint(0, self.num_steps, (batch_size,), device=x0.device, dtype=torch.long)
+        
+        # Sample $x_t$ for $q(x_t|x_0)$
+        xt, eps = self.add_noise(x0, t)
+        # Get $\textcolor{lightgreen}{\epsilon_\theta}(\sqrt{\bar\alpha_t} x_0 + \sqrt{1-\bar\alpha_t}\epsilon, t)$
+        if not self.eps_model.is_conditional or \
+            self.classifier_free and torch.rand(1).item() < self.condition_dropout:
+            c = None
+        model_out = self.eps_model(xt, t = t, c = c) 
+        # hierarchical base model
+        h_model_out = None
+        
+        if type(model_out) == tuple:
+            model_out, h_model_out = model_out
+
+        if self.parameterization == 'epsilon':
+            x0_pred = self.get_start_from_eps(xt = xt, t = t, eps = model_out)
+        elif self.parameterization == 'velocity':
+            x0_pred = self.get_start_from_velocity(xt = xt, t = t, v = model_out)
+        else:
+            x0_pred = model_out
+        res = {'recon_dpm':x0_pred,
+               'eps': eps,
+               'xt': xt,
+               't': t,
+               'model_out': model_out,
+               'h_model_out': h_model_out}
+        return res
+    def compute_loss(self, x0, c = None, res = None):
         """
         #### Simplified Loss
 
@@ -278,7 +310,8 @@ class DiffusionProbabilistic(nn.Module):
         \epsilon - \textcolor{lightgreen}{\epsilon_\theta}(\sqrt{\bar\alpha_t} x_0 + \sqrt{1-\bar\alpha_t}\epsilon, t)
         \bigg\Vert^2 \Bigg]$$
         """
-        res = self.forward(x0, c = c)
+        if res is None:
+            res = self.forward(x0, c = c)
         model_out = res['model_out']
         h_model_out = res['h_model_out']
         t = res['t']
@@ -304,7 +337,7 @@ class DiffusionProbabilistic(nn.Module):
         
         ### recon loss
         if len(self.recon_losses) > 0:
-            x0_pred = res['recon']
+            x0_pred = res['recon_dpm']
             xt = res['xt']
             for l, w in zip(self.recon_losses, self.recon_loss_weights):
                 losses += [l(x0_pred, x0) * w, ]
@@ -324,54 +357,3 @@ class DiffusionProbabilistic(nn.Module):
                         sublosses += [l(h_x0_pred, h_x0) * w, ]
                     losses.append(sum(sublosses) / len(sublosses))
         return losses, res
-    ### run diffusion and reversed diffusion
-    ## input: raw data
-    ## return: reconstructed data
-    ## usually this funtion should be used in eval mode.
-    # def forward(self, x, c = None, end_step = 100, clipped = None, clip_range = None):
-    #     if clipped is None:
-    #         clipped = self.clipped
-    #     if clip_range is None:
-    #         clip_range = self.clip_range
-    #     batch_size = x.shape[0]
-    #     # Get random $t$ for each sample in the batch
-    #     assert end_step < self.num_steps, "End step is larger than or equal to the amount of sample steps."
-    #     if end_step < 0:
-    #         end_step = self.num_steps - 1
-
-    #     t = torch.ones((batch_size,), device=x.device, dtype=torch.long) * end_step
-    #     xt, _ = self.add_noise(x, t)
-    #     return {'recon':self.sample(xt, end_step = end_step, c=c, clipped = clipped, clip_range = clip_range)}
-    def forward(self, x0, c = None):
-        # Get batch size
-        batch_size = x0.shape[0]
-        # Get random $t$ for each sample in the batch
-        t = torch.randint(0, self.num_steps, (batch_size,), device=x0.device, dtype=torch.long)
-        
-        # Sample $x_t$ for $q(x_t|x_0)$
-        xt, eps = self.add_noise(x0, t)
-        # Get $\textcolor{lightgreen}{\epsilon_\theta}(\sqrt{\bar\alpha_t} x_0 + \sqrt{1-\bar\alpha_t}\epsilon, t)$
-        if not self.eps_model.is_conditional or \
-            self.classifier_free and torch.rand(1).item() < self.condition_dropout:
-            c = None
-        model_out = self.eps_model(xt, t = t, c = c) 
-        # hierarchical base model
-        h_model_out = None
-        
-        if type(model_out) == tuple:
-            model_out, h_model_out = model_out
-            
-        
-        if self.parameterization == 'epsilon':
-            x0_pred = self.get_start_from_eps(xt = xt, t = t, eps = model_out)
-        elif self.parameterization == 'velocity':
-            x0_pred = self.get_start_from_velocity(xt = xt, t = t, v = model_out)
-        else:
-            x0_pred = model_out
-        res = {'recon':x0_pred,
-               'eps': eps,
-               'xt': xt,
-               't': t,
-               'model_out': model_out,
-               'h_model_out': h_model_out}
-        return res

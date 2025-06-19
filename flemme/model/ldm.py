@@ -65,7 +65,8 @@ class LatentDiffusion(nn.Module):
     def device(self):
         return self.diff_model.device
     def sample(self, zt, c = None, 
-            return_processing = False, **kwargs):
+            return_processing = False, 
+            **kwargs):
         ac, ec = None, None
         if self.ae_model.is_conditional:
             ac = c 
@@ -74,32 +75,14 @@ class LatentDiffusion(nn.Module):
         z0 = self.diff_model.sample(xt = zt, c = ec, 
                 return_processing = return_processing, 
                 **kwargs)
-        #### what is this for?
-        # if isinstance(z, tuple) or isinstance(z, list):
-        #     return type(z)(self.ae_model.decode(_z) for _z in z)
+        ### return processing
+        if isinstance(z0, tuple) or isinstance(z0, list):
+            return type(z0)(self.ae_model.decode(_z) for _z in z0)
         return self.ae_model.decode(z = z0, c = ac)
     def __str__(self):
         _str = "********************* LatentDiffusion *********************\n{}{}"\
             .format(self.ae_model.__str__(), self.diff_model.__str__())
         return _str
-    ### ldm's forward will not call the forward function of auto-encoder
-    def forward(self, x, c = None, **kwargs):
-        ac = None
-        if self.ae_model.is_conditional:
-            ac = c 
-        gauss = None
-        z = self.ae_model.encode(x0, c = ac)
-        if not torch.is_tensor(z):
-            gauss = z
-            z = gauss.sample()
-        # print(z.max(), z.min())
-        ### forward call sample, direct get the final reconstruction
-        res = self.diff_model(x = z, c = c, **kwargs)
-        res['latent'] = z
-        res['recon_latent'] = res['recon']
-        res['recon'] = self.ae_model.decode(res['recon_latent'], c = ac)
-        if gauss is not None: res['gaussian'] = gauss
-        return res
     def freeze_ae(self):
         freeze(self.ae_model)
         self.freezed_ae = True
@@ -117,7 +100,8 @@ class LatentDiffusion(nn.Module):
         if not self.freeze_ae:
             loss_names += self.ae_model.get_loss_name()
         return loss_names
-    def compute_loss(self, x0, c = None):
+    ### ldm's forward will not call the forward function of auto-encoder
+    def forward(self, x, c = None):
         ac, ec = None, None
         if self.ae_model.is_conditional:
             ac = c 
@@ -128,16 +112,19 @@ class LatentDiffusion(nn.Module):
         if not torch.is_tensor(z):
             gauss = z
             z = gauss.sample()
-        
-        loss, res = self.diff_model.compute_loss(z, c = ec)
-        if res is not None:
-            res['recon_latent'] = res['recon']
-            res['latent'] = z
-            res['recon'] = self.ae_model.decode(res['recon_latent'], c = ac)
-            if gauss is not None: res['gaussian'] = gauss
-        ### ae loss, althrough ae_model can be freezed.
+        # print(z.max(), z.min())
+        ### forward call sample, direct get the final reconstruction
+        res = self.diff_model(x = z, c = ec)
+        res['latent'] = z
+        res['recon'] = self.ae_model.decode(res['recon_dpm'], c = ac)
+        if gauss is not None: res['gaussian'] = gauss
+        return res
+    def compute_loss(self, x0, c = None):
+        res = self.forward(x0, c = c)
+        ## compute loss will not use the condition
+        loss, _ = self.diff_model.compute_loss(res['latent'], res = res)
         if not self.freezed_ae:
-            loss = loss + self.ae_model.compute_loss(x0, res = res)[0]
+            loss = loss + self.ae_model.compute_loss(x0, res = res)
         return loss, res
 
     

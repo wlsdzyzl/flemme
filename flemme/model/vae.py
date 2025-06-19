@@ -15,8 +15,11 @@ class VariationalAutoEncoder(AutoEncoder):
         super().__init__(model_config)
         if self.with_time_embedding:
             raise NotImplementedError("Time embedding is not implemented for VAE model.")
-        assert not self.encoder_name in ['UNet', 'ViTU', 'SwinU', 'MambaU'], \
-            'UNet and PointWiseNet are not suitable for constructing a VAE.'
+        assert not self.decoder_name in ['UNet', 'ViTU', 'SwinU', 'MambaU'], \
+            'UNet are not suitable for constructing a VAE.'
+        ## for point cloud, pointnet2 could be used just for feature extraction without skip connection
+        assert not self.decoder_name in ['PointNet2', 'PointTrans2', 'PointMamba2'], \
+            'Point2Decoder are not suitable for constructing a VAE.'
         distr_loss_config = model_config.get('distribution_loss', {'name':'KL'})
         distr_loss_config['reduction'] = self.loss_reduction
         self.distr_loss_name = distr_loss_config.get('name')
@@ -32,6 +35,8 @@ class VariationalAutoEncoder(AutoEncoder):
     def encode(self, x, c=None):
         try:
             z = super().encode(x, c = c)
+            if type(z) == tuple:
+                z = z[0]
             if self.feature_channel_dim == 1:
                 z = channel_transfer(z)
             mean, logvar = self.mean_layer(z), self.logvar_layer(z)

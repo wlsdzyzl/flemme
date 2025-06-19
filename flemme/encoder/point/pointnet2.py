@@ -229,8 +229,8 @@ class Point2Encoder(nn.Module):
         if hasattr(self, 'final_concat'):
             features = self.final_concat(feature_list, sample_id_list, t, c)
         ## max and average pooling to get global feature
-        f_max = F.adaptive_max_pool1d(features.transpose(1, 2), 1).transpose(1, 2)
-        f_avg = F.adaptive_avg_pool1d(features.transpose(1, 2), 1).transpose(1, 2)
+        f_max = features.max(dim = 1, keepdim = True)[0]
+        f_avg = features.mean(dim = 1, keepdim = True)
         global_features = torch.concat((f_max, f_avg), dim = -1)
 
         ## pointwise 

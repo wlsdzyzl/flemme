@@ -149,46 +149,19 @@ class SeqNetEncoder(SeqEncoder):
         self.seq = nn.ModuleList(sequence)
         
 
-# a very simple decoder
-class SeqNetDecoder(nn.Module):
-    def __init__(self, point_dim=3, in_channel = 256, time_channel = 0, 
-                time_injection = 'gate_bias',
-                num_blocks = 2,
-                building_block = 'dense', seq_feature_channels = [], 
-                normalization = 'group', num_norm_groups = 8, 
-                activation = 'lrelu', dropout = 0., 
-                condition_channel = 0,
-                condition_injection = 'gate_bias',
-                condition_first = False,
+class SeqDecoder(nn.Module):
+    def __init__(self, point_dim, in_channel,
+                 num_blocks,
+                seq_feature_channels, 
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
         self.point_dim = point_dim
-        self.activation = activation
         self.vector_embedding = False
-        self.num_blocks = num_blocks
-
-        # self.time_channel = time_channel
-        self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
-                                        activation=activation, 
-                                        norm = normalization, num_norm_groups = num_norm_groups, 
-                                        dropout = dropout,
-                                        time_injection = time_injection,
-                                        condition_channel = condition_channel,
-                                        condition_injection = condition_injection,
-                                        condition_first = condition_first)
-
-        seq_feature_channels = [in_channel,] + seq_feature_channels
-        sequence = [MultipleBuildingBlocks(n = self.num_blocks, 
-                                           BuildingBlock=self.BuildingBlock,
-                                           in_channel=seq_feature_channels[i], 
-                                           out_channel=seq_feature_channels[i+1])  
-                                        for i in range(len(seq_feature_channels) - 1) ]
         self.seq = None
-        if len(sequence):
-            self.seq = SequentialT(*(copy.deepcopy(sequence)))
-        self.seq_path = seq_feature_channels
+        self.num_blocks = num_blocks
+        self.seq_path = [in_channel,] + seq_feature_channels
         self.latent_proj = nn.Linear(self.seq_path[-1], point_dim)
 
     def __str__(self):
@@ -207,3 +180,41 @@ class SeqNetDecoder(nn.Module):
         if self.seq:
             x = self.seq(x, t, c)
         return self.latent_proj(x)
+    
+class SeqNetDecoder(SeqDecoder):
+    def __init__(self, point_dim=3, in_channel = 256, time_channel = 0, 
+                time_injection = 'gate_bias',
+                num_blocks = 2,
+                building_block = 'dense', seq_feature_channels = [], 
+                normalization = 'group', num_norm_groups = 8, 
+                activation = 'lrelu', dropout = 0., 
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
+                **kwargs):
+        super().__init__(point_dim=point_dim,
+                         in_channel = in_channel,
+                         num_blocks=num_blocks,
+                         seq_feature_channels=seq_feature_channels)
+        if len(kwargs) > 0:
+           logger.debug("redundant parameters:{}".format(kwargs))
+
+        self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
+                                        activation=activation, 
+                                        norm = normalization, num_norm_groups = num_norm_groups, 
+                                        dropout = dropout,
+                                        time_injection = time_injection,
+                                        condition_channel = condition_channel,
+                                        condition_injection = condition_injection,
+                                        condition_first = condition_first)
+
+        
+        sequence = [MultipleBuildingBlocks(n = self.num_blocks, 
+                                           BuildingBlock=self.BuildingBlock,
+                                           in_channel=self.seq_path[i], 
+                                           out_channel=self.seq_path[i+1])  
+                                        for i in range(len(self.seq_path) - 1) ]
+        if len(sequence):
+            self.seq = SequentialT(*(copy.deepcopy(sequence)))
+
+

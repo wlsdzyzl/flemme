@@ -544,6 +544,8 @@ if module_config['point-cloud'] or module_config['graph']:
             return load_stl(filename)
         elif suffix == 'xyz' or suffix == 'pts':
             return load_xyz(filename)
+        elif suffix == 'npy':
+            return load_npy(filename)
         else:
             logger.error(f'unsupported file format {suffix}.')
             raise NotImplementedError

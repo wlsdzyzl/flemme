@@ -3,7 +3,7 @@ import torch.nn.functional as F
 from torch import nn
 from flemme.block import get_building_block, SequentialT, MultipleBuildingBlocks, DenseBlock
 from flemme.logger import get_logger
-from .seqnet import SeqEncoder
+from .seqnet import SeqEncoder, SeqDecoder
 import copy
 logger = get_logger("model.encoder.seqtrans")
 class SeqTransEncoder(SeqEncoder):
@@ -68,7 +68,7 @@ class SeqTransEncoder(SeqEncoder):
         
 
 # a very simple decoder
-class SeqTransDecoder(nn.Module):
+class SeqTransDecoder(SeqDecoder):
     def __init__(self, point_dim=3, in_channel = 256, time_channel = 0, 
                 time_injection = 'gate_bias',
                 num_blocks = 2,
@@ -82,13 +82,12 @@ class SeqTransDecoder(nn.Module):
                 condition_injection = 'gate_bias',
                 condition_first = False,
                 **kwargs):
-        super().__init__()
+        super().__init__(point_dim=point_dim,
+                         in_channel = in_channel,
+                         num_blocks=num_blocks,
+                         seq_feature_channels=seq_feature_channels)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
-        self.point_dim = point_dim
-        self.activation = activation
-        self.vector_embedding = False
-        self.num_blocks = num_blocks
 
         # self.time_channel = time_channel
         self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
@@ -103,31 +102,10 @@ class SeqTransDecoder(nn.Module):
                                         condition_channel = condition_channel,
                                         condition_injection = condition_injection,
                                         condition_first = condition_first)
-
-        seq_feature_channels = [in_channel,] + seq_feature_channels
         sequence = [MultipleBuildingBlocks(n = self.num_blocks, 
                                            BuildingBlock=self.BuildingBlock,
-                                           in_channel=seq_feature_channels[i], 
-                                           out_channel=seq_feature_channels[i+1])  
-                                        for i in range(len(seq_feature_channels) - 1) ]
-        self.seq = None
+                                           in_channel=self.seq_path[i], 
+                                           out_channel=self.seq_path[i+1])  
+                                        for i in range(len(self.seq_path) - 1) ]
         if len(sequence):
             self.seq = SequentialT(*(copy.deepcopy(sequence)))
-        self.seq_path = seq_feature_channels
-        self.latent_proj = nn.Linear(self.seq_path[-1], point_dim)
-
-    def __str__(self):
-        _str = ''
-        if len(self.seq_path) > 1:
-            _str += 'Sequential layers: '
-            for c in self.seq_path[:-1]:
-                _str += '{}->'.format(c)  
-            _str += str(self.seq_path[-1])
-            _str += '\n'
-        _str += f'Projection layer: {self.seq_path[-1]}->{self.point_dim}\n'
-        return _str 
-    # input: Nb * Np * d
-    def forward(self, x, t = None, c = None):
-        if self.seq:
-            x = self.seq(x, t, c)
-        return self.latent_proj(x)

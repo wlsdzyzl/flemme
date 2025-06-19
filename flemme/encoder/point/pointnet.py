@@ -143,8 +143,8 @@ class PointEncoder(nn.Module):
         if hasattr(self, 'ca'):
             pf = self.ca[-1](pf)
         ## max and average pooling to get global feature
-        x1 = F.adaptive_max_pool1d(pf.transpose(1, 2), 1).transpose(1, 2)
-        x2 = F.adaptive_avg_pool1d(pf.transpose(1, 2), 1).transpose(1, 2)
+        x1 = pf.max(dim = 1, keepdim = True)[0]
+        x2 = pf.mean(dim = 1, keepdim = True)
         x = torch.concat((x1, x2), dim = -1)
         if not self.vector_embedding:
             # B * D -> B * N * D

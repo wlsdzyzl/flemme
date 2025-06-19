@@ -19,6 +19,7 @@ class SupervisedDiffusion(nn.Module):
             exit(1)
         self.is_conditional = False
         self.is_supervised = True
+        self.is_generative = True
         self.num_ensemble = model_config.get('num_ensemble', 10)
     @property
     def device(self):
@@ -32,6 +33,7 @@ class SupervisedDiffusion(nn.Module):
         _str = "********************* SupervisedDiffusion *********************\n{}"\
             .format(self.diff_model.__str__())
         return _str
+    @torch.no_grad()
     def forward(self, x, num_ensemble = None, **kwargs):
         if num_ensemble is None:
             num_ensemble = self.num_ensemble

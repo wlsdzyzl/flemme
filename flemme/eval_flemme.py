@@ -1,7 +1,6 @@
 #### This file is a script, and the code style sucks. 
 import os
 import torch
-import torch.nn.functional as F
 from .trainer_utils import *
 from flemme.dataset import create_loader
 from flemme.logger import get_logger
@@ -60,9 +59,9 @@ def main():
         input_suffix = loader_config['dataset'].get('data_suffix', 'png')
         if type(input_suffix) == tuple or type(input_suffix) == list:
             input_suffix = input_suffix[0]
-        for t in data_loader:
+        for t in tqdm(data_loader, desc="Predicting"):
             ### split x, y, path in later implementation.
-            x, y, path = t
+            x, y, c, path = process_input(t)
             # print(x.shape, y.shape, len(path))
             ### move data to cuda
             if verbose:

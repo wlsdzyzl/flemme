@@ -205,7 +205,7 @@ def write_data(writer, formatter, data_form, iter_id, input_map, prefix='train',
             input_map['seg'] = logits_to_onehot_label(input_map['seg_logits'], data_form)
 
     for name, batch in input_map.items():
-        if not name in ['input', 'target', 'condition', 'recon', 'seg', 'gen'] + additional_keys: continue
+        if not name in ['input', 'target', 'condition', 'recon', 'recon_dpm', 'seg', 'gen'] + additional_keys: continue
         if batch is None or not torch.is_tensor(batch): 
             logger.debug('results of {} is not a tensor.'.format(name))
             continue

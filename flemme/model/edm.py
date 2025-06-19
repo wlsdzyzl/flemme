@@ -152,9 +152,10 @@ class EDM(nn.Module):
         _str = "********************* ElucidatedDiffusion *********************\n{}"\
             .format(self.eps_model.__str__())
         return _str
-    def compute_loss(self, x0, c = None):
-        res = self.forward(x0, c)
-        model_out, sample_weight = res['recon'], res['weight']
+    def compute_loss(self, x0, c = None, res = None):
+        if res is None:
+            res = self.forward(x0, c)
+        model_out, sample_weight = res['recon_dpm'], res['weight_dpm']
         losses = []
         if not type(model_out) == tuple:
             losses += [self.eps_loss(model_out, x0, sample_weight = sample_weight), ]
@@ -186,7 +187,6 @@ class EDM(nn.Module):
                     losses.append(sum(sublosses) / len(sublosses))
         return losses, res
 
-        # return self.eps_loss(res['recon'], x0, sample_weight = res['weight'])
     def forward(self, x, c = None):
         rnd_normal = torch.randn([x.shape[0]], device=x.device)
         # rnd_normal[]
@@ -196,4 +196,4 @@ class EDM(nn.Module):
         ### sigma is time step, c is condition
         # print(sigma.max(), sigma.min(), self.P_mean, self.P_std, self.sigma_data, rnd_normal.min(), rnd_normal.max())
         D_yn = self.denoise(x + n, sigma, c)
-        return {'recon': D_yn, 'weight': weight}
+        return {'recon_dpm': D_yn, 'weight_dpm': weight}
