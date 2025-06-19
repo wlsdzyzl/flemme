@@ -117,6 +117,9 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             ### images' vector embedding is determined by dense_channels.
             if not len(de_dense_channels):
                 de_dense_channels = dense_channels[::-1]
+            if not len(dense_channels) and len(de_dense_channels):
+                logger.error("Please specify the dense layers in image encoder if decoder contained dense layers.")
+                exit(1)
             logger.info('Model is constructed for images.')
             image_size = encoder_config.pop('image_size', None)
             assert image_size is not None, "Image size need to be specified."
@@ -448,7 +451,12 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         ## set data_form
         if return_encoder:
             encoder.data_form = data_form
+            encoder.channel_dim = 1 if data_form == DataForm.IMG else -1
+            encoder.feature_channel_dim = 1 if building_block in ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv']\
+                else -1
         if return_decoder:
             decoder.data_form = data_form
-
+            decoder.channel_dim = 1 if data_form == DataForm.IMG else -1
+            decoder.feature_channel_dim = 1 if building_block in ['single', 'conv', 'double', 'double_conv', 'res', 'res_conv']\
+                else -1
         return encoder, decoder

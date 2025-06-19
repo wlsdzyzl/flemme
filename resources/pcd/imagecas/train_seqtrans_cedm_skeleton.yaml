@@ -15,20 +15,10 @@ model:
       seq_feature_channels: [512, 512, 512, 512, 512, 512]
       num_heads: 8
       d_k: 64
-      # voxel_resolutions: [32, 32, 16, 16]
+      # voxel_resolutions: [0, 0, 16, 16, 0, 0]
       activation: gelu
       normalization: layer
       channel_attention: eca
-      # name: PointTrans
-      # in_channel: 3
-      # point_num: 256
-      # building_block: dense
-      # # num_neighbors_k: 20
-      # local_feature_channels: [512, 512, 512, 512, 512, 512]
-      # dense_channels: [512]
-      # activation: gelu
-      # normalization: layer
-      # channel_attention: eca
       # vector_embedding: false
     condition_embedding:
       combine_condition: injection
@@ -61,11 +51,11 @@ loader:
     - name: ToTensor
       dtype: float
     - name: Relabel
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas_surface/PointTrans_EDM_Skeleton
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas_surface/SeqTrans_EDM_Skeleton
 ### parameter for optimizer
 optimizer:
   name: Adam
-  lr: 0.0001
+  lr: 0.001
   weight_decay: 0.00000001
 ### scheduler for learning rate
 lr_scheduler: 
@@ -78,3 +68,6 @@ max_epoch: 1000
 write_after_iters: 10
 write_sample_num: 4
 save_after_epochs: 10
+warmup_epochs: 1
+warmup_start_scale: 0.01
+clip_grad: 1.0

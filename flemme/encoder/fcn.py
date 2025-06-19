@@ -12,8 +12,7 @@ class FCNEncoder(nn.Module):
                 num_blocks = 2,
                 building_block = 'dense', seq_feature_channels = [256], 
                 normalization = 'group', num_norm_groups = 8, 
-                activation = 'lrelu', dropout = 0., z_count = 1,
-                last_activation = True, 
+                activation = 'lrelu', dropout = 0., 
                 condition_channel = 0,
                 condition_injection = 'gate_bias',
                 condition_first = False,
@@ -23,7 +22,6 @@ class FCNEncoder(nn.Module):
            logger.debug("redundant parameters:{}".format(kwargs))
         self.vec_dim = vec_dim
         self.activation = activation
-        self.z_count = z_count
         self.vector_embedding = False
         self.num_blocks = num_blocks
         # self.time_channel = time_channel
@@ -42,9 +40,7 @@ class FCNEncoder(nn.Module):
                                            in_channel=seq_feature_channels[i], 
                                            out_channel=seq_feature_channels[i+1]) 
                                         for i in range(len(seq_feature_channels) - 1) ]
-        if not last_activation:
-            sequence.append(DenseBlock(seq_feature_channels[-1], seq_feature_channels[-1], norm = None, activation = None))
-        self.seq = nn.ModuleList([SequentialT(*(copy.deepcopy(sequence))) for _ in range(z_count)])
+        self.seq = SequentialT(*(copy.deepcopy(sequence))) 
         self.seq_path = seq_feature_channels
         self.out_channel = seq_feature_channels[-1]
     def __str__(self):
@@ -59,9 +55,7 @@ class FCNEncoder(nn.Module):
     # input: Nb * Np * d
     def forward(self, x, t = None, c = None):
         # ## x is point cloud
-        x = [self.seq[i](x, t, c) for i in range(self.z_count)]
-        if self.z_count == 1:
-            x = x[0]
+        x = self.seq(x, t, c) 
         return x
         
 

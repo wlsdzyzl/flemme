@@ -73,13 +73,9 @@ def new_add(x, c_emb, channel_dim = 1):
         "Batch size inconsistency."
     assert c_emb.shape[channel_dim] == x.shape[channel_dim], \
         "Number of channels of x and condition encoder should be the same, get {} and {}".format(x.shape[1], c_emb.shape[1])
-    if len(c_emb.shape) == len(x.shape):
-        assert c_emb.shape == x.shape, "c_emb and x should have the same spatial shape."
-    elif len(c_emb.shape) == 2:
+    if len(c_emb.shape) == 2:
         c_emb = expand_as(c_emb, x, channel_dim)
-    else:
-        logger.error('Unsupported inputs for addition.')
-        raise NotImplementedError
+    # assert c_emb.shape == x.shape, f"c_emb and x should have the same shape, get {c_emb.shape} and {x.shape}."
     return x + c_emb
 
 def new_cat(x, c_emb, channel_dim = 1):
@@ -88,13 +84,9 @@ def new_cat(x, c_emb, channel_dim = 1):
     assert c_emb.shape[0] == x.shape[0], \
         "Batch size inconsistency."
     ## for concat, we don't need the number of channels to be the same.
-    if len(c_emb.shape) == len(x.shape):
-        assert c_emb.shape == x.shape, "c_emb and x should have the same spatial shape."
-    elif len(c_emb.shape) == 2:
+    if len(c_emb.shape) == 2:
         c_emb = expand_as(c_emb, x, channel_dim)
-    else:
-        logger.error('Unsupported inputs for concatenation.')
-        raise NotImplementedError
+    # assert c_emb.shape == x.shape, f"c_emb and x should have the same shape, get {c_emb.shape} and {x.shape}."
     return torch.concat([x, c_emb], dim = channel_dim)
 
 # get activation
@@ -163,7 +155,7 @@ def get_context_injection(method, context_channel, data_channel, channel_dim):
                                         channel_dim = channel_dim, 
                                         skip_connection = True)
     else:
-        logger.error('Unknown method to process time-step embedding.')
+        logger.error('Unknown method for context injection, should be one of ["gate_bias", "gate", "bias", "cross_atten"].')
         exit(1)
 def get_atten(atten, in_channel, num_heads, d_k, 
             qkv_bias, qk_scale, atten_dropout, 

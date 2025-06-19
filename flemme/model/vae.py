@@ -8,16 +8,10 @@ from flemme.loss import get_loss
 from flemme.model.distribution import GaussianDistribution as Gaussian
 from flemme.logger import get_logger
 from flemme.utils import DataForm
+from flemme.block import channel_recover, channel_transfer
 logger = get_logger('model.vae')
 class VariationalAutoEncoder(AutoEncoder):
     def __init__(self, model_config):
-        # a very similar structure with AutoEncoder
-        if 'encoder' in model_config:
-            model_config['encoder']['z_count'] = 2 
-            model_config['encoder']['last_activation'] = False
-        else:
-            logger.error('There is no encoder configuration.')
-            exit(1)
         super().__init__(model_config)
         if self.with_time_embedding:
             raise NotImplementedError("Time embedding is not implemented for VAE model.")
@@ -29,12 +23,20 @@ class VariationalAutoEncoder(AutoEncoder):
         self.distr_loss_weight = distr_loss_config.pop('weight', 1.0)
         self.distr_loss = get_loss(distr_loss_config, self.data_form)
         self.is_generative = True
+        latent_channel = self.encoder.out_channel
+        self.mean_layer = nn.Linear(latent_channel, latent_channel,)
+        self.logvar_layer = nn.Linear(latent_channel, latent_channel,)
     def __str__(self):
         _str = '********************* Variational Auto-Encoder ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def encode(self, x, c=None):
         try:
-            mean, logvar = super().encode(x, c = c)
+            z = super().encode(x, c = c)
+            if self.feature_channel_dim == 1:
+                z = channel_transfer(z)
+            mean, logvar = self.mean_layer(z), self.logvar_layer(z)
+            if self.feature_channel_dim == 1:
+                mean, logvar = channel_recover(mean), channel_recover(logvar)
             gauss = Gaussian(mean = mean, logvar = logvar)
         except Exception as e:
             logger.error(f'Parsing mean and logvar failed: {e}')

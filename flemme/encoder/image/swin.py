@@ -22,9 +22,7 @@ class SwinEncoder(nn.Module):
                  normalization = 'group', num_norm_groups = 8, 
                  num_blocks = 2, activation = 'silu', 
                  abs_pos_embedding = False,
-                 last_activation = True,
                  return_feature_list = False,
-                 z_count = 1, 
                  channel_attention = None,
                  time_injection = 'gate_bias',
                  condition_channel = 0,
@@ -37,7 +35,6 @@ class SwinEncoder(nn.Module):
         self.image_size = image_size
         self.image_channel = image_channel
         self.dim = len(image_size)
-        self.z_count = z_count
         self.d_depth = len(down_channels)
         self.m_depth = len(middle_channels)
         self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
@@ -113,8 +110,6 @@ class SwinEncoder(nn.Module):
         dense_channels = [ middle_channels[-1], ] + dense_channels
         self.dense_path = dense_channels.copy()
         self.middle_path = [down_channels[-1], ] + middle_channels 
-        if not self.vector_embedding:
-            middle_channels = [mc * self.z_count for mc in middle_channels]
         ### middle transformers
         middle_channels = [down_channels[-1], ] + middle_channels
         self.middle = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
@@ -139,16 +134,10 @@ class SwinEncoder(nn.Module):
         ### fully connected layers
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((2**self.d_depth * self.patch_size)**self.dim ) *dense_channels[0])
-            if last_activation:
-                dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                norm = normalization, num_norm_groups=num_norm_groups, 
-                                                activation = self.activation) for i in range(len(dense_channels) - 1)]
-            else:
-                dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                norm = normalization, num_norm_groups=num_norm_groups, 
-                                                activation = self.activation) for i in range(len(dense_channels) - 2)]
-                dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
-            self.dense = nn.ModuleList([nn.Sequential(*(copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
+            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+                                            norm = normalization, num_norm_groups=num_norm_groups, 
+                                            activation = self.activation) for i in range(len(dense_channels) - 1)]
+            self.dense = nn.Sequential(*(copy.deepcopy(dense_sequence)) ) 
 
         ## set out_channel
         self.out_channel = dense_channels[-1]
@@ -173,11 +162,7 @@ class SwinEncoder(nn.Module):
         ### The last dimension is feature channel
         if self.vector_embedding:
             x = x.reshape(x.shape[0], -1)
-            x = [ self.dense[i](x) for i in range(self.z_count) ]
-        else:
-            x = list(torch.chunk(x, self.z_count, dim = -1))
-        if self.z_count == 1:
-            x = x[0]
+            x = self.dense(x)
         if self.return_feature_list:
             return x, res
         return x
@@ -207,7 +192,7 @@ class SwinEncoder(nn.Module):
 
 class SwinDecoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, in_channel = 64,
-                 window_size = 8, patch_size = 2, dense_channels = [32], 
+                 window_size = 8, patch_size = 2, dense_channels = [256], 
                  building_block = 'swin', time_channel = 0,
                  mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
                  up_channels = [128, 64], final_channels = [64, 64], 

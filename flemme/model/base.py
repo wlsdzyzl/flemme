@@ -123,8 +123,8 @@ class BaseModel(nn.Module):
 
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         self.data_form = self.encoder.data_form
-        self.channel_dim = -1 if self.data_form == DataForm.PCD else 1
-
+        self.channel_dim = self.encoder.channel_dim 
+        self.feature_channel_dim = self.encoder.feature_channel_dim
     def __str__(self):
         _str = '********************* BaseModel ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
@@ -156,10 +156,10 @@ class BaseModel(nn.Module):
                 # if type(c) == list:
                 #     c = c[0]
                 if self.combine_condition == 'add':
-                    z = add_embedding(z, c, self.channel_dim)
+                    z = add_embedding(z, c, self.feature_channel_dim)
                     c = None
                 elif self.combine_condition == 'cat':
-                    z = concat_embedding(z, c, self.channel_dim)
+                    z = concat_embedding(z, c, self.feature_channel_dim)
                     c = None
             elif self.combine_condition == 'cat':
                 logger.error('Condition is necessary for concatenation.')

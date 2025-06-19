@@ -3,17 +3,22 @@ import torch.nn.functional as F
 from torch import nn
 from flemme.block import get_building_block, SequentialT, MultipleBuildingBlocks, DenseBlock
 from flemme.logger import get_logger
+from .seqnet import SeqEncoder
 import copy
 logger = get_logger("model.encoder.seqtrans")
-class SeqTransEncoder(nn.Module):
+class SeqTransEncoder(SeqEncoder):
     def __init__(self, point_dim=3, time_channel = 0, 
                 projection_channel = 64,
                 time_injection = 'gate_bias',
                 num_blocks = 2,
                 building_block = 'pct_sa', seq_feature_channels = [256], 
+                voxel_resolutions = [],
+                voxel_conv_kernel_size = 3,
+                with_se = False,
+                coordinate_normalize = True,
+                channel_attention = None, 
                 normalization = 'group', num_norm_groups = 8, 
-                activation = 'lrelu', dropout = 0., z_count = 1,
-                last_activation = True, 
+                activation = 'lrelu', dropout = 0., 
                 num_heads = 4, d_k = None, 
                 qkv_bias = True, qk_scale = None, atten_dropout = None, 
                 mlp_hidden_ratios=[4.0, 4.0], 
@@ -21,15 +26,25 @@ class SeqTransEncoder(nn.Module):
                 condition_injection = 'gate_bias',
                 condition_first = False,
                 **kwargs):
-        super().__init__()
+        super().__init__(point_dim=point_dim, 
+                projection_channel = projection_channel,
+                time_channel = time_channel,
+                seq_feature_channels = seq_feature_channels, 
+                num_blocks = num_blocks,
+                normalization = normalization,
+                num_norm_groups = num_norm_groups,
+                activation = activation, dropout = dropout, 
+                channel_attention = channel_attention,
+                time_injection=time_injection,
+                voxel_resolutions=voxel_resolutions,
+                voxel_conv_kernel_size = voxel_conv_kernel_size,
+                with_se = with_se,
+                coordinate_normalize = coordinate_normalize,
+                condition_channel = condition_channel,
+                condition_injection = condition_injection,
+                condition_first = condition_first)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
-        self.point_dim = point_dim
-        self.activation = activation
-        self.z_count = z_count
-        self.vector_embedding = False
-        self.point_proj = nn.Linear(point_dim, projection_channel)
-        self.num_blocks = num_blocks
         # self.time_channel = time_channel
         self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
                                         activation=activation, 
@@ -44,33 +59,12 @@ class SeqTransEncoder(nn.Module):
                                         condition_injection = condition_injection,
                                         condition_first = condition_first)
 
-        seq_feature_channels = [projection_channel,] + seq_feature_channels
         sequence = [MultipleBuildingBlocks(n = self.num_blocks, 
                                            BuildingBlock=self.BuildingBlock,
-                                           in_channel=seq_feature_channels[i], 
-                                           out_channel=seq_feature_channels[i+1]) 
-                                        for i in range(len(seq_feature_channels) - 1) ]
-        if not last_activation:
-            sequence.append(DenseBlock(seq_feature_channels[-1], seq_feature_channels[-1], norm = None, activation = None))
-        self.seq = nn.ModuleList([SequentialT(*(copy.deepcopy(sequence))) for _ in range(z_count)])
-        self.seq_path = seq_feature_channels
-        self.out_channel = seq_feature_channels[-1]
-    def __str__(self):
-        _str = f'Projection layer: {self.point_dim}->{self.seq_path[0]}\n'
-        _str += 'Sequential Transformer layers: '
-        for c in self.seq_path[:-1]:
-            _str += '{}->'.format(c)  
-        _str += str(self.seq_path[-1])
-        _str += '\n'
-        return _str 
-    # input: Nb * Np * d
-    def forward(self, x, t = None, c = None):
-        # ## x is point cloud
-        x = self.point_proj(x)
-        x = [self.seq[i](x, t, c) for i in range(self.z_count)]
-        if self.z_count == 1:
-            x = x[0]
-        return x
+                                           in_channel=self.seq_path[i], 
+                                           out_channel=self.seq_path[i+1]) 
+                                        for i in range(len(self.seq_path) - 1) ]
+        self.seq = nn.ModuleList(sequence)
         
 
 # a very simple decoder
@@ -125,7 +119,7 @@ class SeqTransDecoder(nn.Module):
     def __str__(self):
         _str = ''
         if len(self.seq_path) > 1:
-            _str += 'Sequential Transformer layers: '
+            _str += 'Sequential layers: '
             for c in self.seq_path[:-1]:
                 _str += '{}->'.format(c)  
             _str += str(self.seq_path[-1])

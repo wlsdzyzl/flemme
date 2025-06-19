@@ -49,10 +49,9 @@ class Point2Encoder(nn.Module):
                  dense_channels,
                  activation, dropout,
                  normalization, num_norm_groups,  
-                 z_count, vector_embedding, 
+                 vector_embedding, 
                  is_point2decoder,
                  return_xyz,
-                 last_activation,
                  final_concat,
                  pos_embedding,
                  channel_attention,
@@ -67,7 +66,6 @@ class Point2Encoder(nn.Module):
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.point_dim = point_dim
-        self.z_count = z_count
         self.activation = activation
         self.num_neighbors_k = num_neighbors_k
         self.neighbor_radius = neighbor_radius
@@ -148,28 +146,15 @@ class Point2Encoder(nn.Module):
         dense_channels = [fps_feature_channels[-1] * 2, ] + dense_channels
         if not self.vector_embedding:
             dense_channels[0] += fps_feature_channels[-1]
-        if last_activation:
-            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
-                                                time_channel = time_channel,
-                                                activation = self.activation, dropout=self.dropout, 
-                                                norm = normalization, num_norm_groups=num_norm_groups,
-                                                time_injection=time_injection,
-                                                condition_channel = condition_channel,
-                                                condition_injection = condition_injection,
-                                                condition_first = condition_first) for i in range(len(dense_channels) - 1)]
-        else:
-            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
-                                                time_channel = time_channel,
-                                                activation = self.activation, dropout=self.dropout, 
-                                                norm = normalization, num_norm_groups=num_norm_groups,
-                                                time_injection=time_injection,
-                                                condition_channel = condition_channel,
-                                                condition_injection = condition_injection,
-                                                condition_first = condition_first) for i in range(len(dense_channels) - 2)]
-            # the last layer is a linear layer, without batch normalization
-            dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], 
-                                        activation = None, norm = None), ]
-        self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
+        dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
+                                            time_channel = time_channel,
+                                            activation = self.activation, dropout=self.dropout, 
+                                            norm = normalization, num_norm_groups=num_norm_groups,
+                                            time_injection=time_injection,
+                                            condition_channel = condition_channel,
+                                            condition_injection = condition_injection,
+                                            condition_first = condition_first) for i in range(len(dense_channels) - 1)]
+        self.dense = SequentialT(* (copy.deepcopy(dense_sequence)) )
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
         self.out_channels = self.msg_path + [self.out_channel, ]
@@ -259,9 +244,7 @@ class Point2Encoder(nn.Module):
             features = global_features.reshape(B, -1)
         
         ## compute latent embeddings
-        features = [self.dense[i](features, t, c) for i in range(self.z_count)]
-        if self.z_count == 1:
-            features = features[0]
+        features = self.dense(features, t, c)
 
         if self.is_point2decoder:
             xyz_list.append(xyz)
@@ -420,9 +403,7 @@ class PointNet2Encoder(Point2Encoder):
                  activation = 'lrelu', dropout = 0., 
                  vector_embedding = True, 
                  is_point2decoder = False,
-                 z_count = 1, 
                  return_xyz = False,
-                 last_activation = True,
                  final_concat = False,
                  pos_embedding = False,
                  channel_attention = None,
@@ -452,11 +433,9 @@ class PointNet2Encoder(Point2Encoder):
                 dropout = dropout,
                 normalization = normalization, 
                 num_norm_groups = num_norm_groups,  
-                z_count = z_count, 
                 vector_embedding = vector_embedding, 
                 is_point2decoder = is_point2decoder,
                 return_xyz = return_xyz, 
-                last_activation = last_activation,
                 final_concat = final_concat,
                 pos_embedding=pos_embedding,
                 channel_attention = channel_attention,

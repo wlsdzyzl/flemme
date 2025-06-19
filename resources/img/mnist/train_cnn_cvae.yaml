@@ -16,10 +16,10 @@ model:
     # up_channels: [16, 8]
     building_block: single
     dense_channels: [128]
-    decoder_dense_channels: [64, 32]
+    # decoder_dense_channels: [64, 32]
   condition_embedding:
-    combine_condition: injection
-    condition_injection: cross_atten
+    combine_condition: cat
+    # condition_injection: cross_atten
     encoder:
       name: OneHot
       type: categories
@@ -56,7 +56,7 @@ loader:
       std: [0.3081]
 
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/CNN_CVAE
-resume: True
+# resume: True
 ### parameter for optimizer
 optimizer:
   name: Adam

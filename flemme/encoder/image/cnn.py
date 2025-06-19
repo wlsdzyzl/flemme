@@ -28,9 +28,9 @@ class CNNEncoder(nn.Module):
                  middle_attens = [None, None], depthwise = False, kernel_size = 3, 
                  dense_channels = [256], dsample_function = 'conv', building_block='single', 
                  normalization = 'group', num_norm_groups = 8, num_blocks = 2,
-                 activation = 'relu', z_count = 1, dropout = 0., num_heads = 1, d_k = None, 
+                 activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                  qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 abs_pos_embedding = False, last_activation = True, return_feature_list = False,
+                 abs_pos_embedding = False, return_feature_list = False,
                  channel_attention = None,
                  time_injection = 'gate_bias', 
                  condition_channel = 0,
@@ -43,7 +43,6 @@ class CNNEncoder(nn.Module):
         self.image_channel = image_channel
         self.dim = len(image_size)
         self.dsample_function = dsample_function
-        self.z_count = z_count
         self.image_size = image_size
         self.image_patch_channel = patch_channel
         self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
@@ -103,8 +102,6 @@ class CNNEncoder(nn.Module):
         self.dense_path = dense_channels.copy()
         ## middle convolution layer
         self.middle_path = [down_channels[-1], ] + middle_channels 
-        if not self.vector_embedding:
-            middle_channels = [mc * self.z_count for mc in middle_channels]
 
         middle_channels = [down_channels[-1], ] + middle_channels 
         module_sequence = [MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
@@ -127,16 +124,10 @@ class CNNEncoder(nn.Module):
         
         if self.vector_embedding:
             dense_channels[0] = int( math.prod(self.image_size) / ((self.patch_size *  math.prod(self.shape_scaling)) ** self.dim)  *dense_channels[0])
-            if last_activation:
-                dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                norm = normalization, num_norm_groups=num_norm_groups, 
-                                                activation = self.activation) for i in range(len(dense_channels) - 1)]
-            else:
-                dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
-                                                norm = normalization, num_norm_groups=num_norm_groups, 
-                                                activation = self.activation) for i in range(len(dense_channels) - 2)]
-                dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], norm=None, activation = None), ]
-            self.dense = nn.ModuleList([nn.Sequential(*(copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
+            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+                                            norm = normalization, num_norm_groups=num_norm_groups, 
+                                            activation = self.activation) for i in range(len(dense_channels) - 1)]
+            self.dense = nn.Sequential(*(copy.deepcopy(dense_sequence)))
 
         ## set out_channel
         self.out_channel = dense_channels[-1]
@@ -184,11 +175,7 @@ class CNNEncoder(nn.Module):
 
         if self.vector_embedding:
             x = x.reshape(x.shape[0], -1)
-            x = [ self.dense[i](x) for i in range(self.z_count) ]
-        else:
-            x = list(torch.chunk(x, self.z_count, dim=1))
-        if self.z_count == 1:
-            x = x[0]
+            x = self.dense(x)
         if self.return_feature_list:
             return x, res
         return x
@@ -206,7 +193,7 @@ class CNNDecoder(nn.Module):
     value would be the dimension of output embedding vectors.
     '''
     def __init__(self, image_size, image_channel = 3, patch_size = 2, in_channel = 256,  time_channel = 0, 
-                 dense_channels = [32], up_channels = [128, 64], up_attens = [None, None], 
+                 dense_channels = [256], up_channels = [128, 64], up_attens = [None, None], 
                  shape_scaling = [2, 2], final_channels = [], 
                  final_attens = [], depthwise = False, kernel_size = 3, 
                  usample_function = 'conv', building_block='single', 

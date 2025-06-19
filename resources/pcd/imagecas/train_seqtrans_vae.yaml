@@ -6,23 +6,30 @@ model:
   name: VAE
   # encoder config
   encoder:
-    name: PointTrans
+    name: SeqTrans
     in_channel: 3
-    point_num: 2560
-    building_block: pct_oa
+    point_num: 256
+    building_block: pct_sa
     # num_neighbors_k: 20
-    local_feature_channels: [64, 128, 256, 512]
-    dense_channels: [512]
-    activation: lrelu
-    normalization: group
+    seq_feature_channels: [512, 512, 512, 512, 512, 512]
+    num_heads: 8
+    d_k: 64
+    voxel_resolutions: [0, 0, 16, 16, 0, 0]
+    activation: gelu
+    normalization: layer
+    # name: PointTrans
+    # in_channel: 3
+    # point_num: 256
+    # building_block: dense
+    # # num_neighbors_k: 20
+    # local_feature_channels: [512, 512, 512, 512, 512, 512]
+    # dense_channels: [512]
+    # activation: gelu
+    # normalization: layer
     channel_attention: eca
-    vector_embedding: true
-  decoder:
-    name: PointNet
-    dense_channels: [512, 256, 128]
+    # vector_embedding: false
   reconstruction_losses: 
     - name: CD
-    - name: Sinkhorn
   distribution_loss:
     name: KL
     weight: 0.0001
@@ -32,7 +39,7 @@ loader:
     data_dir: left
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/surface/fold1
+    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/lrply/mask/
   batch_size: 2
   num_workers: 8
   shuffle: true
@@ -43,7 +50,7 @@ loader:
       num: 2560
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas/left/PointTrans_VAE
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas/left/SeqTrans_VAE
 ### parameter for optimizer
 optimizer:
   name: Adam

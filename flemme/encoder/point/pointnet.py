@@ -22,8 +22,7 @@ class PointEncoder(nn.Module):
                  dense_channels,
                  activation, dropout,
                  normalization, num_norm_groups,  
-                 z_count, vector_embedding, 
-                 last_activation,
+                 vector_embedding, 
                  channel_attention,
                  time_injection,
                  with_se,
@@ -36,7 +35,6 @@ class PointEncoder(nn.Module):
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.point_dim = point_dim
-        self.z_count = z_count
         self.activation = activation
         self.num_neighbors_k = num_neighbors_k
         if self.num_neighbors_k > 0:
@@ -55,7 +53,6 @@ class PointEncoder(nn.Module):
         assert len(self.voxel_resolutions) == 0 or len(self.voxel_resolutions) == len(local_feature_channels),\
             "Voxel resolutions should have a same size with local feature channels."
         ## fully connected layers
-        # z_count = 2 usually means we compute mean and variance.
         # compute embedding from global feature
         assert len(local_feature_channels) > 1, "Point encoder need more than one local feature channel to extract local feature!"
         assert len(dense_channels) > 0, "Point encoder need to have fully connected layers!"
@@ -63,28 +60,16 @@ class PointEncoder(nn.Module):
         dense_channels = [global_feature_channel, ] + dense_channels
         if not self.vector_embedding:
             dense_channels[0] += local_feature_channels[-1]
-        if last_activation:
-            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
-                                                time_channel = time_channel,
-                                                activation = self.activation, dropout=self.dropout, 
-                                                norm = normalization, num_norm_groups=num_norm_groups,
-                                                time_injection=time_injection,
-                                                condition_channel = condition_channel,
-                                                condition_injection = condition_injection,
-                                                condition_first = condition_first) for i in range(len(dense_channels) - 1)]
-        else:
-            dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
-                                                time_channel = time_channel,
-                                                activation = self.activation, dropout=self.dropout, 
-                                                norm = normalization, num_norm_groups=num_norm_groups,
-                                                time_injection=time_injection,
-                                                condition_channel = condition_channel,
-                                                condition_injection = condition_injection,
-                                                condition_first = condition_first) for i in range(len(dense_channels) - 2)]
-            # the last layer is a linear layer, without batch normalization
-            dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], 
-                                        activation = None, norm = None), ]
-        self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
+        dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1],  
+                                            time_channel = time_channel,
+                                            activation = self.activation, dropout=self.dropout, 
+                                            norm = normalization, num_norm_groups=num_norm_groups,
+                                            time_injection=time_injection,
+                                            condition_channel = condition_channel,
+                                            condition_injection = condition_injection,
+                                            condition_first = condition_first) for i in range(len(dense_channels) - 1)]
+
+        self.dense = SequentialT(* (copy.deepcopy(dense_sequence)) )
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
         self.lf_path = [projection_channel,] + local_feature_channels
@@ -169,9 +154,8 @@ class PointEncoder(nn.Module):
         else:
             x = x.reshape(B, -1)
         ## compute embedding vectors
-        x = [self.dense[i](x, t, c) for i in range(self.z_count)]
-        if self.z_count == 1:
-            x = x[0]
+        x = self.dense(x, t, c)
+
         return x
 
     def __str__(self):
@@ -202,8 +186,7 @@ class PointNetEncoder(PointEncoder):
                  building_block = 'dense', 
                  normalization = 'group', num_norm_groups = 8, 
                  activation = 'lrelu', dropout = 0., 
-                 z_count = 1, vector_embedding = True, 
-                 last_activation = True, 
+                 vector_embedding = True, 
                  channel_attention = None, 
                  time_injection = 'gate_bias', 
                  voxel_conv_kernel_size = 3,
@@ -223,8 +206,7 @@ class PointNetEncoder(PointEncoder):
                 normalization = normalization,
                 num_norm_groups = num_norm_groups,
                 activation = activation, dropout = dropout, 
-                z_count = z_count, vector_embedding = vector_embedding, 
-                last_activation = last_activation,
+                vector_embedding = vector_embedding, 
                 channel_attention = channel_attention,
                 time_injection=time_injection,
                 voxel_resolutions=voxel_resolutions,

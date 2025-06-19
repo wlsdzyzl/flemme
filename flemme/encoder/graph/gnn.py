@@ -20,7 +20,7 @@ class GraphEncoder(nn.Module):
                     dense_channels = [],
                     activation = 'lrelu', dropout = 0.,
                     normalization = 'group', num_norm_groups = 8,  
-                    z_count = 1, nodewise = False, 
+                    nodewise = False, 
                     time_injection = 'gate_bias', 
                     condition_channel = 0,
                     condition_injection = 'gate_bias',
@@ -66,9 +66,8 @@ class GraphEncoder(nn.Module):
                                                 for i in range(len(dense_channels) - 2)]
             # the last layer is a linear layer, without batch normalization
             dense_sequence = dense_sequence + [DenseBlock(dense_channels[-2], dense_channels[-1], activation = None, norm = None), ]
-            self.dense = nn.ModuleList([SequentialT(* (copy.deepcopy(dense_sequence)) ) for _ in range(z_count) ])
-        else:
-            message_passing_channels = [m * self.z_count for m in message_passing_channels]
+            self.dense = SequentialT(* (copy.deepcopy(dense_sequence)) ) 
+
         self.out_channel = dense_channels[-1]
         self.dense_path = dense_channels
         self.mp = None
@@ -104,12 +103,8 @@ class GraphEncoder(nn.Module):
                 x = torch.concat([x, nf], dim=-1)
 
             ## compute embedding vectors
-            x = [self.dense[i](x, t, c) for i in range(self.z_count)]
-        else:
-            ## split nf to 
-            x = list(torch.chunk(x, self.z_count, dim = -1))
-        if self.z_count == 1:
-            x = x[0]
+            x = self.dense(x, t, c) 
+
         return x
 
     def __str__(self):
@@ -143,7 +138,7 @@ class GCNEncoder(GraphEncoder):
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
                 normalization = 'group', num_norm_groups = 8,  
-                z_count = 1, nodewise = False, 
+                nodewise = False, 
                 time_channel = 0, 
                 time_injection = 'gate_bias', 
                 condition_channel = 0,
@@ -161,7 +156,7 @@ class GCNEncoder(GraphEncoder):
                     dense_channels = dense_channels,
                     activation = activation, dropout = dropout,
                     normalization = normalization, num_norm_groups = num_norm_groups,  
-                    z_count = z_count, nodewise = nodewise, 
+                    nodewise = nodewise, 
                     time_injection = time_injection, 
                     condition_channel = condition_channel,
                     condition_injection = condition_injection,
@@ -204,7 +199,7 @@ class ChebEncoder(GraphEncoder):
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
                 normalization = 'group', num_norm_groups = 8,  
-                z_count = 1, nodewise = False, 
+                nodewise = False, 
                 time_channel = 0, 
                 time_injection = 'gate_bias', 
                 condition_channel = 0,
@@ -222,7 +217,7 @@ class ChebEncoder(GraphEncoder):
                     dense_channels = dense_channels,
                     activation = activation, dropout = dropout,
                     normalization = normalization, num_norm_groups = num_norm_groups,  
-                    z_count = z_count, nodewise = nodewise, 
+                    nodewise = nodewise, 
                     time_injection = time_injection, 
                     condition_channel = condition_channel,
                     condition_injection = condition_injection,
@@ -265,7 +260,7 @@ class TransConvEncoder(GraphEncoder):
                 dense_channels = [],
                 activation = 'lrelu', dropout = 0.,
                 normalization = 'group', num_norm_groups = 8,  
-                z_count = 1, nodewise = False, 
+                nodewise = False, 
                 time_channel = 0, 
                 time_injection = 'gate_bias', 
                 condition_channel = 0,
@@ -283,7 +278,7 @@ class TransConvEncoder(GraphEncoder):
                     dense_channels = dense_channels,
                     activation = activation, dropout = dropout,
                     normalization = normalization, num_norm_groups = num_norm_groups,  
-                    z_count = z_count, nodewise = nodewise, 
+                    nodewise = nodewise, 
                     time_injection = time_injection, 
                     condition_channel = condition_channel,
                     condition_injection = condition_injection,

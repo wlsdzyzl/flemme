@@ -23,6 +23,9 @@ def get_loss(loss_config, data_form = DataForm.IMG):
         return TorchLoss(torch_loss = nn.CrossEntropyLoss, channel_dim=channel_dim, **loss_config)
     if loss_name == 'Dice':
         return DiceLoss(channel_dim=channel_dim, **loss_config)
+    ## boundary loss hasn't been tested.
+    if loss_name == 'Boundary':
+        return SurfaceLoss(**loss_config)
     if loss_name == "KL":
         return KLLoss(**loss_config)
     if loss_name == 'DMSE':
