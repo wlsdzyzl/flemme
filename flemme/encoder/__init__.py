@@ -55,10 +55,12 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         eai_channel = encoder_config.pop('encoder_additional_in_channel', 0)
         encoder, decoder = None, None
         ### construct encoder and decoder
-        if encoder_name in ('CNN', 'UNet', 'DNet', 'ViT', 'ViTU', 'ViTD', 'Swin', 'SwinU', 'SwinD', 'VMamba',  'VMambaU', 'VMambaD'):
+        if encoder_name in supported_image_encoders:
             data_form = DataForm.IMG
-        elif encoder_name in ('PointNet', 'PointTrans', 'PointMamba', 'PointNet2', 'PointTrans2', 'PointMamba2', 'SeqNet', 'SeqTrans', 'SeqMamba'):
+        elif encoder_name in supported_point_encoders:
             data_form = DataForm.PCD
+        elif encoder_name in supported_graph_encoders:
+            data_form = DataForm.GRAPH
         ### point-wise encoder can be applied on various data forms.
         elif encoder_name in ('FCN', ):
             data_form = DataForm.VEC

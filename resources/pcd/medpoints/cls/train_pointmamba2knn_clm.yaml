@@ -25,7 +25,7 @@ model:
     pos_embedding: True
     knn_query: feature
     final_concat: True
-    # channel_attention: eca
+    channel_attention: eca
   classification_losses: 
     - name: CE
 loader:
