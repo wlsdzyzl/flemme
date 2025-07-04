@@ -10,7 +10,7 @@ model:
     in_channel: 3
     point_num: 1024
     building_block: dense
-    num_neighbors_k: 20
+    # num_neighbors_k: 20
     local_feature_channels: [64, 64, 128, 256, 512]
     dense_channels: [1024]
     decoder_dense_channels: [512, 256]
@@ -18,17 +18,17 @@ model:
     normalization: group
     vector_embedding: True
   reconstruction_losses: 
-    - name: EMD
+    - name: Chamfer
   distribution_loss:
     name: KL
-    weight: 0.1
+    weight: 0.0
 loader:
   dataset: 
     name: PcdDataset
-    data_dir: 02691156/points
+    data_dir: Airplane
     data_suffix: .pts
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/shapenetcore_v0
+    - /media/wlsdzyzl/DATA1/datasets/pcd/shapenetcore_v0/classification
   batch_size: 32
   num_workers: 8
   shuffle: true
@@ -38,7 +38,7 @@ loader:
       num: 1024
     - name: ToTensor
       dtype: float
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/02691156/PointNet/PointNet_VAE_EMD_LOCAL_K
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/02691156/PointNet/PointNet_VAE_Chamfer
 ### parameter for optimizer
 optimizer:
   name: Adam
@@ -48,7 +48,7 @@ optimizer:
 lr_scheduler: 
   name: ReduceLROnPlateau
   patience: 5
-sampler:
+# sampler:
 max_epoch: 500
 write_after_iters: 20
 save_after_epochs: 10

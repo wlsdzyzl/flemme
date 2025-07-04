@@ -4,7 +4,7 @@ from functools import partial
 from flemme.config import module_config
 if module_config['mamba']:
     from .pmamba import get_psmamba_block, get_scanners,\
-            PointMambaBlock
+            PointMambaBlock, PointMambaNonFFNBlock
 
 
 
@@ -28,7 +28,7 @@ if module_config['transformer']:
             """
             super().__init__()
             self.d_k = d_k or int(in_channel / num_heads)
-
+            self.scale = qk_scale or 1
             if atten_dropout is None or atten_dropout <= 0:
                 self.atten_dropout = nn.Identity()
             else:
@@ -50,8 +50,7 @@ if module_config['transformer']:
         def attention(self, q, k, v):
             # [batch_size, num_heads, seq, d_k]
             # Calculate scaled dot-product $\frac{Q K^\top}{\sqrt{d_k}}$
-            atten = torch.einsum('bhik,bhjk->bhij', q, k)
-            # Softmax along the sequence dimension $\underset{seq}{softmax}\Bigg(\frac{Q K^\top}{\sqrt{d_k}}\Bigg)$
+            atten = torch.einsum('bhik,bhjk->bhij', q, k) * self.scale
             atten = atten.softmax(dim=-1)
             atten = atten / (1e-8 + atten.sum(dim=1, keepdims = True))
             atten = self.atten_dropout(atten)
@@ -136,6 +135,59 @@ if module_config['transformer']:
         @staticmethod
         def is_sequence_modeling():
             return True
+    ## point transformer without feed-forward network (nlp)
+    class PointTransformerNonFFNBlock(NormBlock):
+        def __init__(self, in_channel, out_channel = None, 
+            time_channel = 0, num_heads = 3, d_k = None, 
+            qkv_bias = True, qk_scale = None, atten_dropout = None, 
+            dropout = None, residual_attention = False, 
+            skip_connection = True, attention = 'SA', 
+            activation = 'relu', norm='batch', num_norm_groups = -1,
+            time_injection = 'gate_bias',  
+            condition_channel = 0, 
+            condition_injection = 'gate_bias',
+            condition_first = False,
+            **kwargs):
+            
+            super().__init__(_channel_dim = -1)
+            self.in_channel = in_channel
+            self.out_channel = out_channel or in_channel
+            if attention == 'SA':
+                self.atten = SelfAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
+                qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
+                dropout = dropout, skip_connection = residual_attention, channel_dim = -1)
+            elif attention == 'OA':
+                self.atten = OffSetAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
+                qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
+                dropout = dropout, skip_connection = residual_attention)
+            self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
+            self.act = get_act(activation)
+            self.time_channel = time_channel
+            self.skip_connection = skip_connection
+            self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
+
+            self.cinj = None
+            if time_channel > 0 or condition_channel > 0:
+                self.cinj = ContextInjectionBlock(time_channel = time_channel,
+                    condition_channel = condition_channel,
+                    out_channel = out_channel,
+                    time_injection=time_injection,
+                    condition_injection=condition_injection,
+                    channel_dim = -1,
+                    condition_first = condition_first)
+                
+        def forward(self, x, t = None, c = None):
+            res = self.atten(x)
+            res = x + self.act(self.normalize(res))
+            x = self.dense(res)
+            if self.cinj:
+                x = self.cinj(x, t, c)
+            return x
+        @staticmethod
+        def is_sequence_modeling():
+            return True
+
+        
 
 ## part of this code is adopted from https://github.com/WangYueFt/dgcnn/blob/master/pytorch/model.py
 def get_graph_feature(x, k=20, knn = None, idx=None):
@@ -382,6 +434,7 @@ class SamplingAndGroupingLayer(nn.Module):
             ## (B, M, k, C (+3)) -> (B, M, k, C_out)
             center_features = self.bb[gid](grouped_features, t, c)  
             # (B, M, out_channel)
+            ## optional improvements: add average pooling here
             center_features = center_features.max(dim=2)[0]
             center_feature_list.append(center_features)
         

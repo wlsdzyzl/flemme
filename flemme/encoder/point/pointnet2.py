@@ -228,6 +228,8 @@ class Point2Encoder(nn.Module):
             sample_id_list.append(sample_ids)
         if hasattr(self, 'final_concat'):
             features = self.final_concat(feature_list, sample_id_list, t, c)
+        ## optional improvement: add a layer here
+        
         ## max and average pooling to get global feature
         f_max = features.max(dim = 1, keepdim = True)[0]
         f_avg = features.mean(dim = 1, keepdim = True)

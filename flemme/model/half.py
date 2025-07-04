@@ -78,7 +78,7 @@ class OnlyEncoder(nn.Module):
 
     def get_input_shape(self):
         if self.data_form == DataForm.PCD:
-            return [self.encoder.point_num, ] + [self.in_channel,]      
+            return [self.encoder.point_num, self.in_channel,]      
         if self.data_form == DataForm.IMG:
             return [self.in_channel, ] + self.encoder.image_size
         ### vector
@@ -86,7 +86,7 @@ class OnlyEncoder(nn.Module):
     
     def get_output_shape(self):
         if self.data_form == DataForm.PCD and not self.encoder.vector_embedding:
-            return [self.encoder.point_num, ] + [self.out_channel,]      
+            return [self.encoder.point_num, self.out_channel,]      
         if self.data_form == DataForm.IMG and not self.encoder.vector_embedding:
             return [self.out_channel, ] + self.encoder.image_size
         return [self.out_channel]
@@ -166,7 +166,7 @@ class OnlyDecoder(nn.Module):
     ### decoder will always project the latent into original shape
     def get_output_shape(self):
         if self.data_form == DataForm.PCD:
-            return [self.decoder.point_num, ] + [self.out_channel,]      
+            return [self.decoder.point_num, self.out_channel,]      
         if self.data_form == DataForm.IMG:
             return [self.out_channel, ] + self.decoder.image_size
         ### vector
@@ -175,7 +175,7 @@ class OnlyDecoder(nn.Module):
     #### should never be called
     # def get_input_shape(self):
     #     if self.data_form == DataForm.PCD and not self.decoder.vector_embedding:
-    #         return [self.decoder.point_num, ] + [self.in_channel,]      
+    #         return [self.decoder.point_num, self.in_channel,]      
     #     if self.data_form == DataForm.IMG and not self.decoder.vector_embedding:
     #         return [self.in_channel, ] + self.decoder.image_size
     #     ### vector

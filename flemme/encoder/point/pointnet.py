@@ -250,7 +250,6 @@ class PointNetEncoder(PointEncoder):
         lf_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
                                         out_channel=self.lf_path[-1]))
         self.lf = nn.ModuleList(lf_sequence)
-
 class PointNetDecoder(nn.Module):
     def __init__(self, point_dim=3, point_num = 2048, 
                 in_channel = 256, dense_channels = [256], 

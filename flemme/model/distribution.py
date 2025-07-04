@@ -5,7 +5,6 @@ logger = get_logger('model.gaussian')
 class GaussianDistribution:
     def __init__(self, mean, var = None, logvar = None):
         self.mean = mean
-        self.device = mean.device
         if logvar is not None:
             ### clamp logvar
             self.logvar = torch.clamp(logvar, -30.0, 20.0)
@@ -25,8 +24,12 @@ class GumbelSoftmaxDistribution:
     def __init__(self, logits, tau = 1, dim = -1):
         self.logits = logits
         self.tau = tau
-        self.device = self.logits.device
+        self.dim = dim
     def sample(self, return_prob = False):
         if return_prob:
-            return F.gumbel_softmax(self.logits, self.tau, hard = True), F.gumbel_softmax(self.logits, self.tau, hard = False)
+            prob = F.gumbel_softmax(self.logits, self.tau, hard = False)
+            label = prob.argmax(dim = self.dim, keepdim = True)
+            onehot_label = torch.zeros_like(prob)
+            onehot_label = onehot_label.scatter(self.dim, label, 1)
+            return onehot_label, prob
         return F.gumbel_softmax(self.logits, self.tau, hard = True)

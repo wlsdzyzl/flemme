@@ -4,7 +4,7 @@ from flemme.utils import load_pcd, save_pcd, rkdirs
 import numpy as np
 from flemme.dataset.label_dict.MedPointS import coarse_labels, coarse_label_to_organ
 
-dataset_path = '/media/wlsdzyzl/DATA1/datasets/pcd/MedPointS'
+dataset_path = '/media/wlsdzyzl/DATA1/datasets/pcd/MedShapeNet'
 selected_number_paths = glob(os.path.join(dataset_path, 'by_number/*')) 
 sample_num = 16384
 broken_stls = []

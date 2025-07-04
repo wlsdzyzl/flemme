@@ -54,12 +54,22 @@ def get_building_block(name, **kwargs):
     ## point cloud transformer with offset attention
     elif name == 'pct_oa':
         return partial(PointTransformerBlock, attention='OA', **kwargs)
+    elif name == 'pct_sa_non_ffn':
+        return partial(PointTransformerNonFFNBlock, attention='SA', **kwargs)
+    ## point cloud transformer with offset attention
+    elif name == 'pct_oa_non_ffn':
+        return partial(PointTransformerNonFFNBlock, attention='OA', **kwargs)
     ## point cloud mamba
     elif name == 'pmamba':
         return partial(PointMambaBlock, mamba='Mamba', **kwargs)
     ## point cloud mamba2
     elif name == 'pmamba2':
         return partial(PointMambaBlock, mamba='Mamba2', **kwargs)
+    elif name == 'pmamba_non_ffn':
+        return partial(PointMambaNonFFNBlock, mamba='Mamba', **kwargs)
+    ## point cloud mamba2
+    elif name == 'pmamba2_non_ffn':
+        return partial(PointMambaNonFFNBlock, mamba='Mamba2', **kwargs)
     ## graph convolution layer
     elif name == 'gcn':
         return partial(GraphConvBlock, **kwargs)

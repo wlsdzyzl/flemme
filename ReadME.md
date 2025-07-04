@@ -135,7 +135,7 @@ Configuration files are in `resources/img/biomed_2d` and `resources/img/biomed_3
 
 ![](./images/pcd_result.png)
 
-To train and evaluate the model proposed by [2], run the following commands:
+To train and evaluate the model proposed by [2], run the following commands (You can change flemme to an old commit `c978a59`):
 
 ```bash
 ## classification

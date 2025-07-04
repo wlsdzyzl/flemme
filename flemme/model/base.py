@@ -190,13 +190,13 @@ class BaseModel(nn.Module):
             return [self.encoder.out_channel, ] + \
                         [int(im_size / (2** self.encoder.d_depth)) for im_size in self.encoder.image_size ]
         if self.data_form == DataForm.PCD and not self.encoder.vector_embedding:
-                return [self.encoder.point_num, ] + [self.encoder.out_channel,]        
+                return [self.encoder.point_num, self.encoder.out_channel,]        
         ### latent embedding is a vector
         return [self.encoder.out_channel]
 
     def get_input_shape(self):
         if self.data_form == DataForm.PCD:
-            return [self.encoder.point_num, ] + [self.in_channel,]      
+            return [self.encoder.point_num, self.in_channel,]      
         if self.data_form == DataForm.IMG:
             return [self.in_channel, ] + self.encoder.image_size
         ### vector
@@ -204,7 +204,7 @@ class BaseModel(nn.Module):
         
     def get_output_shape(self):
         if self.data_form == DataForm.PCD:
-            return [self.decoder.point_num, ] + [self.out_channel,]      
+            return [self.decoder.point_num, self.out_channel,]      
         if self.data_form == DataForm.IMG:
             return [self.out_channel, ] + self.decoder.image_size
         ### vector

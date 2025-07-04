@@ -4,7 +4,7 @@ from flemme.utils import load_pcd, save_pcd
 import numpy as np
 from flemme.dataset.label_dict.MedPointS import fine_labels, coarse_labels
 from flemme.color_table import color_table
-dataset_path = '/media/wlsdzyzl/DATA1/datasets/pcd/MedPointS'
+dataset_path = '/media/wlsdzyzl/DATA1/datasets/pcd/MedShapeNet'
 output_path = '/media/wlsdzyzl/DATA1/datasets/pcd/MedPointS'
 selected_number_paths = glob(os.path.join(dataset_path, 'by_number/*')) 
 sample_num = 65536

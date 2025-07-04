@@ -344,7 +344,7 @@ class QueryAndGroup(nn.Module):
         Returns
         -------
         new_features : torch.Tensor
-            (B, 3 + C, npoint, nsample) tensor
+            (B, pos_emb + C, npoint, nsample) tensor
         """
         if self.knn is not None:
             ## indices are all ready sorted.
