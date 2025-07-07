@@ -51,6 +51,7 @@ class ImgClsDataset(Dataset):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
+        logger.info("loading data from the directory: {}".format(data_path))
         self.data_path = data_path
         self.mode = mode
         self.dim = dim
@@ -94,6 +95,7 @@ class ImgSegDataset(Dataset):
             logger.debug("redundant parameters: {}".format(kwargs))
         label_suffix = label_suffix or data_suffix
         logger.info("loading data from the directory: {}".format(data_path))
+        self.data_path = data_path
         self.img_path_list = sorted(glob(os.path.join(data_path+'/' + data_dir, "*" + data_suffix)))
         self.mask_path_list = [rreplace(rreplace(ipath, data_suffix, label_suffix, 1), data_dir, label_dir, 1) for ipath in self.img_path_list]
         self.mode = mode
@@ -149,6 +151,7 @@ class ImgReconDataset(Dataset):
             logger.debug("redundant parameters: {}".format(kwargs))
         target_suffix = target_suffix or data_suffix
         logger.info("loading data from the directory: {}".format(data_path))
+        self.data_path = data_path
         self.img_path_list = sorted(glob(os.path.join(data_path+'/' + data_dir, "*" + data_suffix)))
         self.mask_path_list = [rreplace(rreplace(ipath, data_suffix, target_suffix, 1), data_dir, target_dir, 1) for ipath in self.img_path_list]
         self.mode = mode
@@ -205,7 +208,8 @@ class MultiModalityImgSegDataset(Dataset):
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         self.dim = dim
-
+        logger.info("loading data from the directory: {}".format(data_path))
+        self.data_path = data_path
         if self.dim == 2:
             raise NotImplementedError
         if not type(data_dir) == list:

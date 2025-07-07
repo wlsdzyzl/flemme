@@ -46,6 +46,7 @@ class PcdClsDataset(Dataset):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
+        logger.info("loading data from the directory: {}".format(data_path))
         self.data_path = data_path
         self.mode = mode
         self.data_transform = data_transform
@@ -139,6 +140,7 @@ class PcdReconWithClassLabelDataset(Dataset):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
+        logger.info("loading data from the directory: {}".format(data_path))
         self.data_path = data_path
         self.mode = mode
         self.data_transform = data_transform

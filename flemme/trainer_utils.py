@@ -297,6 +297,15 @@ def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None,
     state_dict = torch.load(ckp_path, map_location='cpu', weights_only=False)
     if 'trained_model' in state_dict:
         trained_model_state_dict = state_dict.pop('trained_model')
+
+        ### to load old weights with different names
+        # keys = trained_model_state_dict.keys()
+        # fc_keys = [ k for k in keys if 'fc' in k]
+        # dense_keys = [fk.replace('fc', 'dense') for fk in fc_keys]
+        # logger.info(f'We will replace {fc_keys} with {dense_keys}')
+        # for fk, dk in zip(fc_keys, dense_keys):
+        #     trained_model_state_dict[dk] = trained_model_state_dict.pop(fk)
+
         if len(ignore_mismatched_keys) > 0:
             logger.info(f'ignore keys while loading model: {ignore_mismatched_keys}')
             model_state_dict = model.state_dict()
