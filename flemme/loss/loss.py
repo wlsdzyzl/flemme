@@ -3,7 +3,6 @@ from flemme.config import module_config
 import torch
 import torch.nn as nn
 from flemme.logger import get_logger
-from geomloss import SamplesLoss
 from .ssim import create_window, create_window_3D, _ssim, _ssim_3D
 
 logger = get_logger('loss')
@@ -172,6 +171,7 @@ class SurfaceLoss(nn.Module):
     
 if module_config['point-cloud']:    
     from .ext_modules import ChamferDistance, emdModule as EMD 
+    from geomloss import SamplesLoss
     ### The following loss can be used as reconstruction loss for point clouds
     ## Chamfer distance
     class ChamferLoss(nn.Module):

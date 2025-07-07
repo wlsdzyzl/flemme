@@ -11,7 +11,7 @@ model:
     out_channel: 1
     patch_size: 2
     down_channels: [64, 128]
-    middle_attens: [null, atten]
+    middle_attens: [atten, 10xatten]
     middle_channels: [256, 256]
     building_block: single
     normalization: batch

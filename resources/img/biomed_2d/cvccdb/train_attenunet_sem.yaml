@@ -12,8 +12,8 @@ model:
     patch_channel: 32
     patch_size: 2
     down_channels: [64, 128, 256]
-    up_attens: [null, null, atten]
     middle_channels: [512, 512]
+    middle_attens: [null, 10xfft_atten]
     building_block: single
     normalization: batch
   ### loss function

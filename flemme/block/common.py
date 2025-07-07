@@ -157,9 +157,9 @@ def get_context_injection(method, context_channel, data_channel, channel_dim):
     else:
         logger.error('Unknown method for context injection, should be one of ["gate_bias", "gate", "bias", "cross_atten"].')
         exit(1)
-def get_atten(atten, in_channel, num_heads, d_k, 
+def get_n_x_conv_atten(atten, in_channel, num_heads, d_k, 
             qkv_bias, qk_scale, atten_dropout, 
-            dropout, skip_connection):
+            dropout, skip_connection = True, dim = None):
     if not atten or not type(atten) == str:
         return None
     atten = atten.split('x')
@@ -167,6 +167,9 @@ def get_atten(atten, in_channel, num_heads, d_k,
     if len(atten) == 2:
         num_atten = int(atten[0])
         atten = atten[1]
+    else:
+        atten = atten[0]
+    
     if atten == 'atten':
         return nn.Sequential(*[SelfAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
         qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
@@ -175,9 +178,9 @@ def get_atten(atten, in_channel, num_heads, d_k,
         return nn.Sequential(*[FFTAttenBlock(dim = dim, in_channel=in_channel, num_heads=num_heads, 
         d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
         atten_dropout = atten_dropout, dropout = dropout, 
-        skip_connection = skip_connection)for _ in range(num_atten) ])
+        skip_connection = skip_connection) for _ in range(num_atten) ])
     else:
-        logger.error('Unsupported attention block, should be one of [atten, ftt_atten].')
+        logger.error(f'Unsupported attention block, should be one of ["atten", "fft_atten"], we got "{atten}".')
         exit(1)
 def get_middle_channel(in_channel, out_channel, unit_channel = 16):
     tmp_channel = int(max(max(in_channel, out_channel) // 2, min(in_channel, out_channel)))
@@ -599,20 +602,24 @@ class CrossAttentionBlock(AttentionBlock):
 class FFTAttenBlock(nn.Module):
     def __init__(self, dim, in_channel: int, num_heads: int = 1, d_k: int = None, 
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
-        dropout = None, skip_connection = True):
+        dropout = None, skip_connection = False):
         super().__init__()
         self.atten = SelfAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
             qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-            dropout = dropout, skip_connection = skip_connection, channel_dim = 1)
+            dropout = dropout, skip_connection = False, channel_dim = 1)
         self.dim = tuple(range(2, 2 + dim))
         self.fft = partial(fft.rfftn, dim = self.dim)
         self.ifft = partial(fft.irfftn, dim = self.dim)
+        self.skip_connection = skip_connection
     def forward(self, x):
-        x = self.fft(x)
-        x = torch.view_as_real(x)
-        x = self.atten(x)
-        x = torch.view_as_complex(x.contiguous())
-        return self.ifft(x)
+        res = self.fft(x)
+        res = torch.view_as_real(res)
+        res = self.atten(res)
+        res = torch.view_as_complex(res.contiguous())
+        res = self.ifft(res)
+        if self.skip_connection:
+            res = res + x
+        return res
 
 class ContextInjectionBlock(nn.Module):
     def __init__(self, time_channel, condition_channel, out_channel, 
@@ -980,11 +987,11 @@ class ConvBlock(NormBlock):
                 self.proj = nn.Conv3d(conv_out_channel, out_channel, kernel_size=1, bias = False)
 
         self.norm, self.norm_type = get_norm(norm, out_channel, dim, num_norm_groups)
-        self.atten = get_atten(atten, out_channel, num_heads=num_heads, d_k=d_k, 
+        self.atten = get_n_x_conv_atten(atten, out_channel, num_heads=num_heads, d_k=d_k, 
                                qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                atten_dropout = atten_dropout, 
                                dropout = dropout, 
-                               skip_connection = skip_connection)
+                               skip_connection = skip_connection, dim = dim)
         # activation function
         self.act = get_act(activation)
 
@@ -1033,11 +1040,11 @@ class DoubleConvBlock(nn.Module):
                                kernel_size=kernel_size, padding=padding, 
                                depthwise = depthwise, bias = bias, activation=activation,
                                norm=norm, num_norm_groups=num_norm_groups)
-        self.atten = get_atten(atten, out_channel, num_heads=num_heads, d_k=d_k, 
+        self.atten = get_n_x_conv_atten(atten, out_channel, num_heads=num_heads, d_k=d_k, 
                                qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                atten_dropout = atten_dropout, 
                                dropout = dropout, 
-                               skip_connection = skip_connection)
+                               skip_connection = skip_connection, dim = dim)
         self.time_channel = time_channel
         self.condition_channel = condition_channel
     def forward(self, x, t = None, c = None):
@@ -1079,11 +1086,11 @@ class ResConvBlock(nn.Module):
                                depthwise = depthwise, bias = bias, activation=None,
                                norm=norm, num_norm_groups=num_norm_groups, )
         self.act = get_act(activation)
-        self.atten = get_atten(atten, out_channel, num_heads=num_heads, d_k=d_k, 
+        self.atten = get_n_x_conv_atten(atten, out_channel, num_heads=num_heads, d_k=d_k, 
                                qkv_bias = qkv_bias, qk_scale = qk_scale, 
                                atten_dropout = atten_dropout, 
                                dropout = dropout, 
-                               skip_connection = skip_connection)
+                               skip_connection = skip_connection, dim = dim)
         # If the number of input channel is not equal to the number of output channel we have to
         # project the shortcut connection
         if in_channel != out_channel:

@@ -141,7 +141,7 @@ if module_config['transformer']:
             time_channel = 0, num_heads = 3, d_k = None, 
             qkv_bias = True, qk_scale = None, atten_dropout = None, 
             dropout = None, residual_attention = False, 
-            skip_connection = True, attention = 'SA', 
+            attention = 'SA', 
             activation = 'relu', norm='batch', num_norm_groups = -1,
             time_injection = 'gate_bias',  
             condition_channel = 0, 
@@ -155,15 +155,14 @@ if module_config['transformer']:
             if attention == 'SA':
                 self.atten = SelfAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
                 qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-                dropout = dropout, skip_connection = residual_attention, channel_dim = -1)
+                dropout = dropout, skip_connection = False, channel_dim = -1)
             elif attention == 'OA':
                 self.atten = OffSetAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
                 qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-                dropout = dropout, skip_connection = residual_attention)
+                dropout = dropout, skip_connection = False)
             self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
             self.act = get_act(activation)
             self.time_channel = time_channel
-            self.skip_connection = skip_connection
             self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
 
             self.cinj = None

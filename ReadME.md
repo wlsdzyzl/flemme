@@ -24,7 +24,7 @@ We are also working on Flemme to support *point cloud* modeling. An illustration
 ### Requirement list
 #### Basic:
 ```
-torch torchvision simpleitk nibabel matplotlib scikit-image scikit-learn tensorboard
+torch torchvision simpleitk nibabel matplotlib scikit-image scikit-learn tensorboard tqdm
 ```
 #### For vision transformer:
 ```
@@ -34,10 +34,17 @@ einops
 ```
 mamba-ssm (CUDA version >= 11.6)
 ```
+If you have trouble to install mamba-ssm, try the following commands:
+```
+git clone git@github.com:state-spaces/mamba.git
+cd mamba
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple .
+```
 #### For point cloud:
 ```
-POT plyfile KNN-CUDA fpsample
+POT plyfile KNN-CUDA fpsample geomloss
 ```
+KNN-CUDA is from https://github.com/unlimblue/KNN_CUDA.
 #### For graph:
 ```
 torch_geometric torch-cluster

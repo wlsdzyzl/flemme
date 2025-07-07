@@ -237,8 +237,6 @@ class MultiModalityImgSegDataset(Dataset):
                 
         for ld, lsf in zip(label_dir, label_suffix):
             self.mask_path_list.append([rreplace(rreplace(rpath, data_dir[0], ld, 1), data_suffix[0], lsf, 1) for rpath in self.img_path_list[0]])
-
-        logger.info("loading data from the directory: {}".format(data_path))
         self.mode = mode
         self.data_transform = data_transform
         self.label_transform = label_transform

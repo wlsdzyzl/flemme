@@ -221,7 +221,7 @@ class WindowAttentionBlock(SelfAttentionBlock):
     """
 
     def __init__(self, in_channel, window_size, num_heads = 3, 
-        d_k = None, qkv_bias=True, qk_scale = None, skip_connection = True, 
+        d_k = None, qkv_bias=True, qk_scale = None, skip_connection = False, 
         atten_dropout=None, dropout = None):
 
         super().__init__(in_channel = in_channel, num_heads = num_heads, d_k = d_k, qkv_bias = qkv_bias, 
@@ -363,7 +363,7 @@ class VisionTransformerBlock(nn.Module):
         self.atten = SelfAttentionBlock(
             in_channel, num_heads=num_heads,
             qkv_bias=qkv_bias, qk_scale=qk_scale, atten_dropout=atten_dropout, dropout=dropout,
-            channel_dim = -1)
+            channel_dim = -1, skip_connection=False)
 
         self.drop_path = DropPath(
             p = drop_path) if drop_path > 0. else nn.Identity()
@@ -459,7 +459,8 @@ class SwinTransformerBlock(VisionTransformerBlock):
         self.window_length = np.prod(self.window_size)
         self.atten = WindowAttentionBlock(
             in_channel, window_size=self.window_size, num_heads=num_heads,
-            qkv_bias=qkv_bias, qk_scale=qk_scale, atten_dropout=atten_dropout, dropout=dropout)
+            qkv_bias=qkv_bias, qk_scale=qk_scale, atten_dropout=atten_dropout, 
+            dropout=dropout, skip_connection=False)
 
         ### shift window for both 2D and 3D
         if self.window_shift:

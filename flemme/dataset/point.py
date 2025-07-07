@@ -15,7 +15,7 @@ class PointDataset(Dataset):
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         logger.info("loading data from the directory: {}".format(data_path))
-        self.vec_path = data_path
+        self.data_path = data_path
         self.vec = load_pcd(self.vec_path)
         self.mode = mode
         self.transform = transform
