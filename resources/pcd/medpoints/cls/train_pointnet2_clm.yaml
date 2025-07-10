@@ -57,7 +57,7 @@ val_loader:
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold4
   batch_size: 16
   num_workers: 8
-  shuffle: true
+  shuffle: false
   data_transforms:
     - name: Normalize
     - name: FixedPoints

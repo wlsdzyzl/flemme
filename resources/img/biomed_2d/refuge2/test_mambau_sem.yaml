@@ -48,7 +48,7 @@ loader:
     - name: Relabel
     - name: ToOneHot
       num_classes: 3
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/REFUGE2/MambaU/ckp_best.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/REFUGE2/MambaU/ckp_best_loss.pth
 
 evaluation_metrics:
   seg:

@@ -46,7 +46,7 @@ loader:
     - name: ToTensor
     - name: ToBinaryMask
       threshold: 0.5
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/CVC-ClinicDB/SwinU/ckp_best.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/CVC-ClinicDB/SwinU/ckp_best_loss.pth
 seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/CVC-ClinicDB/SwinU
 evaluation_metrics:
   seg:

@@ -1,8 +1,9 @@
 #### This file is a script, and the code style sucks. 
 from .trainer_utils import *
 import torch.nn.functional as F
-from flemme.model import create_model, ClM
+from flemme.model import create_model
 from flemme.dataset import create_loader
+
 from flemme.logger import get_logger
 from flemme.sampler import create_sampler
 from tqdm import tqdm
@@ -84,7 +85,17 @@ def main():
             data_loader = loader['data_loader']
             logger.info('Finish loading data.')
 
-            results = []
+            results = {'input':[], 'target':[], 
+                    'condition':[], 
+                    'latent':[], 
+                    'recon':[], 
+                    'seg':[], 
+                    'cls':[],
+                    'cls_logits':[],
+                    'seg_logits':[],
+                    'cluster':[],
+                    'path':[],
+                    'slice_indices': [],}
 
             custom_save_results = test_config.get('custom_save_results', [])
             custom_res_names = []
@@ -93,11 +104,7 @@ def main():
                 custom_res_names.append(res.get('name'))
                 custom_res_dirs.append(res.get('dir'))
 
-            pickle_results = test_config.get('pickle_results', False)
-            pickle_path = test_config.get('pickle_path', 'pickled')
-            if pickle_results:
-                mkdirs(pickle_path)
-                
+            
             iter_id = 0
             for t in tqdm(data_loader, desc="Predicting"):
                 ### split x, y, path in later implementation.
@@ -117,23 +124,18 @@ def main():
                 if verbose:
                     logger.info(f'We are at iter {iter_id}/{len(data_loader)}.')
                 iter_id += 1
-                if len(results) < eval_batch_num:
-                    process_results(results=results, x = x, y = y, c = c,
+                if len(results['input']) < eval_batch_num:
+                    append_results(results=results, x = x, y = y, c = c,
                                             path = path, 
                                             slice_indices = slice_indices,
                                             res = res, 
                                             data_form = model.data_form,
                                             is_supervised=is_supervised,
                                             is_conditional=is_conditional,
-                                            additional_keys = custom_res_names,
-                                            pickle_results=pickle_results, 
-                                            pickle_path=pickle_path)
+                                            additional_keys = custom_res_names)
                 else: break
-            if slice_indices is not None:
-                results = merge_patches_in_results(results=results, 
-                                                pickle_results=pickle_results, pickle_path=pickle_path)
-            # results = compact_results(results, data_form = model.data_form,
-            #                         additional_keys = custom_res_names)    
+            results = compact_results(results, data_form = model.data_form,
+                                    additional_keys = custom_res_names)    
 
             eval_metrics = test_config.get('evaluation_metrics', None)
             if eval_metrics is not None:
@@ -150,134 +152,117 @@ def main():
                     from flemme.dataset.label_dict import get_label_cls
                     label_names = list(get_label_cls(label_names).values())
                     tsne_config['label_names'] = label_names
-                latents = extract_results(results, 'latent')
-                if latents is None:
+                if not len(results['latent']):
                     logger.warning('There is no latent for tsne visualization.')
-                elif not latents.ndim == 2:
+                elif not results['latent'].ndim == 2:
                     logger.warning('TSNE only supports to visualize vector embeddings.')
                 else:
-                    labels = None
-                    ### classification model
-                    if isinstance(model, ClM):
-                        labels = extract_results(results, 'target')
-                    elif is_conditional:
-                        labels = extract_results(results, 'condition'), 
-                    if labels is None:
+                    labels = onehot_to_label(results['target'], channel_dim=channel_dim)
+                    if not labels.ndim == 1:
+                        labels = onehot_to_label(results['condition'], channel_dim=channel_dim)
+                    if not len(labels) or not labels.ndim == 1:
                         logger.warning('There is no label for tsne visualization.')
                     else:
-                        labels = onehot_to_label(labels, hannel_dim=channel_dim)
-                        if not labels.ndim == 1:
-                            logger.warning('Cannnot be visualized through TSNE because there is no label information.')
-                        tsne_fig = construct_tsne_vis(latents, labels = labels, **tsne_config)
+                        tsne_fig = construct_tsne_vis(results['latent'], labels = labels, **tsne_config)
                         save_img('tsne.png', tsne_fig)
 
             ### saving results of reconstruction and segmentation
             recon_dir = test_config.get('recon_dir', None)
 
-            if recon_dir is not None:
+            if recon_dir is not None and len(results['recon']) > 0:
                 logger.info(f'Saving reconstruction results to {recon_dir} ...')
                 if not os.path.exists(recon_dir):
                     os.makedirs(recon_dir)
-                sample_idx = 0
-                for res_dict in tqdm(results):
-                    res_dict = load_pickle(res_dict)
-                    for idx, recon in enumerate(res_dict['recon']):
-                        origin_path = res_dict['path'][idx]
-                        if origin_path != '':
-                            filename = os.path.basename(origin_path).split('.')[0]
+                for idx, recon in enumerate(results['recon']):
+                    origin_path = results['path'][idx]
+                    if origin_path != '':
+                        filename = os.path.basename(origin_path).split('.')[0]
+                    else:
+                        filename = 'sample_{:03d}'.format(idx)
+                    class_name = None
+                    if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
+                        if is_supervised:
+                            class_name = origin_path.split('/')[-3]
                         else:
-                            filename = 'sample_{:03d}'.format(sample_idx)
-                        class_name = None
-                        if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
-                            if is_supervised:
-                                class_name = origin_path.split('/')[-3]
-                            else:
-                                class_name = origin_path.split('/')[-2]
-                        if class_name:
-                            output_dir = os.path.join(recon_dir, class_name)
-                            if not os.path.exists(output_dir):
-                                os.makedirs(output_dir)
-                            output_path = os.path.join(output_dir, filename)
-                        else:
-                            output_path = os.path.join(recon_dir, filename)
-                        save_data(recon, data_form=model.data_form, output_path=output_path)
-                        if save_target:
-                            target = res_dict['target'][idx]
-                            save_data(target, data_form=model.data_form, output_path=output_path+'_tar')
-                        if save_input:
-                            input_x = res_dict['input'][idx]
-                            save_data(input_x, data_form=model.data_form, output_path=output_path+'_input')
-                        sample_idx += 1
+                            class_name = origin_path.split('/')[-2]
+                    if class_name:
+                        output_dir = os.path.join(recon_dir, class_name)
+                        if not os.path.exists(output_dir):
+                            os.makedirs(output_dir)
+                        output_path = os.path.join(output_dir, filename)
+                    else:
+                        output_path = os.path.join(recon_dir, filename)
+                    save_data(recon, data_form=model.data_form, output_path=output_path)
+                    if save_target:
+                        target = results['target'][idx]
+                        save_data(target, data_form=model.data_form, output_path=output_path+'_tar')
+                    if save_input:
+                        input_x = results['input'][idx]
+                        save_data(input_x, data_form=model.data_form, output_path=output_path+'_input')
             ### save segmentation
             seg_dir = test_config.get('seg_dir', None)
-            if seg_dir is not None:
+            if seg_dir is not None and len(results['seg']) > 0:
                 logger.info(f'Saving segmentation results to {seg_dir} ...')
                 if not os.path.exists(seg_dir):
                     os.makedirs(seg_dir)
-                sample_idx = 0
-                for res_dict in tqdm(results):
-                    res_dict = load_pickle(res_dict)
-                    for idx, (data, seg, tar) in enumerate(zip(res_dict['input'], res_dict['seg'], res_dict['target'])):
-                        origin_path = res_dict['path'][idx]
-                        if origin_path != '':
-                            filename = os.path.basename(origin_path).split('.')[0]
-                        else:
-                            filename = 'sample_{:03d}'.format(sample_idx)
-                        output_path = os.path.join(seg_dir, filename)
-                        
-                        ### transfer onehot to normal label for non-binary segmentation
-                        seg = onehot_to_label(seg, channel_dim=channel_dim, keepdim=True) if seg.shape[channel_dim] > 1 else seg
-                        tar = onehot_to_label(tar, channel_dim=channel_dim, keepdim=True) if tar.shape[channel_dim] > 1 else tar
-                        save_data(seg.astype(int), data_form=model.data_form, output_path=output_path, segmentation = True)
-                        ### save input
-                        if save_input:
-                            save_data(data, data_form=model.data_form, output_path=output_path+'_input')
-                        ##### save target
-                        if save_target:
-                            save_data(tar.astype(int), data_form=model.data_form, output_path=output_path + '_tar', segmentation = True)
-                        
-                        ### save colorized results
-                        if save_colorized:
-                            #### save colorized pcd
-                            if model.data_form == DataForm.PCD:
-                                color = colorize_by_label(seg[..., 0])
+                for idx, (data, seg, tar) in enumerate(zip(results['input'], results['seg'], results['target'])):
+                    origin_path = results['path'][idx]
+                    if origin_path != '':
+                        filename = os.path.basename(origin_path).split('.')[0]
+                    else:
+                        filename = 'sample_{:03d}'.format(idx)
+                    output_path = os.path.join(seg_dir, filename)
+                    
+                    ### transfer onehot to normal label for non-binary segmentation
+                    seg = onehot_to_label(seg, channel_dim=channel_dim, keepdim=True) if seg.shape[channel_dim] > 1 else seg
+                    tar = onehot_to_label(tar, channel_dim=channel_dim, keepdim=True) if tar.shape[channel_dim] > 1 else tar
+                    save_data(seg.astype(int), data_form=model.data_form, output_path=output_path, segmentation = True)
+                    ### save input
+                    if save_input:
+                        save_data(data, data_form=model.data_form, output_path=output_path+'_input')
+                    ##### save target
+                    if save_target:
+                        save_data(tar.astype(int), data_form=model.data_form, output_path=output_path + '_tar', segmentation = True)
+                    
+                    ### save colorized results
+                    if save_colorized:
+                        #### save colorized pcd
+                        if model.data_form == DataForm.PCD:
+                            color = colorize_by_label(seg[..., 0])
+                            cdata = (data, color)
+                            save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized')
+                            ### save colorized target
+                            if save_target:
+                                color = colorize_by_label(tar[..., 0])
                                 cdata = (data, color)
-                                save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized')
-                                ### save colorized target
-                                if save_target:
-                                    color = colorize_by_label(tar[..., 0])
-                                    cdata = (data, color)
-                                    save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
-                            #### save colorized img
-                            if model.data_form == DataForm.IMG:                
-                                cdata, raw_img = colorize_img_by_label(seg, data, gt = tar)
-                                save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized')
-                                if save_target:
-                                    cdata, _ = colorize_img_by_label(tar, data, gt = tar)
-                                    save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
-                                if save_input:
-                                    save_data(raw_img, data_form=model.data_form, output_path=output_path + '_input')
-                        sample_idx += 1
+                                save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
+                        #### save colorized img
+                        if model.data_form == DataForm.IMG:                
+                            cdata, raw_img = colorize_img_by_label(seg, data, gt = tar)
+                            save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized')
+                            if save_target:
+                                cdata, _ = colorize_img_by_label(tar, data, gt = tar)
+                                save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
+                            if save_input:
+                                save_data(raw_img, data_form=model.data_form, output_path=output_path + '_input')
 
             for res_name, res_dir in zip(custom_res_names, custom_res_dirs):
                 res_name = res.get('name')
                 res_dir = res.get('dir', None)
-                if res_dir is not None:
+                save_input = res.get('save_input', False)
+                save_target = res.get('save_target', False)
+                if res_dir is not None and len(results[res_name]) > 0:
                     logger.info(f'Saving {res_name} results to {res_dir} ...')
                     if not os.path.exists(res_dir):
                         os.makedirs(res_dir)
-                    sample_idx = 0
-                    for res_dict in tqdm(results):
-                        res_dict = load_pickle(res_dict)
-                        for idx, res_data in enumerate(res_dict[res_name]):
-                            origin_path = res_dict['path'][idx]
-                            if origin_path != '':
-                                filename = os.path.basename(origin_path).split('.')[0]
-                            else:
-                                filename = 'sample_{:03d}'.format(sample_idx)
-                            output_path = os.path.join(res_dir, filename)
-                            save_data(res_data, data_form=model.data_form, output_path=output_path)
-                            sample_idx += 1
+                    for idx, res_data in enumerate(results[res_name]):
+                        origin_path = results['path'][idx]
+                        if origin_path != '':
+                            filename = os.path.basename(origin_path).split('.')[0]
+                        else:
+                            filename = 'sample_{:03d}'.format(idx)
+                        output_path = os.path.join(res_dir, filename)
+                        save_data(res_data, data_form=model.data_form, output_path=output_path)
                         if save_target and len(results['target']) > 0:
                             target = results['target'][idx]
                             save_data(target, data_form=model.data_form, output_path=output_path+'_tar')
@@ -289,7 +274,7 @@ def main():
             if y is not None:
                 input_y = y[0]
             if c is not None:
-                input_c = c[0]
+                input_c = z[0]
         else:
             logger.warning('loader_config is None, reconstruction, segmentation, conditional generation and interpolation will be ignored.')
             cond = None
@@ -321,8 +306,7 @@ def main():
                     for gid in range(group_num):
                         ### interpolating the latent embeddings
                         if loader_config is not None:
-                            latents = extract_results(results, 'latent')
-                            corner_latents = torch.from_numpy(latents[gid * corner_num: gid * corner_num + corner_num])
+                            corner_latents = torch.from_numpy(results['latent'][gid * corner_num: gid * corner_num + corner_num])
                         else:
                             corner_latents = None
                         if is_conditional or is_supervised:

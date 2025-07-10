@@ -6,6 +6,7 @@ results/
 *.egg-info/
 *.out
 *.pyc
+*.pkl
 __pycache__
 path/
 log/

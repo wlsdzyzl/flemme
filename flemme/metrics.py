@@ -313,9 +313,13 @@ if module_config['graph']:
 
     
 
-def get_metrics(metric_config, data_form = None):
+def get_metrics(metric_config, data_form = None, classification = False):
     channel_dim = None
-    if data_form == DataForm.IMG:
+    if classification:
+        ### B * C
+        channel_dim = 1
+    elif data_form == DataForm.IMG:
+        ### if classification, the channel dim = 1
         channel_dim = 0
     elif data_form == DataForm.PCD:
         channel_dim = -1

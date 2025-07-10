@@ -1,5 +1,6 @@
 # train ae or vae
 mode: test
+determinstic: true
 model:
   # can be AE, VAE and DDPM
   name: SeM
@@ -22,7 +23,7 @@ model:
   # in ddpm, it can be the time steps and so on.
 loader:
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold5
+    - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold_test
     # - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold2
     # - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold3 
   dataset: 
@@ -35,7 +36,7 @@ loader:
     slice_builder:
       name: SliceBuilder
       patch_shape: [64, 128, 128]
-      stride_shape: [48, 96, 96]
+      stride_shape: [64, 128, 128]
   batch_size: 8
   num_workers: 8
   shuffle: false

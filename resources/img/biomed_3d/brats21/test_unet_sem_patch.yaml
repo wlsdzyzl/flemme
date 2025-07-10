@@ -59,6 +59,8 @@ seg_dir: /media/wlsdzyzl/DATA1/flemme-results/UNet-Patch/BRATS21
 save_target: true
 save_input: true
 save_colorized: true
+pickle_results: true
+pickle_path:  /media/wlsdzyzl/DATA1/flemme-ckp/pickled
 evaluation_metrics:
   seg:
     - name: Dice

@@ -28,7 +28,7 @@ loader:
     label_dir: masks
     data_suffix: jpg
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/CVC-ClinicDB/fold5/
+    - /media/wlsdzyzl/DATA1/datasets/img/CVC-ClinicDB/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false
@@ -44,7 +44,7 @@ loader:
     - name: ToTensor
     - name: ToBinaryMask
       threshold: 0.5
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/CVC-ClinicDB/UNet/ckp_best.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/CVC-ClinicDB/UNet/ckp_best_loss.pth
 seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/CVC-ClinicDB/UNet
 save_target: true
 save_input: true

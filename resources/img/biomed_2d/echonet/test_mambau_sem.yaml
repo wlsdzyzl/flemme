@@ -38,7 +38,7 @@ loader:
       size: [128, 128]
     - name: GrayScale
     - name: ToTensor
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/MambaU/ckp_best.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/MambaU/ckp_best_loss.pth
 seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/Echonet/MambaU
 evaluation_metrics:
   seg:

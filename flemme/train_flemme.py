@@ -192,21 +192,17 @@ def main():
     sampler_config = train_config.get('sampler', {'name': 'NormalSampler'})
     if model.is_generative and sampler_config:
         sampler = create_sampler(model=model, sampler_config = sampler_config)
-
+    
+    pickle_results = train_config.get('pickle_results', False)
+    pickle_path = train_config.get('pickle_path', 'pickled')
+    if pickle_results:
+        mkdirs(pickle_path)
 
     for epoch in range(start_epoch, max_epoch+1):
         start_time = datetime.now()
         ### training process
         model.train()
-        results = {'input':[], 'target':[], 
-            'condition':[], 
-            'latent':[], 
-            'recon':[], 
-            'seg':[], 
-            'cls':[],
-            'cls_logits':[],
-            'seg_logits':[],
-            'cluster':[]}
+        results = []
         for t in data_loader:
             processed_input = process_input(t)
             x, y, c = processed_input[0], processed_input[1], processed_input[2]
@@ -223,12 +219,14 @@ def main():
             losses, res = compute_loss(model, x, y, c)
             
             #### to numpy for evaluation
-            if evaluators is not None and len(results['input']) < eval_batch_num:
+            if evaluators is not None and len(results) < eval_batch_num:
                 if res is None: res = forward_pass(model, x, y, c)
-                append_results(results=results, x = x, y = y, c = c,
+                process_results(results=results, x = x, y = y, c = c,
                                         res = res, data_form = model.data_form, 
                                         is_supervised=is_supervised, 
-                                        is_conditional=is_conditional)
+                                        is_conditional=is_conditional,
+                                        pickle_results=pickle_results, 
+                                        pickle_path=pickle_path)
             loss = sum(losses)
             optimizer.zero_grad()
             loss.backward()
@@ -281,7 +279,7 @@ def main():
         ### evaluate after each epoch
         ### write evaluation
         if evaluators is not None:
-            results = compact_results(results, data_form = model.data_form)
+            # results = compact_results(results, data_form = model.data_form)
             eval_res = evaluate_results(results, evaluators, data_form = model.data_form)
 
             if len(eval_res) > 0:
@@ -308,16 +306,7 @@ def main():
                 ## set val_loss as loss
                 model.eval()
                 with torch.no_grad():
-                    vresults = {'input':[], 
-                        'target':[], 
-                        'condition':[], 
-                        'latent':[], 
-                        'recon':[], 
-                        'seg':[], 
-                        'cls':[],
-                        'cls_logits':[],
-                        'seg_logits':[],
-                        'cluster':[]}
+                    vresults = []
                     val_losses = torch.zeros(len(loss_names))
                     val_n = 0
                     for vt in val_data_loader:
@@ -330,12 +319,14 @@ def main():
                             vc = vc.to(device).float()
                         vlosses, vres = compute_loss(model, vx, vy, vc)
 
-                        if evaluators is not None and len(vresults['input']) < eval_batch_num:
+                        if evaluators is not None and len(vresults) < eval_batch_num:
                             if vres is None: vres = forward_pass(model, x, y, c)
-                            append_results(results=vresults, x = vx, y = vy, c = vc,
+                            process_results(results=vresults, x = vx, y = vy, c = vc,
                                                 res = vres, data_form = model.data_form,
                                                 is_supervised=is_supervised, 
-                                                is_conditional=is_conditional)
+                                                is_conditional=is_conditional,
+                                                pickle_results=pickle_results, 
+                                                pickle_path=pickle_path)
                         val_losses += torch.Tensor([l.item() * vx.shape[0] if model.loss_reduction == 'mean' else l.sum().item() for l in vlosses])
                         val_n += vx.shape[0]
                     val_losses = val_losses / val_n
@@ -366,7 +357,7 @@ def main():
                                 additional_keys = custom_write_results)
                     ### evaluation on val datasets
                     if evaluators is not None:
-                        vresults = compact_results(vresults, data_form = model.data_form)
+                        # vresults = compact_results(vresults, data_form = model.data_form)
                         eval_res = evaluate_results(vresults, evaluators, data_form = model.data_form)
                         if len(eval_res) > 0:
                             for eval_type, eval in eval_res.items():

@@ -25,8 +25,8 @@ loader:
     cls_label: MedPointS
   data_path_list: 
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold1
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold2
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold3
+    # - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold2
+    # - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold3
   batch_size: 16
   num_workers: 8
   shuffle: true
@@ -51,7 +51,7 @@ val_loader:
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold4
   batch_size: 32
   num_workers: 8
-  shuffle: true
+  shuffle: false
   data_transforms:
     - name: Normalize
     - name: FixedPoints

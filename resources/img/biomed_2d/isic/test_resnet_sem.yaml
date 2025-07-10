@@ -39,7 +39,7 @@ loader:
       ## the value must be list
       size: [384, 256]
     - name: ToTensor
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ISIC/ResNet/ckp_best.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ISIC/ResNet/ckp_best_loss.pth
 seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/ISIC/ResNet
 evaluation_metrics:
   seg:

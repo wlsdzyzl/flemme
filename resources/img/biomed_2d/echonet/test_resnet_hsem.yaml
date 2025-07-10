@@ -39,7 +39,7 @@ loader:
       size: [128, 128]
     - name: GrayScale
     - name: ToTensor
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/ResNet_HSeg/ckp_best.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/ResNet_HSeg/ckp_best_loss.pth
 seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/Echonet/ResNet_HSeg
 evaluation_metrics:
   seg:

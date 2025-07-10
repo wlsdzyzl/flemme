@@ -37,7 +37,7 @@ loader:
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold3
   batch_size: 2
   num_workers: 8
-  shuffle: true
+  shuffle: false
   data_transforms:
     - name: Normalize
     - name: FixedPoints
