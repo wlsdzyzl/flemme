@@ -2,16 +2,15 @@
 mode: test
 model:
   # can be AE, VAE and DDPM
-  name: HSeM
+  name: SeM
   # encoder config
   encoder:
     name: UNet
-    image_size: [96, 192, 192]
+    image_size: [64, 128, 128]
     in_channel: 1
     out_channel: 1
     patch_size: 2
     down_channels: [64, 128]
-    middle_attens: [null, atten]
     middle_channels: [256, 256]
     building_block: single
     normalization: batch
@@ -23,24 +22,35 @@ model:
   # in ddpm, it can be the time steps and so on.
 loader:
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/ImageCAS/fold5
+    - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold5
+    # - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold2
+    # - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold3 
   dataset: 
-    name: ImgSegDataset
+    name: PatchImgSegDataset
     dim: 3
     data_suffix: .nii.gz
-  batch_size: 4
+    data_dir: imagesTr
+    label_dir: labelsTr
+    lazy_loading: True
+    slice_builder:
+      name: SliceBuilder
+      patch_shape: [64, 128, 128]
+      stride_shape: [48, 96, 96]
+  batch_size: 8
   num_workers: 8
   shuffle: false
   data_transforms:
-    - name: Resize
-      size: [96, 192, 192]
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ImageCAS/UNet_Atten_HSeg/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ImageCAS/UNet_Patch/ckp_last.pth
+
+seg_dir: /media/wlsdzyzl/DATA1/flemme-results/UNet/task06lung
+save_target: true
+save_input: true
+save_colorized: true
+
 evaluation_metrics:
   seg:
     - name: Dice
     - name: ACC
     - name: mIoU
-    # - name: HD
-    #   method: modified

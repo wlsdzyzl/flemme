@@ -87,7 +87,7 @@ val_loader:
       num_classes: 4
       ignore_background: False
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-path/to/checkpointcheckpoint/BRATS21/SwinU_HSeg
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/BRATS21/SwinU_HSeg
 
 ### parameter for optimizer
 optimizer:

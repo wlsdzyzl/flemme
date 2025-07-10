@@ -208,8 +208,9 @@ def main():
             'seg_logits':[],
             'cluster':[]}
         for t in data_loader:
-            x, y, c, _ = process_input(t)
-            x  = x.to(device).float() 
+            processed_input = process_input(t)
+            x, y, c = processed_input[0], processed_input[1], processed_input[2]
+            x = x.to(device).float() 
             if y is not None: 
                 y = y.to(device)
             if c is not None:
@@ -320,7 +321,8 @@ def main():
                     val_losses = torch.zeros(len(loss_names))
                     val_n = 0
                     for vt in val_data_loader:
-                        vx, vy, vc, _ = process_input(vt)
+                        processed_vinput = process_input(vt)
+                        vx, vy, vc = processed_vinput[0], processed_vinput[1], processed_vinput[2]
                         vx  = vx.to(device).float() 
                         if vy is not None: 
                             vy = vy.to(device).float()

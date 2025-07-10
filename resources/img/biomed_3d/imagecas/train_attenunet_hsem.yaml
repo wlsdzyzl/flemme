@@ -51,7 +51,7 @@ val_loader:
     - name: Resize
       size: [96, 192, 192]
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-path/to/checkpointcheckpoint/ImageCAS/UNet_Atten_HSeg
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/ImageCAS/UNet_Atten_HSeg
 
 ### parameter for optimizer
 optimizer:

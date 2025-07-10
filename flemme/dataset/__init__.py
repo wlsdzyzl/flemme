@@ -1,6 +1,8 @@
 from flemme.config import module_config
 from .img import *
+from .vol_patch import PatchImgSegDataset, MultiModalityPatchImgSegDataset
 from torch.utils.data import DataLoader, ConcatDataset
+from torch.utils.data._utils.collate import default_collate
 from flemme.utils import DataForm
 from torchvision.transforms import Compose
 from flemme.augment import get_transforms, select_label_transforms, check_random_transforms
@@ -16,6 +18,8 @@ img_dataset_dict = {
     'ImgSegDataset': ImgSegDataset,
     'ImgReconDataset': ImgReconDataset,
     'MultiModalityImgSegDataset': MultiModalityImgSegDataset,
+    'PatchImgSegDataset': PatchImgSegDataset,
+    'MultiModalityPatchImgSegDataset': MultiModalityPatchImgSegDataset,
     'MNIST': MNISTWrapper,
     'CIFAR10': CIFAR10Wrapper,
     'CelebA': CelebAWrapper,
@@ -24,7 +28,8 @@ pcd_dataset_dict = {}
 vec_dataset_dict = {}
 graph_dataset_dict = {}
 
-process_label_datasets = [ImgSegDataset, MultiModalityImgSegDataset]
+process_label_datasets = [ImgSegDataset, MultiModalityImgSegDataset, 
+                        PatchImgSegDataset, MultiModalityPatchImgSegDataset]
 process_target_datasets = [ImgReconDataset, ]
 
 if module_config['point-cloud']:
@@ -50,6 +55,10 @@ if module_config['graph']:
     graph_dataset_dict = {'GraphDataset': GraphDataset,
         'GraphShapeNet': GraphShapeNetWrapper,}
 
+def custom_collate(batch):
+    inputs = zip(*batch)
+    inputs = tuple( list(i) if type(i[0]) == tuple and type(i[0][0]) == slice else None if i[0] is None else default_collate(i) for i in inputs)
+    return inputs
 
 def create_loader(loader_config):
     """
@@ -204,5 +213,7 @@ def create_loader(loader_config):
             batch_size = batch_size, shuffle = shuffle, num_workers = num_workers, drop_last = drop_last)
     else:
         loader['data_loader'] = DataLoader(ConcatDataset(datasets), 
-            batch_size = batch_size, shuffle = shuffle, num_workers = num_workers, drop_last = drop_last)
+            batch_size = batch_size, shuffle = shuffle, 
+            num_workers = num_workers, drop_last = drop_last,
+            collate_fn = custom_collate)
     return loader

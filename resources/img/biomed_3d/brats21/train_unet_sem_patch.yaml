@@ -5,17 +5,15 @@ model:
   name: SeM
   # encoder config
   encoder:
-    name: VMambaU
-    image_size: [120, 192, 120]
+    name: UNet
+    image_size: [64, 128, 64]
     in_channel: 4
     out_channel: 4
     patch_size: 2
     down_channels: [64, 128]
     middle_channels: [256, 256]
-    building_block: vmamba
-    normalization: layer
-    scan_mode: single
-    flip_scan: false
+    building_block: single
+    normalization: batch
   ### loss function
   segmentation_losses: 
     - name: Dice
@@ -25,7 +23,7 @@ model:
   # in ddpm, it can be the time steps and so on.
 loader:
   dataset: 
-    name: MultiModalityImgSegDataset
+    name: MultiModalityPatchImgSegDataset
     dim: 3
     data_dir: [flair, t1, t1ce, t2]
     data_suffix: [flair.nii.gz, t1.nii.gz, t1ce.nii.gz, t2.nii.gz]
@@ -35,20 +33,23 @@ loader:
     crop_nonzero:
       margin: [2,2,2]
       crop_by: raw
+    lazy_loading: True
+    slice_builder:
+      name: FilterSliceBuilder
+      patch_shape: [64, 128, 64]
+      stride_shape: [32, 64, 32]
+      threshold: 0.01
+      slack_acceptance: 0.01
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold1
-    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold2
-    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold3
+    - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold1
+    - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold2
+    - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold3
   batch_size: 2
   num_workers: 8
   shuffle: true
   data_transforms:
-    - name: Resize
-      size: [120, 192, 120]
     - name: ToTensor
   label_transforms:
-    - name: Resize
-      size: [120, 192, 120]
     - name: Relabel
       map: 
         - [4, 3]
@@ -59,7 +60,7 @@ loader:
 
 val_loader:
   dataset: 
-    name: MultiModalityImgSegDataset
+    name: MultiModalityPatchImgSegDataset
     dim: 3
     data_dir: [flair, t1, t1ce, t2]
     data_suffix: [flair.nii.gz, t1.nii.gz, t1ce.nii.gz, t2.nii.gz]
@@ -69,18 +70,21 @@ val_loader:
     crop_nonzero:
       margin: [2,2,2]
       crop_by: raw
+    lazy_loading: True
+    slice_builder:
+      name: FilterSliceBuilder
+      patch_shape: [64, 128, 64]
+      stride_shape: [32, 64, 32]
+      threshold: 0.01
+      slack_acceptance: 0.01
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold4
+    - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold4
   batch_size: 2
   num_workers: 8
   shuffle: false
   data_transforms:
-    - name: Resize
-      size: [120, 192, 120]
     - name: ToTensor
   label_transforms:
-    - name: Resize
-      size: [120, 192, 120]
     - name: Relabel
       map: 
         - [4, 3]
@@ -88,8 +92,7 @@ val_loader:
       num_classes: 4
       ignore_background: False
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/BRATS21/MambaU
-
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/BRATS21/UNet-Patch
 ### parameter for optimizer
 optimizer:
   name: Adam
@@ -107,5 +110,5 @@ evaluation_metrics:
     - name: mIoU
 max_epoch: 500
 warmup_epochs: 2
-write_after_iters: 5
+write_after_iters: 100
 save_after_epochs: 2

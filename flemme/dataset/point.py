@@ -27,7 +27,7 @@ class PointDataset(Dataset):
         vec = self.vec[index]
         if self.transform:
             vec = self.transform(vec)
-        return vec, 0, ''
+        return vec, ''
 ### generate by algorithm
 class ToyDataset(Dataset):
     def __init__(self, n_sample, noise = 0.0, dim = 3, transform = None, mode = 'train', **kwargs):

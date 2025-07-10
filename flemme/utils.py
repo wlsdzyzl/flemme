@@ -34,10 +34,6 @@ def get_class(class_name, module):
 def set_random_state(np_state, torch_state):
     np.random.set_state(np_state)
     torch.set_rng_state(torch_state)
-def relabel(m):
-    _, unique_labels = np.unique(m, return_inverse=True)
-    m = unique_labels.reshape(m.shape)
-    return m
 
 def onehot_to_label(label, channel_dim = 0, keepdim = False):
     if torch.is_tensor(label):

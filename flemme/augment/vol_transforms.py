@@ -4,7 +4,7 @@ import random
 import numpy as np
 import torch
 import torch.nn.functional as F
-from scipy.ndimage import rotate, map_coordinates, gaussian_filter, convolve, binary_opening, binary_closing
+from scipy.ndimage import rotate, map_coordinates, gaussian_filter, binary_opening, binary_closing
 from skimage.filters import gaussian
 from flemme.utils import label_to_onehot
 from functools import partial

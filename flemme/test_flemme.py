@@ -94,7 +94,8 @@ def main():
                     'cls_logits':[],
                     'seg_logits':[],
                     'cluster':[],
-                    'path':[]}
+                    'path':[],
+                    'slice_indices': [],}
 
             custom_save_results = test_config.get('custom_save_results', [])
             custom_res_names = []
@@ -107,8 +108,8 @@ def main():
             iter_id = 0
             for t in tqdm(data_loader, desc="Predicting"):
                 ### split x, y, path in later implementation.
-                x, y, c, path = process_input(t)
-                x  = x.to(device).float() 
+                x, y, c, slice_indices, path = process_input(t)
+                x = x.to(device).float() 
                 if y is not None: 
                     y = y.to(device)
                 if c is not None:
@@ -125,7 +126,10 @@ def main():
                 iter_id += 1
                 if len(results['input']) < eval_batch_num:
                     append_results(results=results, x = x, y = y, c = c,
-                                            path = path, res = res, data_form = model.data_form,
+                                            path = path, 
+                                            slice_indices = slice_indices,
+                                            res = res, 
+                                            data_form = model.data_form,
                                             is_supervised=is_supervised,
                                             is_conditional=is_conditional,
                                             additional_keys = custom_res_names)

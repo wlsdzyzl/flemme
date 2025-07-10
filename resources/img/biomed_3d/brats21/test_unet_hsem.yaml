@@ -53,7 +53,7 @@ loader:
       ignore_background: False
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA1/flemme-path/to/checkpointcheckpoint/BRATS21/UNet_HSeg/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/BRATS21/UNet_HSeg/ckp_last.pth
 seg_dir: /work/guoqingzhang/results/BRATS21/UNet_HSeg
 # evaluation_metrics:
 #   seg:

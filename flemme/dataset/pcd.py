@@ -32,7 +32,7 @@ class PcdDataset(Dataset):
         if self.data_transform:
             pcd = self.data_transform(pcd)
             # save_pcd(pcd_path+'.transformed.ply', pcd.numpy())
-        return pcd, 0, pcd_path
+        return pcd, pcd_path
         
 class PcdClsDataset(Dataset):
     def __init__(self, data_path, 

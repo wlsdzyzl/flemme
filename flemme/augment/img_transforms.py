@@ -3,6 +3,7 @@ from torchvision.transforms import Resize as TResize, InterpolationMode, ToTenso
     RandomRotation, GaussianBlur, CenterCrop, RandomCrop, Compose
 from torchvision.transforms.functional import rgb_to_grayscale
 from functools import partial
+from scipy.ndimage import map_coordinates, gaussian_filter
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -73,7 +74,10 @@ class Relabel:
                 k, v = kv
                 m[m == k] = v
         else:
-            _, unique_labels = torch.unique(m, return_inverse=True)
+            if torch.is_tensor(m):
+                _, unique_labels = torch.unique(m, return_inverse=True)
+            else:
+                _, unique_labels = np.unique(m, return_inverse = True)
             m = unique_labels.reshape(m.shape)
         return m
 
@@ -97,6 +101,9 @@ class ElasticDeform:
         self.execution_probability = execution_probability
 
     def __call__(self, m):
+        is_tensor = torch.is_tensor(m)
+        if is_tensor:
+            m = m.cpu().numpy()
         if np.random.uniform() < self.execution_probability:
             assert m.ndim in [2, 3]
 
@@ -117,20 +124,20 @@ class ElasticDeform:
             indices = y + dy, x + dx
 
             if m.ndim == 2:
-                return map_coordinates(m, indices, order=self.spline_order, mode='reflect')
+                res = map_coordinates(m, indices, order=self.spline_order, mode='reflect')
             else:
                 channels = [map_coordinates(c, indices, order=self.spline_order, mode='reflect') for c in m]
-                return np.stack(channels, axis=0)
-
-        return m
+                res = np.stack(channels, axis=0)
+        if is_tensor:
+            res = torch.tensor(res, dtype=torch.float32)
+        return res
 
 
 def one_hot2dist(seg, resolution = [1, 1]):
     # assert one_hot(torch.tensor(seg), axis=0)
-    is_tensor = False
-    if torch.is_tensor(seg):
-        seg = seg.cpu.numpy()
-        is_tensor = True
+    is_tensor = torch.is_tensor(seg)
+    if is_tensor:
+        seg = seg.cpu().numpy()
     K: int = len(seg)
     res = np.zeros_like(seg)
     for k in range(K):
@@ -160,7 +167,7 @@ class ClipTransform:
     def __init__(self):
         size = 224
         self.comp = Compose([
-            TResize(size, interpolation=BICUBIC),
+            Resize(size, mode='bicubic'),
             CenterCrop(size),
             _convert_image_to_rgb,
             ToTensor(),

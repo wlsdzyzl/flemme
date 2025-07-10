@@ -346,7 +346,10 @@ def unfreeze(model):
         param.requires_grad = True
 
 def append_results(results, x, y, c, res, data_form, path = None,  
-        is_supervised = False, is_conditional = False, additional_keys = []):
+        slice_indices = None,
+        is_supervised = False, 
+        is_conditional = False, 
+        additional_keys = []):
     if not data_form == DataForm.GRAPH:
         results['input'].append(x.cpu().detach().numpy())
         if y is not None:
@@ -363,10 +366,12 @@ def append_results(results, x, y, c, res, data_form, path = None,
         ## should be a list of strings or none
         ## only for test
         if path is not None:
-            if type(path[0]) == tuple:
-                results['path'] += list(path[0])
-            else:
-                results['path'] += path
+            # if type(path[0]) == tuple:
+            #     results['path'] += list(path[0])
+            # else:
+            results['path'] += path
+        if slice_indices is not None:
+            results['slice_indices'] += slice_indices
         if res:
             if 'cluster_logits' in res:
                 res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
@@ -425,6 +430,70 @@ def compact_results(results, data_form, additional_keys = []):
         for k in additional_keys:
             if len(results[k]) > 0:
                 results[k] = np.concatenate(results[k])
+        ### merge patches to whole volumes
+        ### only perform in test phase
+        if 'slice_indices' in results and len(results['slice_indices']) > 0:
+            merged_paths = []
+            merged_patch_indices = []
+            merged_patch_targets = []
+            merged_patch_inputs = []
+            merged_patch_segs = []
+            merged_patch_seg_logits = []
+            merged_shapes = []
+            for patch_id in range(len(results['slice_indices'])):
+                current_path = results['path'][patch_id]
+                if len(merged_paths) == 0 or not current_path == merged_paths[-1]:
+                    merged_paths.append(current_path)
+                    merged_patch_indices.append([results['slice_indices'][patch_id], ])
+                    merged_patch_targets.append([results['target'][patch_id], ])
+                    merged_patch_inputs.append([results['input'][patch_id], ])
+                    merged_patch_segs.append([results['seg'][patch_id], ])
+                    merged_patch_seg_logits.append([results['seg_logits'][patch_id], ])
+                    merged_shapes.append([idx.stop for idx in results['slice_indices'][patch_id]])
+                else:
+                    merged_patch_indices[-1].append(results['slice_indices'][patch_id])
+                    merged_patch_targets[-1].append(results['target'][patch_id])
+                    merged_patch_inputs[-1].append(results['input'][patch_id])
+                    merged_patch_segs[-1].append(results['seg'][patch_id])
+                    merged_patch_seg_logits[-1].append(results['seg_logits'][patch_id])
+                    tmp_shape = [idx.stop for idx in results['slice_indices'][patch_id]]
+                    merged_shapes[-1] = [max(m, t) for m, t in zip(merged_shapes[-1], tmp_shape)]
+
+            inputs = []
+            targets = []
+            segs = []
+            seg_logits = []
+            input_c = results['input'][0].shape[0]
+            label_c = results['target'][0].shape[0]
+            for i in range(len(merged_paths)):
+                # print(merged_shapes, merged_shapes)
+                tmp_input = np.zeros([input_c, ] + merged_shapes[i])
+                weight_input = np.zeros([input_c, ] + merged_shapes[i])
+                tmp_target = np.zeros([label_c, ] + merged_shapes[i])
+                tmp_seg = np.zeros([label_c, ] + merged_shapes[i])
+                tmp_seg_logits = np.zeros([label_c, ] + merged_shapes[i])
+                weight_label = np.zeros([label_c, ] + merged_shapes[i])
+
+                for patch_id, si in enumerate(merged_patch_indices[i]):
+                    # print(isi, lsi, tmp_input.shape)
+                    isi = (slice(0, input_c),) + si
+                    lsi = (slice(0, label_c),) + si
+                    tmp_input[isi] += merged_patch_inputs[i][patch_id]
+                    weight_input[isi] += 1
+                    tmp_target[lsi] += merged_patch_targets[i][patch_id]
+                    tmp_seg[lsi] += merged_patch_segs[i][patch_id]
+                    tmp_seg_logits[lsi] += merged_patch_seg_logits[i][patch_id]
+                    weight_label[lsi] += 1
+
+                inputs.append(tmp_input / weight_input)
+                targets.append(tmp_target / weight_label)
+                segs.append(tmp_seg / weight_label)
+                seg_logits.append(tmp_seg_logits / weight_label)
+
+            results['input'] = inputs
+            results['target'] = targets
+            results['seg'] = segs
+            results['seg_logits'] = seg_logits
     return results
 
 def create_evaluator(eval_configs, data_form):
@@ -505,14 +574,22 @@ def evaluate_results(results, evaluators, data_form, verbose = False):
                     eval_res[eval_type][eval_metric] = tmp_res
     return eval_res
 def process_input(t):
-    x, y, c, p = None, None, None, None
+    x, y, c, si, p = None, None, None, None, None
     if len(t) == 2:
         x, p = t
     if len(t) == 3:
         x, y, p = t
     if len(t) == 4:
-        x, y, c, p = t
-    return x, y, c, p
+        if type(t[2]) == list and \
+            type(t[2][0]) == tuple and \
+            type(t[2][0][0]) == slice:
+            x, y, si, p = t
+        else:
+            x, y, c, p = t
+    ## patch
+    # if len(t) == 5:
+    #     x, y, c, si, p = t
+    return x, y, c, si, p
 def compute_loss(model, x, y, c, **kwargs):
     
     if model.is_supervised and model.is_conditional:

@@ -36,7 +36,7 @@ loader:
       size: [96, 192, 192]
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA1/flemme-path/to/checkpointcheckpoint/ImageCAS/SwinU_HSeg/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ImageCAS/SwinU_HSeg/ckp_last.pth
 seg_dir: /work/guoqingzhang/results/ImageCAS/SwinU_HSeg
 # evaluation_metrics:
 #   seg:

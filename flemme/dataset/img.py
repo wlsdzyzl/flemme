@@ -36,7 +36,7 @@ class ImgDataset(Dataset):
             img = load_itk(img_path)[0]
         if self.data_transform is not None:
             img = self.data_transform(img)
-        return img, 0, img_path
+        return img, img_path
 
 class ImgClsDataset(Dataset):
     def __init__(self, data_path, 
@@ -233,10 +233,10 @@ class MultiModalityImgSegDataset(Dataset):
             if len(self.img_path_list) == 0:
                 self.img_path_list.append(sorted(glob(os.path.join(data_path+'/' + rd, "*" + sf))))
             else:
-                self.img_path_list.append([rreplace( rreplace(rpath, data_dir[0], rd, 1), data_suffix[0], sf, 1) for rpath in self.img_path_list[0]])
-                
+                self.img_path_list.append([rreplace( rreplace(rpath, data_suffix[0], sf, 1), data_dir[0], rd, 1) for rpath in self.img_path_list[0]])
+        # print(self.img_path_list)
         for ld, lsf in zip(label_dir, label_suffix):
-            self.mask_path_list.append([rreplace(rreplace(rpath, data_dir[0], ld, 1), data_suffix[0], lsf, 1) for rpath in self.img_path_list[0]])
+            self.mask_path_list.append([rreplace(rreplace(rpath, data_suffix[0], lsf, 1), data_dir[0], ld, 1) for rpath in self.img_path_list[0]])
         self.mode = mode
         self.data_transform = data_transform
         self.label_transform = label_transform
@@ -305,7 +305,7 @@ class MultiModalityImgSegDataset(Dataset):
                 # y = np.random.randn(10)
                 # y_torch = torch.randn(10)
                 # print((x == y).all(), torch.all(torch.eq(x_torch, y_torch)))
-                return img, mask, img_paths
+                return img, mask, img_paths[0]
 
 class MNISTWrapper(MNIST):
     def __init__(self, data_path, data_transform = None, mode = 'train', **kwargs):

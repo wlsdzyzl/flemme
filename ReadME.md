@@ -34,15 +34,13 @@ einops
 ```
 mamba-ssm (CUDA version >= 11.6)
 ```
-If you have trouble to install mamba-ssm, try the following commands:
+If you have trouble to install `mamba-ssm`, you can download the corresponding `.whl` from https://github.com/state-spaces/mamba/releases based on your cuda and torch version. We recommend you to use the version with `ABI=FALSE`. Then run the following command:
 ```
-git clone git@github.com:state-spaces/mamba.git
-cd mamba
-pip install -i https://pypi.tuna.tsinghua.edu.cn/simple .
+python install mamba-ssmxxxxx.whl -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 #### For point cloud:
 ```
-POT plyfile KNN-CUDA fpsample geomloss
+POT plyfile KNN-CUDA fpsample geomloss numpy-stl
 ```
 KNN-CUDA is from https://github.com/unlimblue/KNN_CUDA.
 #### For graph:
@@ -108,13 +106,15 @@ test_flemme --config path/to/test_config.yaml
 - [ClM, ] for classification,
 - [SeM, HSeM] for segmentation, 
 - [AE, HAE, SDM] for reconstruction, 
-- [VAE, DDPM, DDIM, LDM] for generation. 
+- [VAE, DDPM, DDIM, EDM, LDM] for generation. 
 
 *DDIM refers to denoising diffusion implicit model, which is a fast sample strategy.*
 
 *SDM refers to supervised diffusion model (use input as a input condition of ddpm).*
 
 *LDM refers to latent diffusion model, constructed with a auto-encoder/vae and ddpm.*
+
+*EDM refers to elucidated diffusion models from paper "Elucidating the Design Space of Diffusion-Based Generative Models"*
 
 A detailed instruction of supported encoders, context embeddings, model architectures and training process can refer to [documentation of flemme](https://flemme-docs.readthedocs.io/en/latest/).
 
