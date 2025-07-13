@@ -29,17 +29,17 @@ loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/ISIC/fold1/
-    - /media/wlsdzyzl/DATA1/datasets/ISIC/fold2/
-    - /media/wlsdzyzl/DATA1/datasets/ISIC/fold3/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold1/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold2/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
-      size: [384, 256]
-    - name: ToTensor
+      size: [384, 256]  
 val_loader:
   dataset: 
     name: ImgSegDataset
@@ -48,15 +48,15 @@ val_loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/ISIC/fold4/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
-      size: [384, 256]
-    - name: ToTensor
+      size: [384, 256]  
     # - name: Normalize
     #   mean: [0.485, 0.456, 0.406]
     #   std: [0.229, 0.224, 0.225]
@@ -77,6 +77,6 @@ evaluation_metrics:
     - name: ACC
     - name: mIoU
 max_epoch: 500
-warmup_epochs: 2
+warmup_epochs: 1
 write_after_iters: 5
 save_after_epochs: 2

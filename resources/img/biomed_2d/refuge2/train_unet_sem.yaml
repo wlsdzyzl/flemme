@@ -37,15 +37,15 @@ loader:
   num_workers: 8
   shuffle: true
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [256, 256]
-    - name: ToTensor
   label_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [256, 256]
-    - name: ToTensor
     - name: InverseColor
     - name: Relabel
     - name: ToOneHot
@@ -63,15 +63,15 @@ val_loader:
   num_workers: 8
   shuffle: false
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [256, 256]
-    - name: ToTensor
   label_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [256, 256]
-    - name: ToTensor
     - name: InverseColor
     - name: Relabel
     - name: ToOneHot

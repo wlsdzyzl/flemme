@@ -35,10 +35,10 @@ loader:
   num_workers: 8
   shuffle: false
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [384, 256]
-    - name: ToTensor
 
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ISIC/UNet_Atten/ckp_best_loss.pth
 seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/ISIC/UNet_Atten

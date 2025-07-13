@@ -36,6 +36,8 @@ class LatentDiffusion(nn.Module):
 
     def __init__(self, model_config):
         super().__init__()
+        self.loss_reduction = model_config.get('loss_reduction', 'mean')
+
         ae_config = model_config.pop('autoencoder', None)
         ae_path = model_config.get('autoencoder_path', None)
         self.freezed_ae = model_config.get('freezed_ae', True)
@@ -45,6 +47,8 @@ class LatentDiffusion(nn.Module):
         assert ae_config is not None, 'LDM needs a pre-trained \
             auto-encoder to get the embedding of input data.'
         assert diff_config is not None, 'LDM needs a diffusion model to generate latents.'            
+        ae_config['loss_reduction'] = self.loss_reduction
+        diff_config['loss_reduction'] = self.loss_reduction
         self.ae_model, self.ae_model_name = create_ae_model(ae_config)
         self.diff_model, self.diff_model_name = create_diff_model(diff_config)
         

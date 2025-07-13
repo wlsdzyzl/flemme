@@ -11,3 +11,4 @@ __pycache__
 path/
 log/
 tmp_img/
+pickled/

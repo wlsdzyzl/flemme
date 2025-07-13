@@ -27,7 +27,7 @@ loader:
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold1
     # - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold2
     # - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold3
-  batch_size: 16
+  batch_size: 64
   num_workers: 8
   shuffle: true
   data_transforms:
@@ -65,6 +65,7 @@ val_loader:
     - name: ToTensor
       dtype: float
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointNet/PointNet_CLS
+resume: true
 ### parameter for optimizer
 optimizer:
   name: Adam

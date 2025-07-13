@@ -47,10 +47,10 @@ loader:
   num_workers: 8
   shuffle: true
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [384, 256]
-    - name: ToTensor
     - name: Normalize
       mean: [0.5]
       std: [0.5]
@@ -65,10 +65,10 @@ val_loader:
   num_workers: 8
   shuffle: false
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [384, 256]
-    - name: ToTensor
     - name: Normalize
       mean: [0.5]
       std: [0.5]

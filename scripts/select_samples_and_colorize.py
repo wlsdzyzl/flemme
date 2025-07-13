@@ -140,7 +140,7 @@ def main(argv):
                 tar1 = ((tar1 / 255) > 0.5).astype(int)
                 tar2 = ((tar2 / 255) > 0.5).astype(int)
             if label_type == 'vol':
-                res1, res2, tar1, tar2 = res1[0], res2[0], tar1[0], tar2[0]
+                # res1, res2, tar1, tar2 = res1[0], res2[0], tar1[0], tar2[0]
                 if compute_middle_for_3d:
                     min_zxy, max_zxy = get_boundingbox(tar1, background = 0)
                     middle_z = int(min_zxy[0] + max_zxy[0]) // 2
@@ -179,9 +179,6 @@ def main(argv):
                     tar2.sum() / tar2.size <= minimum_ratio: 
                     continue
                 score1, score2 = eval_func(tar1, res1), eval_func(tar2, res2)
-                # print(res1.min(), res2)
-                # print(score1.shape)
-                # print(res1.shape)
                 score1 = score1[score1 < 1]
                 score2 = score2[score2 < 1]
                 
@@ -211,11 +208,16 @@ def main(argv):
                 res = load_data(result_files[group_id][sample_id])
                 tar = load_target_data(target_files[group_id][sample_id])
                 input_ = load_input_data(input_files[group_id][sample_id])
+                
                 if label_type == 'img':
                     res = ((res1 / 255) > 0.5).astype(int)
                     tar = ((tar1 / 255) > 0.5).astype(int)
+                    if input_.ndim == 3: input_ = input_.transpose(2, 0, 1)
                 if label_type == 'vol':
-                    res, tar, input_ = res[0], tar[0], input_[0]
+                    # res, tar, input_ = res[0], tar[0], input_[0]
+                    if input_.ndim == 4:
+                        ## if input volume has multiple channels, we only take the first channel
+                        input_ = input_[0]
                     if compute_middle_for_3d:
                         min_zxy, max_zxy = get_boundingbox(tar, background = 0)
                         middle_z = int(min_zxy[0] + max_zxy[0]) // 2
@@ -230,11 +232,14 @@ def main(argv):
                         ctar, _ = colorize_img_by_label(star[None, :], sinput[None, :], gt = star[None, :])
                         save_img(output_path + '.tar.png', (ctar * 255).astype('uint8') )
                 else:
+                    if input_.ndim == 2:
+                        ### input_ can be rgb images with a ndim = 3
+                        input_ = input_[None, ]
                     output_path = os.path.join(output_subdir, os.path.basename(result_files[group_id][sample_id]).replace(suffix[group_id], '.png'))
-                    cdata, raw_img = colorize_img_by_label(res[None, :], input_[None, :], gt = tar[None, :])
+                    cdata, raw_img = colorize_img_by_label(res[None, :], input_, gt = tar[None, :])
                     save_img(output_path, (cdata * 255).astype('uint8') )
                     save_img(output_path + '.raw.png', (raw_img * 255).astype('uint8') )
-                    ctar, _ = colorize_img_by_label(tar[None, :], input_[None, :], gt = tar[None, :])
+                    ctar, _ = colorize_img_by_label(tar[None, :], input_, gt = tar[None, :])
                     save_img(output_path + '.tar.png', (ctar * 255).astype('uint8') )
 if __name__ == "__main__":
     main(sys.argv[1:])

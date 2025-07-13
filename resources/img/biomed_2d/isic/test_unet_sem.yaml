@@ -1,4 +1,5 @@
 # train ae or vae
+determinstic: true
 mode: test
 model:
   # can be AE, VAE and DDPM
@@ -29,18 +30,20 @@ loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/ISIC/fold5/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [384, 256]
-    - name: ToTensor
 
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ISIC/UNet/ckp_best_loss.pth
 seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/ISIC/UNet
+pickle_results: true
+# pickle_path:  /media/wlsdzyzl/DATA1/flemme-pickled
 save_target: true
 save_input: true
 save_colorized: true

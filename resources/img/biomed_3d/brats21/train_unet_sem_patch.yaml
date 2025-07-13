@@ -44,7 +44,7 @@ loader:
     - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold1
     - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold2
     - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold3
-  batch_size: 2
+  batch_size: 8
   num_workers: 8
   shuffle: true
   data_transforms:
@@ -109,7 +109,7 @@ evaluation_metrics:
     - name: Dice
     - name: ACC
     - name: mIoU
-max_epoch: 500
-warmup_epochs: 2
+max_epoch: 20
+warmup_epochs: 1
 write_after_iters: 100
-save_after_epochs: 2
+save_after_epochs: 1

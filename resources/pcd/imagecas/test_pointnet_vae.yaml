@@ -36,7 +36,7 @@ loader:
       dtype: float
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas/PointNet_VAE_KL1eN4_DCD/ckp_best_loss.pth
 
-recon_dir: /media/wlsdzyzl/DATA1/flemme-resutls/recon/imagecas/lrply/surface/left/vae_pointnet_dcd
+recon_dir: /media/wlsdzyzl/DATA1/flemme-results/recon/imagecas/lrply/surface/left/vae_pointnet_dcd
 evaluation_metrics:
   recon:
     - name: Chamfer
@@ -45,7 +45,7 @@ evaluation_metrics:
 eval_gen:
   sampler:
     name: NormalSampler
-  gen_dir: /media/wlsdzyzl/DATA1/flemme-resutls/gen/imagecas/lrply/surface/left/vae_pointnet_dcd
+  gen_dir: /media/wlsdzyzl/DATA1/flemme-results/gen/imagecas/lrply/surface/left/vae_pointnet_dcd
   interpolation:
     group_num: 2
     corner_num: 4

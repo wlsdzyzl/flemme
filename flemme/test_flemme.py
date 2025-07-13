@@ -67,7 +67,6 @@ def main():
         save_target = test_config.get('save_target', False)
         save_input = test_config.get('save_input', False)
         save_colorized = test_config.get('save_colorized', True)
-        verbose = test_config.get('verbose', False)
         channel_dim = -1 if model.data_form == DataForm.PCD else 0
         if save_target:
             logger.info('Save target for reconstruction and segmentation tasks.')
@@ -97,7 +96,7 @@ def main():
             pickle_path = test_config.get('pickle_path', 'pickled')
             if pickle_results:
                 mkdirs(pickle_path)
-                
+
             iter_id = 0
             for t in tqdm(data_loader, desc="Predicting"):
                 ### split x, y, path in later implementation.
@@ -114,9 +113,8 @@ def main():
                     exit(1)   
                 ### here we want to generate raw image
                 res = forward_pass(model, x, y, c)
-                if verbose:
-                    logger.info(f'We are at iter {iter_id}/{len(data_loader)}.')
                 iter_id += 1
+                
                 if len(results) < eval_batch_num:
                     process_results(results=results, x = x, y = y, c = c,
                                             path = path, 
@@ -165,7 +163,7 @@ def main():
                     if labels is None:
                         logger.warning('There is no label for tsne visualization.')
                     else:
-                        labels = onehot_to_label(labels, hannel_dim=channel_dim)
+                        labels = onehot_to_label(labels, channel_dim=channel_dim)
                         if not labels.ndim == 1:
                             logger.warning('Cannnot be visualized through TSNE because there is no label information.')
                         tsne_fig = construct_tsne_vis(latents, labels = labels, **tsne_config)
@@ -176,8 +174,7 @@ def main():
 
             if recon_dir is not None:
                 logger.info(f'Saving reconstruction results to {recon_dir} ...')
-                if not os.path.exists(recon_dir):
-                    os.makedirs(recon_dir)
+                mkdirs(recon_dir)
                 sample_idx = 0
                 for res_dict in tqdm(results):
                     res_dict = load_pickle(res_dict)
@@ -195,8 +192,7 @@ def main():
                                 class_name = origin_path.split('/')[-2]
                         if class_name:
                             output_dir = os.path.join(recon_dir, class_name)
-                            if not os.path.exists(output_dir):
-                                os.makedirs(output_dir)
+                            mkdirs(output_dir)
                             output_path = os.path.join(output_dir, filename)
                         else:
                             output_path = os.path.join(recon_dir, filename)
@@ -212,8 +208,7 @@ def main():
             seg_dir = test_config.get('seg_dir', None)
             if seg_dir is not None:
                 logger.info(f'Saving segmentation results to {seg_dir} ...')
-                if not os.path.exists(seg_dir):
-                    os.makedirs(seg_dir)
+                mkdirs(seg_dir)
                 sample_idx = 0
                 for res_dict in tqdm(results):
                     res_dict = load_pickle(res_dict)
@@ -264,8 +259,7 @@ def main():
                 res_dir = res.get('dir', None)
                 if res_dir is not None:
                     logger.info(f'Saving {res_name} results to {res_dir} ...')
-                    if not os.path.exists(res_dir):
-                        os.makedirs(res_dir)
+                    mkdirs(res_dir)
                     sample_idx = 0
                     for res_dict in tqdm(results):
                         res_dict = load_pickle(res_dict)
@@ -305,8 +299,7 @@ def main():
             ######## generate new samples -------------------------------------------
             gen_dir = eval_gen_config.get('gen_dir', None)
             if gen_dir is not None:
-                if not os.path.exists(gen_dir):
-                    os.makedirs(gen_dir)
+                mkdirs(gen_dir)
                 #### if interpolation is set, save the interpolation results
                 inter_config = eval_gen_config.get('interpolation', None)
                 ### need loader

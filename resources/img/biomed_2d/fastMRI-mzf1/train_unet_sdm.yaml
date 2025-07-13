@@ -2,40 +2,42 @@
 mode: train
 model:
   # can be AE, VAE and DDPM
-  name: SDIM
-  num_steps: 1000
-  sample_num_steps: 100
-  beta_schedule: consine
-  num_ensemble: 1
-  # encoder config
-  eps_model:
-      # encoder config
-    time_channel: 128
-    encoder:
-      name: UNet
-      image_size: [320, 320]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      # kernel_size: 5
-      down_channels: [64, 128, 256]
-      middle_channels: [512, 512]
-      ### with time embedding
-      building_block: single
-      activation: silu
-      num_blocks: 2
-      normalization: group
-      num_norm_groups: 16
-      dropout: 0.1
-    condition_embedding:
-      combine_condition: cat
+  name: SDM
+  diffusion:
+    name: DDIM
+    num_steps: 1000
+    sample_num_steps: 100
+    beta_schedule: consine
+    num_ensemble: 1
+    # encoder config
+    eps_model:
+        # encoder config
+      time_channel: 128
       encoder:
-        name: Identity
+        name: UNet
+        image_size: [320, 320]
+        in_channel: 1
         out_channel: 1
-  ### loss function
-  eps_loss:
-    name: MSE
+        patch_channel: 32
+        patch_size: 2
+        # kernel_size: 5
+        down_channels: [64, 128, 256]
+        middle_channels: [512, 512]
+        ### with time embedding
+        building_block: single
+        activation: silu
+        num_blocks: 2
+        normalization: group
+        num_norm_groups: 16
+        dropout: 0.1
+      condition_embedding:
+        combine_condition: cat
+        encoder:
+          name: Identity
+          out_channel: 1
+    ### loss function
+    eps_loss:
+      name: MSE
 loader:
   dataset: 
     name: ImgReconDataset
@@ -95,7 +97,7 @@ lr_scheduler:
   start_factor: 1.0
   end_factor: 0.01
 evaluation_metrics:
-  recon:
+  recon_dpm:
     - name: SSIM
       data_range: 2.0
     - name: PSNR

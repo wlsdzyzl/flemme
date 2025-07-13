@@ -60,6 +60,8 @@ setup(
         'train_flemme=flemme.train_flemme:main',    
         # test
         'test_flemme=flemme.test_flemme:main',
+        # test
+        'test_flemme_fast=flemme.test_flemme_fast:main',
         # eval
         'eval_flemme=flemme.eval_flemme:main']
         },

@@ -13,7 +13,7 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
     if (inputfile[-3:] == 'npy'):
         mask_array = load_npy(inputfile)
     else:
-        mask_array, _, _ = load_itk(inputfile)
+        mask_array = load_itk(inputfile)
     if prob_threshold is not None:
         mask_array >= prob_threshold
     else:

@@ -49,8 +49,10 @@ class DiffusionProbabilistic(nn.Module):
     
     def __init__(self, model_config):
         super().__init__()
-        # noise predictor should be a auto-encoder with time embedding.
+        self.loss_reduction = model_config.get('loss_reduction', 'mean')
+        # noise predictor should be a base model with time embedding.
         eps_config = model_config.get('eps_model')
+        eps_config['loss_reduction'] = self.loss_reduction
         self.eps_model, self.eps_model_name = \
             _create_eps_model(eps_config)
         self.num_steps = model_config.get('num_steps', 1000)
@@ -79,9 +81,8 @@ class DiffusionProbabilistic(nn.Module):
         else:
             beta = cosine_schedule(self.num_steps)
         self.gather_dim = len(self.eps_model.get_input_shape()) - 1
-        self.loss_reduction = model_config.get('loss_reduction', self.eps_model.loss_reduction)
         eps_loss_config = model_config.get('eps_loss', {'name':'MSE'})
-        eps_loss_config['reduction'] = self.eps_model.loss_reduction
+        eps_loss_config['reduction'] = self.loss_reduction
         self.eps_loss_name = eps_loss_config.get('name')
         self.eps_loss = get_loss(eps_loss_config, self.data_form)
         ### these values are not parameter and will not be changed through training

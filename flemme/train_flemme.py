@@ -6,7 +6,7 @@ from flemme.dataset import create_loader
 from flemme.logger import get_logger
 from flemme.sampler import create_sampler
 from datetime import datetime
-
+from tqdm import tqdm
 
 logger = get_logger('train_flemme')
 ## if we want to train pcd or image, 
@@ -309,7 +309,7 @@ def main():
                     vresults = []
                     val_losses = torch.zeros(len(loss_names))
                     val_n = 0
-                    for vt in val_data_loader:
+                    for vt in tqdm(val_data_loader, desc='validating'):
                         processed_vinput = process_input(vt)
                         vx, vy, vc = processed_vinput[0], processed_vinput[1], processed_vinput[2]
                         vx  = vx.to(device).float() 

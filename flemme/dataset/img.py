@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import Dataset
 from glob import glob
 from torchvision.datasets import MNIST, CIFAR10, CelebA
-from flemme.utils import load_img, load_itk, set_random_state, get_random_state, crop_boundingbox, rreplace
+from flemme.utils import load_img_as_numpy, load_itk, set_random_state, get_random_state, crop_boundingbox, rreplace
 from flemme.logger import get_logger
 from functools import partial
 # image segmentation dataloader
@@ -31,9 +31,9 @@ class ImgDataset(Dataset):
         """Get the images"""
         img_path = self.img_path_list[index]
         if self.dim == 2:
-            img = load_img(img_path)
+            img = load_img_as_numpy(img_path)
         else:
-            img = load_itk(img_path)[0]
+            img = load_itk(img_path)
         if self.data_transform is not None:
             img = self.data_transform(img)
         return img, img_path
@@ -77,9 +77,9 @@ class ImgClsDataset(Dataset):
         img_path = self.img_path_list[index]
         label = self.labels[index]
         if self.dim == 2:
-            img = load_img(img_path)
+            img = load_img_as_numpy(img_path)
         else:
-            img = load_itk(img_path)[0]
+            img = load_itk(img_path)
         if self.data_transform is not None:
             img = self.data_transform(img)
         if self.label_transform is not None:
@@ -115,11 +115,11 @@ class ImgSegDataset(Dataset):
         
         mask_path = self.mask_path_list[index]
         if self.dim == 2:
-            img = load_img(img_path)
-            mask = load_img(mask_path)
+            img = load_img_as_numpy(img_path)
+            mask = load_img_as_numpy(mask_path)
         else:
-            img = load_itk(img_path)[0]
-            mask = load_itk(mask_path)[0]
+            img = load_itk(img_path)
+            mask = load_itk(mask_path)
             ### currently, crop_by only support 3D images
             if self.crop_by == 'raw':
                 img, mask, _ = self.crop_nonzero(data = img, follows = mask)
@@ -171,11 +171,11 @@ class ImgReconDataset(Dataset):
         
         mask_path = self.mask_path_list[index]
         if self.dim == 2:
-            img = load_img(img_path)
-            mask = load_img(mask_path)
+            img = load_img_as_numpy(img_path)
+            mask = load_img_as_numpy(mask_path)
         else:
-            img = load_itk(img_path)[0]
-            mask = load_itk(mask_path)[0]
+            img = load_itk(img_path)
+            mask = load_itk(mask_path)
             ### currently, crop_by only support 3D images
             if self.crop_by == 'raw':
                 img, mask, _ = self.crop_nonzero(data = img, follows = mask)
@@ -276,8 +276,8 @@ class MultiModalityImgSegDataset(Dataset):
         img_paths = [ l[index] for l in self.img_path_list]
         mask_paths = [ l[index] for l in self.mask_path_list]
         if self.dim == 3:
-            imgs = [load_itk(img_path)[0] for img_path in img_paths]
-            masks = [load_itk(mask_path)[0] for mask_path in mask_paths]
+            imgs = [load_itk(img_path) for img_path in img_paths]
+            masks = [load_itk(mask_path) for mask_path in mask_paths]
             if len(imgs) == 1:
                 img = imgs[0]
             else:

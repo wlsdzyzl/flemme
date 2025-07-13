@@ -1,0 +1,46 @@
+loader:
+  dataset: 
+    name: MultiModalityImgSegDataset
+    dim: 3
+    data_dir: [flair, t1, t1ce, t2]
+    data_suffix: [flair.nii.gz, t1.nii.gz, t1ce.nii.gz, t2.nii.gz]
+    label_dir: seg
+    label_suffix: seg.nii.gz
+    data_combine: cat
+    crop_nonzero:
+      margin: [2,2,2]
+      crop_by: raw
+  data_path_list: 
+    - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold5
+  batch_size: 2
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Resize
+      size: [120, 192, 120]
+    - name: ToTensor
+  label_transforms:
+    - name: Resize
+      size: [120, 192, 120]
+    - name: Relabel
+      map: 
+        - [4, 3]
+    - name: ToOneHot
+      num_classes: 4
+      ignore_background: False
+    - name: ToTensor
+num_classes: 4
+prediction:
+  path: /media/wlsdzyzl/DATA1/flemme-results/UNet/BRATS21
+  suffix: flair.nii.gz
+pickle_results: true
+pickle_path:  /media/wlsdzyzl/DATA1/flemme-pickled
+
+# eval_batch_num: 2
+evaluation_metrics:
+  seg:
+    - name: Dice
+    - name: ACC
+    - name: mIoU
+    # - name: HD
+    #   method: modified

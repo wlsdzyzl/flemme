@@ -42,7 +42,8 @@ loader:
       dtype: float
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointNet/PointNet_CLS/ckp_best_loss.pth
 
-
+pickle_results: true
+pickle_path:  /media/wlsdzyzl/DATA1/flemme-pickled
 evaluation_metrics:
   cls:
     - name: ACC

@@ -17,8 +17,9 @@ class EDM(nn.Module):
 
     def __init__(self, model_config):
         super().__init__()
-
+        self.loss_reduction = model_config.get('loss_reduction', 'mean')
         eps_config = model_config.get('eps_model')
+        eps_config['loss_reduction'] = self.loss_reduction
         self.eps_model, self.eps_model_name = \
             _create_eps_model(eps_config)
         self.num_steps = model_config.get('num_steps', 20)
@@ -42,9 +43,8 @@ class EDM(nn.Module):
 
         # self.eps_model, self.eps_model_name = \
         #     self.__create_eps_model(eps_config)
-        self.loss_reduction = model_config.get('loss_reduction', self.eps_model.loss_reduction)
         eps_loss_config = model_config.get('eps_loss', {'name':'MSE'})
-        eps_loss_config['reduction'] = self.eps_model.loss_reduction
+        eps_loss_config['reduction'] = self.loss_reduction
         self.eps_loss_name = eps_loss_config.get('name')
         self.eps_loss = get_loss(eps_loss_config, self.data_form)
         ### recon losses

@@ -6,13 +6,13 @@ from glob import glob
 from flemme.utils import rkdirs
 def f(wait_to_crop, output_files, margin, 
     background, crop_by = None, boundingbox = None):
-    data_array, origin, spacing = load_itk(wait_to_crop[0])
+    data_array, origin, spacing = load_itk(wait_to_crop[0], True)
     wait_to_crop_data = [data_array]
     wait_to_crop_data = wait_to_crop_data + \
-        [ load_itk(wait_to_crop[i])[0] for i in range(1, len(wait_to_crop))]
+        [ load_itk(wait_to_crop[i]) for i in range(1, len(wait_to_crop))]
     if crop_by is not None:
         print('crop {} by {} with margin {}'.format(wait_to_crop, crop_by, margin))
-        _, cropped_follows, (start_idx, _) = crop_boundingbox(data = load_itk(crop_by)[0], 
+        _, cropped_follows, (start_idx, _) = crop_boundingbox(data = load_itk(crop_by), 
             margin = margin, background = background, boundingbox = boundingbox, 
             follows = wait_to_crop_data)
     else:
@@ -100,7 +100,7 @@ def main(argv):
             boundingboxes = []
             for il in contained_files[crop_by_id]:
                 print('read from {}'.format(il))
-                label_array, _, _ = load_itk(il)
+                label_array = load_itk(il)
                 tmp_bb = get_boundingbox(label_array)
                 print('get bounding box:', tmp_bb)
                 boundingboxes.append(tmp_bb)

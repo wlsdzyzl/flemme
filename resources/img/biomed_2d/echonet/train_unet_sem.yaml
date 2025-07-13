@@ -28,18 +28,18 @@ loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold1/
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold2/
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold3/
+    - /media/wlsdzyzl/DATA1/datasets/img/Echonet/fold1/
+    - /media/wlsdzyzl/DATA1/datasets/img/Echonet/fold2/
+    - /media/wlsdzyzl/DATA1/datasets/img/Echonet/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [128, 128]
     - name: GrayScale
-    - name: ToTensor
 val_loader:
   dataset: 
     name: ImgSegDataset
@@ -47,16 +47,16 @@ val_loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold4/
+    - /media/wlsdzyzl/DATA1/datasets/img/Echonet/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [128, 128]
     - name: GrayScale
-    - name: ToTensor
 
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/UNet
 

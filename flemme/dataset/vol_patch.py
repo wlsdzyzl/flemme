@@ -73,8 +73,8 @@ class PatchImgSegDataset(ImgSegDataset):
         self.patch_count = patch_count
         
     def load_data(self, dataset_id):
-        _raw = load_itk(self.img_path_list[dataset_id])[0]
-        _mask = load_itk(self.mask_path_list[dataset_id])[0]
+        _raw = load_itk(self.img_path_list[dataset_id])
+        _mask = load_itk(self.mask_path_list[dataset_id])
         if self.crop_by == 'raw':
             _raw, _mask, _ = self.crop_nonzero(data = _raw, follows = _mask)
         elif self.crop_by == 'mask':
@@ -152,8 +152,8 @@ class MultiModalityPatchImgSegDataset(MultiModalityImgSegDataset):
     def load_data(self, dataset_id):
         img_paths = [ l[dataset_id] for l in self.img_path_list]
         mask_paths = [ l[dataset_id] for l in self.mask_path_list]
-        imgs = [load_itk(img_path)[0] for img_path in img_paths]
-        masks = [load_itk(mask_path)[0] for mask_path in mask_paths]
+        imgs = [load_itk(img_path) for img_path in img_paths]
+        masks = [load_itk(mask_path) for mask_path in mask_paths]
         if len(imgs) == 1:
             img = imgs[0]
         else:

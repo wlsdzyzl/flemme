@@ -34,11 +34,11 @@ loader:
   num_workers: 8
   shuffle: false
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [128, 128]
     - name: GrayScale
-    - name: ToTensor
 
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/UNet_Atten/ckp_best_loss.pth
 seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/Echonet/UNet_Atten

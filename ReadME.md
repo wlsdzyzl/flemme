@@ -110,11 +110,11 @@ test_flemme --config path/to/test_config.yaml
 
 *DDIM refers to denoising diffusion implicit model, which is a fast sample strategy.*
 
+*EDM refers to elucidated diffusion models from paper "Elucidating the Design Space of Diffusion-Based Generative Models"*
+
 *SDM refers to supervised diffusion model (use input as a input condition of ddpm).*
 
 *LDM refers to latent diffusion model, constructed with a auto-encoder/vae and ddpm.*
-
-*EDM refers to elucidated diffusion models from paper "Elucidating the Design Space of Diffusion-Based Generative Models"*
 
 A detailed instruction of supported encoders, context embeddings, model architectures and training process can refer to [documentation of flemme](https://flemme-docs.readthedocs.io/en/latest/).
 

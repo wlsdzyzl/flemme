@@ -34,7 +34,7 @@ def main(argv):
     label_to_count = {}
     logger.info(f'Getting info from {len(label_paths)} samples from {label_dir}.')
     for lp in label_paths:
-        l = load_itk(lp)[0]
+        l = load_itk(lp)
         shape, labels, label_counts = get_sample_info(l)
         # logger.info(f"image_shape: {shape}")
         img_shapes.append(shape)

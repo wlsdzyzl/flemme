@@ -8,7 +8,7 @@ from flemme.logger import get_logger
 from flemme.color_table import color_table
 from functools import partial
 import shutil
-import pickle
+import joblib
 from tqdm import tqdm
 
 logger = get_logger('trainer_utils')
@@ -272,9 +272,7 @@ def save_checkpoint(ckp_dir, model, optimizer = None,
                     is_best_score = False):
     
     path = "{}/ckp_last.pth".format(ckp_dir)
-    if not os.path.exists(ckp_dir):
-        os.makedirs(ckp_dir)
-    
+    mkdirs(ckp_dir)
     state_dict = {}
     state_dict['trained_model'] = model.state_dict()
     if optimizer is not None:
@@ -346,89 +344,6 @@ def unfreeze(model):
     for param in model.parameters():
         param.requires_grad = True
 
-# def append_results(results, x, y, c, res, data_form, path = None,  
-#         slice_indices = None,
-#         is_supervised = False, 
-#         is_conditional = False, 
-#         additional_keys = []):
-#     if not data_form == DataForm.GRAPH:
-#         results['input'].append(x.cpu().detach().numpy())
-#         if y is not None:
-#             if is_supervised:
-#                 results['target'].append(y.cpu().detach().numpy())
-#             if is_conditional and is_supervised:
-#                 results['condition'].append(c.cpu().detach().numpy())
-#             elif is_conditional:
-#                 results['condition'].append(y.cpu().detach().numpy())
-#             else:
-#                 ### y is not used during the model training.
-#                 pass 
-#         ## should be a list of strings or none
-#         ## only for test
-#         if path is not None:
-#             results['path'].append(path)
-#         if slice_indices is not None:
-#             results['slice_indices'].append(slice_indices)
-#         if res:
-#             if 'cluster_logits' in res:
-#                 res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
-#             if 'cls_logits' in res:
-#                 res['cls'] = logits_to_onehot_label(res['cls_logits'], data_form)
-#                 results['cls_logits'].append(res['cls_logits'].cpu().detach().numpy())
-#             if 'seg_logits' in res:
-#                 res['seg'] = logits_to_onehot_label(res['seg_logits'], data_form)
-#                 results['seg_logits'].append(res['seg_logits'].cpu().detach().numpy())
-#             if 'latent' in res:
-#                 results['latent'].append(res['latent'].cpu().detach().numpy())
-#             if 'recon' in res:
-#                 results['recon'].append(res['recon'].cpu().detach().numpy())
-#             if 'seg' in res:
-#                 results['seg'].append(res['seg'].cpu().detach().numpy())
-#             if 'cluster' in res:
-#                 results['cluster'].append(res['cluster'].cpu().detach().numpy())
-#             if 'cls' in res:
-#                 results['cls'].append(res['cls'].cpu().detach().numpy())
-#             if 'cluster_centers' in res:
-#                 results['cluster_centers'] = res['cluster_centers'].cpu().detach().numpy()
-#             for k in additional_keys:
-#                 if not k in results:
-#                     results[k] = []
-#                 if k in res:
-#                     results[k].append(res[k].cpu().detach().numpy())
-#     else:
-#         results['input'].append(x)
-#         if res:
-#             if 'latent' in res:
-#                 results['latent'].append(res['latent'].cpu().detach().numpy())
-#             if 'recon' in res:
-#                 results['recon'].append(res['recon'])
-
-# def compact_results(results, data_form, additional_keys = []):
-#     if not data_form == DataForm.GRAPH:
-#         results['input'] = np.concatenate(results['input'])
-#         if len(results['target']) > 0:
-#             results['target'] = np.concatenate(results['target'])
-#         if len(results['condition']) > 0:
-#             results['condition'] = np.concatenate(results['condition'])        
-#         if len(results['latent']) > 0:
-#             results['latent'] = np.concatenate(results['latent'])
-#         if len(results['recon']) > 0:
-#             results['recon'] = np.concatenate(results['recon'])       
-#         if len(results['seg']) > 0:
-#             results['seg'] = np.concatenate(results['seg'])
-#         if len(results['cluster']) > 0:
-#             results['cluster'] = np.concatenate(results['cluster'])
-#         if len(results['cls']) > 0:
-#             results['cls'] = np.concatenate(results['cls'])
-#         if len(results['cls_logits']) > 0:
-#             results['cls_logits'] = np.concatenate(results['cls_logits'])
-#         if len(results['seg_logits']) > 0:
-#             results['seg_logits'] = np.concatenate(results['seg_logits'])
-#         for k in additional_keys:
-#             if len(results[k]) > 0:
-#                 results[k] = np.concatenate(results[k])
-#     return results
-
 def process_results(results, x, y, c, res, data_form, path = None,  
         slice_indices = None,
         is_supervised = False, 
@@ -442,13 +357,11 @@ def process_results(results, x, y, c, res, data_form, path = None,
         if y is not None:
             if is_supervised:
                 res_dict['target'] = y.cpu().detach().numpy()
-            if is_conditional and is_supervised:
-                res_dict['condition'] = c.cpu().detach().numpy()
             elif is_conditional:
                 res_dict['condition'] = y.cpu().detach().numpy()
-            else:
-                ### y is not used during the model training.
-                pass 
+            ## y is not used.
+        if c is not None and is_conditional and is_supervised:
+            res_dict['condition'] = c.cpu().detach().numpy()
         if path is not None:
             res_dict['path'] = path
         if slice_indices is not None:
@@ -479,7 +392,7 @@ def process_results(results, x, y, c, res, data_form, path = None,
         if pickle_results:
             filename = os.path.join(pickle_path, f'tmp_batch_{len(results)}.pkl')
             with open(filename, 'wb') as file:
-                pickle.dump(res_dict, file)
+                joblib.dump(res_dict, file)
             results.append(filename)
         else:
             results.append(res_dict)
@@ -490,7 +403,7 @@ def load_pickle(res_dict):
     if type(res_dict) == str:
         ### pickle path
         with open(res_dict, "rb") as file:
-            res_dict = pickle.load(file)
+            res_dict = joblib.load(file)
     return res_dict
 def extract_results(results, key):
     compacted_res = []
@@ -543,11 +456,11 @@ def merge_patches_in_results(results, pickle_results = False, pickle_path = 'pic
         if pickle_results:
             filename = os.path.join(pickle_path, f'tmp_merged_{len(new_results)}.pkl')
             with open(filename, 'wb') as file:
-                pickle.dump(new_res_dict, file)
+                joblib.dump(new_res_dict, file)
             new_results.append(filename)
         else:
             new_results.append(new_res_dict)
-    for res_dict in results:
+    for res_dict in tqdm(results, desc="merging patches"):
         res_dict = load_pickle(res_dict)
         for patch_id in range(len(res_dict['slice_indices'])):
             current_path = res_dict['path'][patch_id]
@@ -604,6 +517,8 @@ def create_batch_evaluators(eval_metrics, data_form):
         evaluators['cls'] = cls_eval
     return evaluators
 
+    
+## results is a batch of inputs, each batch can be read through pickle from external storage.
 def evaluate_results(results, evaluators, data_form, verbose = False):
     eval_res = {}
     sample_num = 0
@@ -667,6 +582,8 @@ def evaluate_results(results, evaluators, data_form, verbose = False):
         for eval_metric in eval_res[eval_type]:
             eval_res[eval_type][eval_metric] /= sample_num
     return eval_res
+
+
 def process_input(t):
     x, y, c, si, p = None, None, None, None, None
     if len(t) == 2:
@@ -776,22 +693,25 @@ def combine_figures(figs, row_length, size = (32, 32)):
 
 ## we save 2D image to png, 3D image to nii.gz, point cloud to ply.
 def save_data(output, data_form, output_path, segmentation = False):    
+    ## segmentation label will be saved without channel dim
+    ## because label_to_onehot function will expand the cahnnel dim
     if data_form == DataForm.IMG:
-        # remove channel dimension
         if len(output.shape) == 3:
-            ### non-binary segmentation will be saved as npy
+            ### segmentation will be saved as npy
             if segmentation:
                 output = output.squeeze(0)
                 save_npy(output_path+'.npy', output)
-            ### binary segmentation will be saved as png
+            ### reconstruction will be saved as png
             else:
                 if output.max() > 1 or output.min() < 0:
                     output = normalize_img(output)
                 save_img(output_path+'.png', (output * 255).astype('uint8'))
         ## CDHW
         elif len(output.shape) == 4:
-            output = output.squeeze(0)
+            if segmentation:
+                output = output.squeeze(0)
             save_itk(output_path+'.nii.gz', output)
+
     elif data_form == DataForm.PCD:
         if segmentation:
             np.savetxt(output_path+'.seg', output)
@@ -824,18 +744,200 @@ def get_load_function(suffix, transpose = False):
     if load_data is None:
         logger.error('Unknown data type.')
         exit(1)
-    def load_data_in_class(path, transpose_mode):
-        res = load_data(path)
-        if transpose_mode:
-            if type(res) == tuple:
-                tmp_res = []
-                for r in res:
-                    if type(r) == tuple or type(r) == list:
-                        tmp_res.append(type(r) (r[::-1]) )
-                    elif isinstance(r, np.ndarray):
-                        tmp_res.append(r.transpose())
-                    else:
-                        tmp_res.append(r)
-                res = tuple(tmp_res)
-        return res
-    return partial(load_data_in_class, transpose_mode = transpose), data_type
+    return load_data, data_type
+
+# def append_results(results, x, y, c, res, data_form, path = None,  
+#         slice_indices = None,
+#         is_supervised = False, 
+#         is_conditional = False, 
+#         additional_keys = []):
+#     if not data_form == DataForm.GRAPH:
+#         results['input'].append(x.cpu().detach().numpy())
+#         if y is not None:
+#             if is_supervised:
+#                 results['target'].append(y.cpu().detach().numpy())
+#             elif is_conditional:
+#                 results['condition'].append(y.cpu().detach().numpy())
+#         if c is not None and is_conditional and is_supervised:
+#             results['condition'].append(c.cpu().detach().numpy())
+                
+#         ## should be a list of strings or none
+#         ## only for test
+#         if path is not None:
+#             # if type(path[0]) == tuple:
+#             #     results['path'] += list(path[0])
+#             # else:
+#             results['path'] += path
+#         if slice_indices is not None:
+#             results['slice_indices'] += slice_indices
+#         if res:
+#             if 'cluster_logits' in res:
+#                 res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
+#             if 'cls_logits' in res:
+#                 res['cls'] = logits_to_onehot_label(res['cls_logits'], data_form)
+#                 results['cls_logits'].append(res['cls_logits'].cpu().detach().numpy())
+#             if 'seg_logits' in res:
+#                 res['seg'] = logits_to_onehot_label(res['seg_logits'], data_form)
+#                 results['seg_logits'].append(res['seg_logits'].cpu().detach().numpy())
+#             if 'latent' in res:
+#                 results['latent'].append(res['latent'].cpu().detach().numpy())
+#             if 'recon' in res:
+#                 results['recon'].append(res['recon'].cpu().detach().numpy())
+#             if 'seg' in res:
+#                 results['seg'].append(res['seg'].cpu().detach().numpy())
+#             if 'cluster' in res:
+#                 results['cluster'].append(res['cluster'].cpu().detach().numpy())
+#             if 'cls' in res:
+#                 results['cls'].append(res['cls'].cpu().detach().numpy())
+#             if 'cluster_centers' in res:
+#                 results['cluster_centers'] = res['cluster_centers'].cpu().detach().numpy()
+#             for k in additional_keys:
+#                 if not k in results:
+#                     results[k] = []
+#                 if k in res:
+#                     results[k].append(res[k].cpu().detach().numpy())
+#     else:
+#         results['input'].append(x)
+#         if res:
+#             if 'latent' in res:
+#                 results['latent'].append(res['latent'].cpu().detach().numpy())
+#             if 'recon' in res:
+#                 results['recon'].append(res['recon'])
+            
+# def compact_results(results, data_form, additional_keys = []):
+#     if not data_form == DataForm.GRAPH:
+#         results['input'] = np.concatenate(results['input'])
+#         if len(results['target']) > 0:
+#             results['target'] = np.concatenate(results['target'])
+#         if len(results['condition']) > 0:
+#             results['condition'] = np.concatenate(results['condition'])        
+#         if len(results['latent']) > 0:
+#             results['latent'] = np.concatenate(results['latent'])
+#         if len(results['recon']) > 0:
+#             results['recon'] = np.concatenate(results['recon'])       
+#         if len(results['seg']) > 0:
+#             results['seg'] = np.concatenate(results['seg'])
+#         if len(results['cluster']) > 0:
+#             results['cluster'] = np.concatenate(results['cluster'])
+#         if len(results['cls']) > 0:
+#             results['cls'] = np.concatenate(results['cls'])
+#         if len(results['cls_logits']) > 0:
+#             results['cls_logits'] = np.concatenate(results['cls_logits'])
+#         if len(results['seg_logits']) > 0:
+#             results['seg_logits'] = np.concatenate(results['seg_logits'])
+#         for k in additional_keys:
+#             if len(results[k]) > 0:
+#                 results[k] = np.concatenate(results[k])
+#         ### merge patches to whole volumes
+#         ### only perform in test phase
+#         if 'slice_indices' in results and len(results['slice_indices']) > 0:
+#             merged_paths = []
+#             merged_patch_indices = []
+#             merged_patch_targets = []
+#             merged_patch_inputs = []
+#             merged_patch_segs = []
+#             merged_patch_seg_logits = []
+#             merged_shapes = []
+#             for patch_id in range(len(results['slice_indices'])):
+#                 current_path = results['path'][patch_id]
+#                 if len(merged_paths) == 0 or not current_path == merged_paths[-1]:
+#                     merged_paths.append(current_path)
+#                     merged_patch_indices.append([results['slice_indices'][patch_id], ])
+#                     merged_patch_targets.append([results['target'][patch_id], ])
+#                     merged_patch_inputs.append([results['input'][patch_id], ])
+#                     merged_patch_segs.append([results['seg'][patch_id], ])
+#                     merged_patch_seg_logits.append([results['seg_logits'][patch_id], ])
+#                     merged_shapes.append([idx.stop for idx in results['slice_indices'][patch_id]])
+#                 else:
+#                     merged_patch_indices[-1].append(results['slice_indices'][patch_id])
+#                     merged_patch_targets[-1].append(results['target'][patch_id])
+#                     merged_patch_inputs[-1].append(results['input'][patch_id])
+#                     merged_patch_segs[-1].append(results['seg'][patch_id])
+#                     merged_patch_seg_logits[-1].append(results['seg_logits'][patch_id])
+#                     tmp_shape = [idx.stop for idx in results['slice_indices'][patch_id]]
+#                     merged_shapes[-1] = [max(m, t) for m, t in zip(merged_shapes[-1], tmp_shape)]
+
+#             inputs = []
+#             targets = []
+#             segs = []
+#             seg_logits = []
+#             input_c = results['input'][0].shape[0]
+#             label_c = results['target'][0].shape[0]
+#             for i in range(len(merged_paths)):
+#                 # print(merged_shapes, merged_shapes)
+#                 tmp_input = np.zeros([input_c, ] + merged_shapes[i])
+#                 weight_input = np.zeros([input_c, ] + merged_shapes[i])
+#                 tmp_target = np.zeros([label_c, ] + merged_shapes[i])
+#                 tmp_seg = np.zeros([label_c, ] + merged_shapes[i])
+#                 tmp_seg_logits = np.zeros([label_c, ] + merged_shapes[i])
+#                 weight_label = np.zeros([label_c, ] + merged_shapes[i])
+
+#                 for patch_id, si in enumerate(merged_patch_indices[i]):
+#                     # print(isi, lsi, tmp_input.shape)
+#                     isi = (slice(0, input_c),) + si
+#                     lsi = (slice(0, label_c),) + si
+#                     tmp_input[isi] += merged_patch_inputs[i][patch_id]
+#                     weight_input[isi] += 1
+#                     tmp_target[lsi] += merged_patch_targets[i][patch_id]
+#                     tmp_seg[lsi] += merged_patch_segs[i][patch_id]
+#                     tmp_seg_logits[lsi] += merged_patch_seg_logits[i][patch_id]
+#                     weight_label[lsi] += 1
+
+#                 inputs.append(tmp_input / weight_input)
+#                 targets.append(tmp_target / weight_label)
+#                 segs.append(tmp_seg / weight_label)
+#                 seg_logits.append(tmp_seg_logits / weight_label)
+
+#             results['input'] = inputs
+#             results['target'] = targets
+#             results['seg'] = segs
+#             results['seg_logits'] = seg_logits
+#     return results
+
+# ## evaluate the whole results which are stored in system memory
+# def evaluate_results_fast(results, evaluators, data_form, verbose = False):
+
+#     sample_num = len(results['input'])
+#     if data_form == DataForm.GRAPH:
+#         raise NotImplementedError
+    
+#     eval_res = {}
+#     for eval_type in evaluators:
+#         if len(results[eval_type]) == 0:
+#             logger.warning(f'This model doesn\'t predict {eval_type}')
+#         else:
+#             eval_res[eval_type] = {}
+#             if eval_type == 'cluster':
+#                 for (eval_metric, eval_func) in evaluators[eval_type].items():
+#                     eval_res[eval_type][eval_metric] = eval_func(results['cluster'], results['target'])
+#             elif eval_type == 'cls':
+#                 for (eval_metric, eval_func) in evaluators[eval_type].items():
+#                     if 'Soft' in eval_metric or 'TopK' in eval_metric:
+#                         eval_res[eval_type][eval_metric] = eval_func(results['cls_logits'], results['target'])
+#                     else:
+#                         eval_res[eval_type][eval_metric] = eval_func(results['cls'], results['target'])
+#             else:
+#                 for (eval_metric, eval_func) in evaluators[eval_type].items():
+#                     tmp_res = []
+#                     if eval_type == 'recon':
+#                         #### supervised
+#                         if len(results['target']) > 0:
+#                             zipped = zip(results['recon'], results['target'])
+#                         ### unsupervised
+#                         else:
+#                             zipped = zip(results['recon'], results['input'])
+#                     elif eval_type == 'seg':
+#                         if 'Soft' in eval_metric or 'TopK' in eval_metric:
+#                             zipped = zip(results['seg_logits'], results['target'])
+#                         else:
+#                             zipped = zip(results['seg'], results['target'])
+#                     if verbose:
+#                         zipped = tqdm(zipped, total = len(results['input']) , desc=f"evaluating using {eval_metric}")
+#                     for pred, target in zipped:
+#                         tmp_res.append(eval_func(pred, target))
+#                     tmp_res = sum(tmp_res) / sample_num
+                    
+#                     if isinstance(tmp_res, np.ndarray):
+#                         tmp_res = tmp_res.mean()
+#                     eval_res[eval_type][eval_metric] = tmp_res
+#     return eval_res

@@ -251,7 +251,7 @@ def load_config(config_path = None):
     return config
 
 ### load itk, support nii, mhd, nrrd
-def load_itk(filename):
+def load_itk(filename, return_origin_and_spacing = False):
     # loads the image using SimpleITK
     try:
         itkimage = sitk.ReadImage(filename)
@@ -264,14 +264,16 @@ def load_itk(filename):
         img.set_sform(sform)
         nb.save(img, filename)
         itkimage = sitk.ReadImage(filename)
-    imageArray = sitk.GetArrayFromImage(itkimage)
-    origin = itkimage.GetOrigin()
-    spacing = itkimage.GetSpacing()
-    return imageArray, origin, spacing
+    img_array = sitk.GetArrayFromImage(itkimage)
+    if return_origin_and_spacing:
+        origin = itkimage.GetOrigin()
+        spacing = itkimage.GetSpacing()
+        return img_array, origin, spacing
+    return img_array
 
 ### save itk, support nii, mhd, nrrd
-def save_itk(filename, imageArray, origin = None, spacing = None):
-    itkimage = sitk.GetImageFromArray(imageArray)
+def save_itk(filename, img_array, origin = None, spacing = None):
+    itkimage = sitk.GetImageFromArray(img_array)
     if origin is not None:
         itkimage.SetOrigin(origin)
     if spacing is not None:
@@ -280,25 +282,25 @@ def save_itk(filename, imageArray, origin = None, spacing = None):
 
 # from mhd to nii.gz
 def mhd2nii(mhd_file, nii_file):
-    data, origin, spacing = load_itk(mhd_file)
+    data, origin, spacing = load_itk(mhd_file, True)
     # print(data)
     save_itk(nii_file, data, origin = origin, spacing = spacing)
 def nii2mhd(nii_file, mhd_file):
-    data, origin, spacing = load_itk(nii_file)
+    data, origin, spacing = load_itk(nii_file, True)
     save_itk(mhd_file, data, origin = origin, spacing = spacing)
 
 def npy2nii(npy_file, nii_file):
     data = np.load(npy_file)
     save_itk(nii_file, data)
 def nii2npy(nii_file, npy_file):
-    data, _, _ = load_itk(nii_file)
+    data = load_itk(nii_file)
     np.save(npy_file, data)
 
 def nrrd2nii(nrrd_file, nii_file):
-    data, origin, spacing = load_itk(nrrd_file)
+    data, origin, spacing = load_itk(nrrd_file, True)
     save_itk(nii_file, data, origin = origin, spacing = spacing)
 def nii2nrrd(nii_file, nrrd_file):
-    data, origin, spacing= load_itk(nii_file)
+    data, origin, spacing= load_itk(nii_file, True)
     save_itk(nrrd_file, data, origin = origin, spacing = spacing)
 
 def load_img(input_path):
@@ -326,6 +328,10 @@ def load_img(input_path):
     return img
 
 def load_img_as_numpy(input_path):
+    if input_path[-4:] == '.npy':
+        return load_npy(input_path)
+    ## we don't need to squeeze here 
+    ## because torchvision.totensor will expand the tensor.
     return np.array(load_img(input_path))
 
     # img = np.asarray(imageio.imread(input_path))
@@ -344,7 +350,7 @@ def save_img(img_path, img):
         if img.ndim == 3:
             img = img.transpose(1, 2, 0)
             if img.shape[2] == 1:
-                img = img[:, :, 0]
+                img = img.squeeze(2)
         img = Image.fromarray(img)
         img.save(img_path)
     elif isinstance(img, mpl_figure.Figure):

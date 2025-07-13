@@ -37,7 +37,7 @@ loader:
     slice_builder:
       name: SliceBuilder
       patch_shape: [64, 128, 64]
-      stride_shape: [64, 128, 64]
+      stride_shape: [48, 96, 48]
   data_path_list: 
     - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold5
   batch_size: 8
@@ -60,7 +60,7 @@ save_target: true
 save_input: true
 save_colorized: true
 pickle_results: true
-pickle_path:  /media/wlsdzyzl/DATA1/flemme-ckp/pickled
+pickle_path:  /media/wlsdzyzl/DATA1/flemme-pickled
 evaluation_metrics:
   seg:
     - name: Dice

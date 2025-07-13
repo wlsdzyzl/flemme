@@ -9,10 +9,11 @@ logger = get_logger('model.ddpmseg')
 class SupervisedDiffusion(nn.Module):
     def __init__(self, model_config):
         super().__init__()
-
-        diff_config = model_config.pop('diffusion', None)
+        self.loss_reduction = model_config.get('loss_reduction', 'mean')
         
+        diff_config = model_config.pop('diffusion', None)
         assert diff_config is not None, 'LDM needs a diffusion model to generate latents.'            
+        diff_config['loss_reduction'] = self.loss_reduction
         self.diff_model, self.diff_model_name = create_diff_model(diff_config)
         if not self.diff_model.is_conditional:
             logger.error('Diffusion in Supervised DDPM need to be conditional')
@@ -21,6 +22,7 @@ class SupervisedDiffusion(nn.Module):
         self.is_supervised = True
         self.is_generative = True
         self.num_ensemble = model_config.get('num_ensemble', 10)
+        self.data_form = self.diff_model.data_form
     @property
     def device(self):
         return self.diff_model.device

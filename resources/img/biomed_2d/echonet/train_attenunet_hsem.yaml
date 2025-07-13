@@ -36,11 +36,11 @@ loader:
   num_workers: 8
   shuffle: true
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [128, 128]
     - name: GrayScale
-    - name: ToTensor
 val_loader:
   dataset: 
     name: ImgSegDataset
@@ -53,11 +53,11 @@ val_loader:
   num_workers: 8
   shuffle: false
   data_transforms:
+    - name: ToTensor
     - name: Resize
       ## the value must be list
       size: [128, 128]
     - name: GrayScale
-    - name: ToTensor
 
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/UNet_Atten_HSeg
 
