@@ -64,9 +64,7 @@ class DiffusionProbabilistic(nn.Module):
         self.data_form = self.eps_model.data_form
         self.beta_schedule = model_config.get('beta_schedule', 'linear')
         ### classifier-free guided ddpm
-
         classifier_free_config = model_config.get('classifier_free_guidance', None)
-
         self.classifier_free = classifier_free_config is not None
         if self.classifier_free:
             self.condition_dropout = classifier_free_config.get('condition_dropout', 0.1)

@@ -320,7 +320,10 @@ class FoldingLayer(MultiLayerPerceptionBlock):
             f"channel of grid + channel of codewords should be equal to the channel of input, we get: {shapes.shape[-1]} {codewords.shape[-1]} and {self.in_channel}."
         # concatenate
         x = torch.cat([shapes, codewords], dim=-1)
-        return self.mlp(x, t, c)
+        # print(x.mean(), "input of folding layer")
+        x = self.mlp(x, t, c)
+        # print(x.mean(), "output of folding layer")
+        return x
         
 ### sampling and multi-scale grouping
 ### furthest point sampling

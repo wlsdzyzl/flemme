@@ -248,7 +248,7 @@ if module_config['point-cloud']:
             self.loss = EMD(eps = eps, iters = iters)
             self.reduction = reduction
         def forward(self, x, y, sample_weight = 1.0):
-            loss = torch.sqrt(self.loss(x, y)[0])
+            loss = self.loss(x, y)[0]
             loss = loss.mean(dim=-1)
             loss = loss * sample_weight
             if self.reduction == 'sum':

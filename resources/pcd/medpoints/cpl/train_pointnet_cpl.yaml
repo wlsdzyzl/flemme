@@ -1,6 +1,8 @@
 # train ae or vae
 #### a template for pcd encoder
 mode: train
+rand_seed: 42
+determinstic: True
 model:
   # can be AE, VAE, SeM and DDPM
   name: AE
@@ -19,24 +21,24 @@ model:
     normalization: group
     vector_embedding: True
     folding_times: 2
-    channel_attention:
-      method: eca
-      kernel_size: 3
+    # channel_attention: eca
   is_supervised: True
   condition_embedding:
     combine_condition: injection
-    condition_injection: bias
+    condition_injection: gate_bias
     encoder:
       name: OneHot
       type: categories
       out_channel: 128
       num_classes: 46
       apply_onehot: False
-    decoder: same_as_encoder
+    # decoder: same_as_encoder
   reconstruction_losses: 
     - name: DCD
       alpha: 40
       n_lambda: 0.5
+    - name: CD
+      weight: 0.00001
 loader:
   dataset: 
     name: PcdReconWithClassLabelDataset
@@ -49,9 +51,9 @@ loader:
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold1
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold2
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold3
-  batch_size: 64
+  batch_size: 48
   num_workers: 8
-  shuffle: true
+  shuffle: false
   data_transforms:
     - name: Normalize
     - name: FixedPoints

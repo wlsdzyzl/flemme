@@ -209,6 +209,8 @@ class DropPath(nn.Module):
         return x
     
 class SequentialT(nn.Sequential):
+    def __init__(self, *args):
+        super().__init__(*args)
     def forward(self, *inputs): 
         for module in self._modules.values():
             if type(inputs) == tuple:
@@ -420,9 +422,11 @@ class GateBiasBlock(nn.Module):
         self.channel_dim = channel_dim
     def forward(self, x, t):
         if t is None: return x
-        gate = expand_as(torch.sigmoid(self.hyper_gate(t)), x, channel_dim=self.channel_dim)
+        # print("fuck3", x.mean(), t.mean())
+        gate = expand_as(self.hyper_gate(t), x, channel_dim = self.channel_dim)
         bias = expand_as(self.hyper_bias(t), x, channel_dim = self.channel_dim)
         x = x * (1 + gate) + bias
+        # print("fuck4", x.mean(), t.mean())
         return x
     
 ## transfer class label to one-hot vector which is encoded through FC block.
@@ -431,8 +435,7 @@ class OneHotEmbeddingBlock(nn.Module):
         super().__init__()
         self.num_classes = num_classes
         self.apply_onehot = apply_onehot
-        # middle_channel = get_middle_channel(num_classes, out_channel) 
-        middle_channel = out_channel
+        middle_channel = get_middle_channel(num_classes, out_channel) 
         #### old
         # middle_channel = min(int( max(self.num_classes, self.out_channel) / 2), 
         #                       self.num_classes, self.out_channel)
@@ -693,18 +696,24 @@ class DenseBlock(NormBlock):
                 condition_injection=condition_injection,
                 channel_dim = -1,
                 condition_first = condition_first)
-
     def forward(self, x, t = None, c = None):
+        # print(x.mean(), "input of dense block", self.act)
         size = x.shape[1:-1]
         if len(size) > 1:
             x = x.reshape(x.shape[0], -1, x.shape[-1])
         x = self.linear(x)
+        # print(x.mean(), "after linear", self.act)
         x = self.normalize(x)
         x = self.dropout(self.act(x))
+        # if c is not None:
+        #     print("fuck1", x.mean(), c.mean())
         if self.cinj:
             x = self.cinj(x, t, c)
+        # if c is not None:
+        #     print("fuck2", x.mean(), c.mean())
         if len(size) > 1:
             x = x.reshape(*((x.shape[0], ) + size + (x.shape[-1], )))
+        # print(x.mean(), "output of dense block", self.act)
         return x
     @staticmethod
     def is_sequence_modeling():

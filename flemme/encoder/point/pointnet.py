@@ -135,7 +135,7 @@ class PointEncoder(nn.Module):
             if hasattr(self, 'ca'):
                 self.ca[lid](x)
             res.append(x)
-
+        
         x = torch.concat(res, dim=-1)
         pf = self.lf[-1](x, t, c)
         if hasattr(self, 'vlf'):
@@ -143,6 +143,7 @@ class PointEncoder(nn.Module):
         if hasattr(self, 'ca'):
             pf = self.ca[-1](pf)
         ## max and average pooling to get global feature
+        
         x1 = pf.max(dim = 1, keepdim = True)[0]
         x2 = pf.mean(dim = 1, keepdim = True)
         x = torch.concat((x1, x2), dim = -1)
@@ -155,7 +156,6 @@ class PointEncoder(nn.Module):
             x = x.reshape(B, -1)
         ## compute embedding vectors
         x = self.dense(x, t, c)
-
         return x
 
     def __str__(self):

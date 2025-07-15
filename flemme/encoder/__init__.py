@@ -51,8 +51,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         time_channel = encoder_config.pop('time_channel', 0)
         condition_channel = encoder_config.pop('condition_channel', 0)
         decoder_condition_channel = encoder_config.pop('decoder_condition_channel', 0)
-        dai_channel = encoder_config.pop('decoder_additional_in_channel', 0)
-        eai_channel = encoder_config.pop('encoder_additional_in_channel', 0)
+
         encoder, decoder = None, None
         ### construct encoder and decoder
         if encoder_name in supported_image_encoders:
@@ -88,9 +87,9 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
         
         ## read in / out channel of data form
         #### in channel of encoder
-        in_channel = encoder_config.pop('in_channel', 1)
+        in_channel = encoder_config.pop('in_channel')
         #### out channel of decoder
-        out_channel = encoder_config.pop('out_channel', None) or in_channel
+        out_channel = encoder_config.pop('out_channel')
 
         ### doesn't create encoder, encoder out channel should be specified.
         if not return_encoder:
@@ -100,7 +99,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
 
         if encoder_name == 'FCN':
             if return_encoder:
-                encoder = Encoder(vec_dim=in_channel + eai_channel, 
+                encoder = Encoder(vec_dim=in_channel, 
                                             time_channel=time_channel, 
                                             condition_channel = condition_channel,
                                             dense_channels=dense_channels,
@@ -109,7 +108,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 decoder_in_channel = encoder.out_channel
             if return_decoder:
                 decoder = Decoder(vec_dim=out_channel, 
-                                        in_channel=decoder_in_channel + dai_channel,
+                                        in_channel=decoder_in_channel,
                                         time_channel=time_channel, 
                                         condition_channel = decoder_condition_channel,
                                         dense_channels=de_dense_channels,
@@ -188,7 +187,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     final_attens = [final_attens for _ in final_channels] 
                 
                 if return_encoder:
-                    encoder = Encoder(image_size=image_size, image_channel = in_channel + eai_channel, 
+                    encoder = Encoder(image_size=image_size, image_channel = in_channel, 
                                                 time_channel = time_channel,
                                                 condition_channel = condition_channel,
                                                 patch_size = patch_size,
@@ -204,7 +203,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     decoder_in_channel = encoder.out_channel
                 if return_decoder:
                     decoder = Decoder(image_size=image_size, image_channel = out_channel, 
-                                                in_channel=decoder_in_channel + dai_channel, 
+                                                in_channel=decoder_in_channel, 
                                                 time_channel = time_channel,
                                                 condition_channel = decoder_condition_channel,
                                                 patch_size = patch_size,
@@ -235,7 +234,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     final_num_heads = [final_num_heads for _ in final_channels] 
                 if return_encoder:
                     encoder = Encoder(image_size = image_size, 
-                                        image_channel = in_channel + eai_channel, 
+                                        image_channel = in_channel, 
                                         time_channel = time_channel, 
                                         condition_channel = condition_channel,
                                         patch_size = patch_size,
@@ -250,7 +249,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 if return_decoder:
                     decoder = Decoder(image_size = image_size, 
                                     image_channel = out_channel, 
-                                    in_channel = decoder_in_channel + dai_channel,
+                                    in_channel = decoder_in_channel,
                                     time_channel = time_channel, 
                                     condition_channel = decoder_condition_channel,
                                     patch_size = patch_size,
@@ -263,7 +262,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             elif encoder_name in ['VMamba', 'VMambaU', 'VMambaD']:
                 if return_encoder:
                     encoder = Encoder(image_size = image_size, 
-                                image_channel = in_channel + eai_channel, 
+                                image_channel = in_channel, 
                                 time_channel = time_channel, 
                                 condition_channel = condition_channel,
                                 patch_size = patch_size,
@@ -276,7 +275,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                 if return_decoder:
                     decoder = Decoder(image_size = image_size, 
                                 image_channel = out_channel, 
-                                in_channel = decoder_in_channel + dai_channel,
+                                in_channel = decoder_in_channel,
                                 time_channel = time_channel, 
                                 condition_channel = decoder_condition_channel,
                                 patch_size = patch_size,
@@ -308,7 +307,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     folding_times = encoder_config.pop('folding_times', 0)
                     base_shape_config = encoder_config.pop('base_shape', {})
                     if return_encoder:
-                        encoder = Encoder(point_dim=in_channel + eai_channel, 
+                        encoder = Encoder(point_dim=in_channel, 
                                                     projection_channel = projection_channel,
                                                     time_channel = time_channel,
                                                     condition_channel = condition_channel,
@@ -324,7 +323,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                         decoder = Decoder(point_dim=out_channel, point_num=point_num, 
                                                     time_channel = time_channel, 
                                                     condition_channel = decoder_condition_channel,
-                                                    in_channel=decoder_in_channel + dai_channel, 
+                                                    in_channel=decoder_in_channel, 
                                                     dense_channels=de_dense_channels,
                                                     folding_times = folding_times,
                                                     base_shape_config = base_shape_config,
@@ -350,7 +349,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
 
                     if return_encoder:
                         # print(encoder_config)
-                        encoder = Encoder(point_dim=in_channel + eai_channel, 
+                        encoder = Encoder(point_dim=in_channel, 
                                                     projection_channel = projection_channel,
                                                     time_channel = time_channel,
                                                     condition_channel = condition_channel,
@@ -384,7 +383,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     seq_feature_channels = encoder_config.pop('seq_feature_channels', [64, 128, 256])
                     decoder_seq_feature_channels = encoder_config.pop('decoder_seq_feature_channels', [])
                     if return_encoder:
-                        encoder = Encoder(point_dim=in_channel + eai_channel, 
+                        encoder = Encoder(point_dim=in_channel, 
                                                     projection_channel = projection_channel,
                                                     time_channel = time_channel,
                                                     condition_channel = condition_channel,
@@ -398,7 +397,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                         decoder = Decoder(point_dim=out_channel, 
                                                     time_channel = time_channel, 
                                                     condition_channel = decoder_condition_channel,
-                                                    in_channel=decoder_in_channel + dai_channel, 
+                                                    in_channel=decoder_in_channel, 
                                                     seq_feature_channels = decoder_seq_feature_channels,
                                                     building_block=building_block,
                                                     **encoder_config)
@@ -423,7 +422,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             recon_edge = encoder_config.pop('recon_edge', False)
             node_num = encoder_config.pop('node_num', 2048)
             if return_encoder:
-                encoder = Encoder(pos_dim=in_channel + eai_channel, 
+                encoder = Encoder(pos_dim=in_channel, 
                                     node_dim = feature_in_channel,
                                     projection_channel = projection_channel,
                                     time_channel = time_channel,
@@ -442,7 +441,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                     node_num = node_num, 
                                     time_channel = time_channel, 
                                     condition_channel = decoder_condition_channel,
-                                    in_channel=decoder_in_channel + dai_channel, 
+                                    in_channel=decoder_in_channel, 
                                     dense_channels=de_dense_channels,
                                     recon_pos = recon_pos,
                                     recon_feature = recon_feature,

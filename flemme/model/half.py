@@ -33,8 +33,7 @@ class OnlyEncoder(nn.Module):
             logger.info("Create conditional embedding for encoder.")
             self.en_cemb = get_embedding(cemb_config)
             if self.combine_condition == 'cat':
-                encoder_config['encoder_additional_in_channel'] = \
-                    encoder_config.get('encoder_additional_in_channel', 0) + self.en_cemb.out_channel
+                encoder_config['in_channel'] += self.en_cemb.out_channel
             elif self.combine_condition == 'injection':
                 encoder_config['condition_channel'] = self.en_cemb.out_channel
             else:
@@ -123,8 +122,7 @@ class OnlyDecoder(nn.Module):
             logger.info("Create conditional embedding for decoder.")
             self.de_cemb = get_embedding(cemb_config)
             if self.combine_condition == 'cat':
-                decoder_config['decoder_additional_in_channel'] = \
-                     decoder_config.get('decoder_additional_in_channel', 0) + self.de_cemb.out_channel
+                decoder_config['decoder_in_channel'] += self.de_cemb.out_channel
             elif self.combine_condition == 'injection':
                 decoder_config['decoder_condition_channel'] = self.de_cemb.out_channel
             else:

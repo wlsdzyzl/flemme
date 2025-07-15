@@ -22,7 +22,9 @@ class BaseModel(nn.Module):
         assert encoder_config is not None, 'There is no encoder configuration.'
 
         self.in_channel = encoder_config.get('in_channel')
-        self.out_channel = encoder_config.get('out_channel', self.in_channel)
+        if 'out_channel' not in encoder_config:
+            encoder_config['out_channel'] = self.in_channel
+        self.out_channel = encoder_config.get('out_channel')
         ### time_embedding
         self.time_channel = model_config.get('time_channel', 0)
         self.time_injection = model_config.get('time_injection', 'gate_bias')
@@ -59,8 +61,7 @@ class BaseModel(nn.Module):
             self.condition_for_encoder = True
             if self.combine_condition == 'cat':
                 ### should we use a convolution to project the catted feature to the encoder input space ?
-                encoder_config['encoder_additional_in_channel'] = \
-                    encoder_config.get('encoder_additional_in_channel', 0) + self.en_cemb.out_channel
+                encoder_config['in_channel'] += self.en_cemb.out_channel
             elif self.combine_condition == 'injection':
                 encoder_config['condition_channel'] = self.en_cemb.out_channel
 
@@ -78,8 +79,7 @@ class BaseModel(nn.Module):
             self.condition_for_decoder = True
 
             if self.combine_condition == 'cat':
-                encoder_config['decoder_additional_in_channel'] = \
-                     encoder_config.get('decoder_additional_in_channel', 0) + self.de_cemb.out_channel
+                encoder_config['decoder_in_channel'] += self.de_cemb.out_channel
             elif self.combine_condition == 'injection':
                 encoder_config['decoder_condition_channel'] = self.de_cemb.out_channel
         

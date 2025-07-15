@@ -501,11 +501,11 @@ def create_evaluator(eval_configs, data_form, classification = False):
 def create_batch_evaluators(eval_metrics, data_form):
     if len(eval_metrics) == 0:
         return None
+    evaluators = {}
     r_eval = create_evaluator(eval_metrics.get('recon', []), data_form)
     s_eval = create_evaluator(eval_metrics.get('seg', []), data_form)
     c_eval = create_evaluator(eval_metrics.get('cluster', []), data_form)
     cls_eval = create_evaluator(eval_metrics.get('cls', []), data_form, classification = True)
-    evaluators = {}
 
     if r_eval is not None: 
         evaluators['recon'] = r_eval
