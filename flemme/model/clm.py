@@ -42,6 +42,5 @@ class ClassificationModel(OnlyEncoder):
         res = self.forward(x, c = c)
         losses = []
         for loss, weight in zip(self.cls_losses, self.cls_loss_weights):
-            # print(res['cls_logits'].shape, y.shape)
             losses.append(loss(res['cls_logits'], y) * weight) 
         return losses, res

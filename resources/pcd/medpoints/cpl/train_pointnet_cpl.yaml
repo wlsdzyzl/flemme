@@ -31,8 +31,7 @@ model:
       type: categories
       out_channel: 128
       num_classes: 46
-      apply_onehot: False
-    # decoder: same_as_encoder
+    decoder: same_as_encoder
   reconstruction_losses: 
     - name: DCD
       alpha: 40
@@ -66,7 +65,7 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-  label_transforms:
+  class_label_transforms:
     - name: ToOneHot
       num_classes: 47
       ignore_background: true
@@ -97,7 +96,7 @@ val_loader:
       num: 2048
     - name: ToTensor
       dtype: float
-  label_transforms:
+  class_label_transforms:
     - name: ToOneHot
       num_classes: 47
       ignore_background: true

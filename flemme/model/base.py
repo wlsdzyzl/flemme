@@ -131,7 +131,6 @@ class BaseModel(nn.Module):
     def encode(self, x, t = None, c = None):
         if self.condition_for_encoder:
             if c is not None:
-                # print(c.shape)
                 c = self.en_cemb(c)
                 if self.combine_condition == 'add':
                     x = add_embedding(x, c, self.channel_dim)

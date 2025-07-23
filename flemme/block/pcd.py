@@ -320,9 +320,7 @@ class FoldingLayer(MultiLayerPerceptionBlock):
             f"channel of grid + channel of codewords should be equal to the channel of input, we get: {shapes.shape[-1]} {codewords.shape[-1]} and {self.in_channel}."
         # concatenate
         x = torch.cat([shapes, codewords], dim=-1)
-        # print(x.mean(), "input of folding layer")
-        x = self.mlp(x, t, c)
-        # print(x.mean(), "output of folding layer")
+        x = self.mlp(x, t, c) 
         return x
         
 ### sampling and multi-scale grouping
@@ -500,7 +498,6 @@ class FeaturePropogatingLayer(nn.Module):
             )  # (B, n, C1 + C2)
         else:
             new_features = interpolated_feats
-        # print(new_features.shape, unknown_feats.shape, known_feats.shape)
         new_features = self.bb(new_features, t, c)
 
         return new_features

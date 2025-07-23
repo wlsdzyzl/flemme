@@ -71,8 +71,9 @@ class ChamferDistanceFunction(torch.autograd.Function):
 class ChamferDistance(torch.nn.Module):
     def forward(self, xyz1, xyz2, return_idx = False):
         dist1, dist2, idx1, idx2 = ChamferDistanceFunction.apply(xyz1, xyz2)
-        # dist1, dist2 = dist1**0.5, dist2**0.5
-        # print(xyz1.mean(), xyz2.mean(), dist1.mean(), dist2.mean())
+        ## unsquared distance lead to unstable and slow training
+        ## especially for density-aware chamfer distance
+        # dist1, dist2 = dist1**0.5, dist2**0.5  # L2 distance
         if return_idx:
             return dist1, dist2, idx1, idx2
         return dist1, dist2

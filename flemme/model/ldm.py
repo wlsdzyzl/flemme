@@ -105,7 +105,7 @@ class LatentDiffusion(nn.Module):
             loss_names += self.ae_model.get_loss_name()
         return loss_names
     ### ldm's forward will not call the forward function of auto-encoder
-    def forward(self, x, c = None):
+    def forward(self, x0, c = None):
         ac, ec = None, None
         if self.ae_model.is_conditional:
             ac = c 
@@ -116,7 +116,6 @@ class LatentDiffusion(nn.Module):
         if not torch.is_tensor(z):
             gauss = z
             z = gauss.sample()
-        # print(z.max(), z.min())
         ### forward call sample, direct get the final reconstruction
         res = self.diff_model(x = z, c = ec)
         res['latent'] = z

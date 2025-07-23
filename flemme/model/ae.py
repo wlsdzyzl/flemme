@@ -39,7 +39,7 @@ class AutoEncoder(BaseModel):
         ### unet
         if type(z) == tuple:
             z = z[0]
-        return {'recon':res, 'latent':z}
+        return {'recon': res, 'latent': z}
     def compute_loss(self, x, c = None, res = None, y = None):
         if res is None:
             res = self.forward(x, c)   

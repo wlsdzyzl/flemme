@@ -14,16 +14,22 @@ logger = get_logger('image_dataset')
 class ImgDataset(Dataset):
     def __init__(self, data_path, dim = 2, data_transform = None, 
                  mode = 'train', data_dir = '', 
-                 data_suffix = '.png', **kwargs):
+                 data_suffix = '.png', crop_nonzero = None, **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
         logger.info("loading data from the directory: {}".format(data_path))
-        self.img_path_list = sorted(glob(os.path.join(data_path+'/' + data_dir, "*" + data_suffix)))
+        self.img_path_list = sorted(glob(os.path.join(data_path + '/' + data_dir, "*" + data_suffix)))
         self.mode = mode
         self.data_transform = data_transform
         self.dim = dim
         self.data_path = data_path
+        self.crop_nonzero = None
+        if crop_nonzero:
+            if type(crop_nonzero) == dict:
+                self.crop_nonzero = partial(crop_boundingbox, **crop_nonzero)
+            else:
+                self.crop_nonzero = crop_boundingbox
     def __len__(self):
         return len(self.img_path_list)
     ### the dataset will not be stored in the memory
@@ -34,6 +40,8 @@ class ImgDataset(Dataset):
             img = load_img_as_numpy(img_path)
         else:
             img = load_itk(img_path)
+            if self.crop_nonzero:
+                img = self.crop_nonzero(data = img)[0]
         if self.data_transform is not None:
             img = self.data_transform(img)
         return img, img_path
@@ -42,11 +50,13 @@ class ImgClsDataset(Dataset):
     def __init__(self, data_path, 
                 dim = 2,
                 data_transform = None, 
-                label_transform = None,
-                mode = 'train', 
+                class_label_transform = None,
+                mode = 'train',
+                data_dir = '', 
                 data_suffix = '.png',
                 pre_shuffle = True,
                 cls_label = {},
+                crop_nonzero = None,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -56,19 +66,26 @@ class ImgClsDataset(Dataset):
         self.mode = mode
         self.dim = dim
         self.data_transform = data_transform
-        self.label_transform = label_transform
+        self.class_label_transform = class_label_transform
         self.img_path_list = []
         self.labels = []
         class_dirs = list(cls_label.keys())
         for cls_dir in class_dirs:
-            sub_path_list = sorted(glob.glob(os.path.join(data_path + '/' + cls_dir,  "*" + data_suffix)))
+            sub_path_list = sorted(glob(os.path.join(data_path + '/' + cls_dir + '/' + data_dir,  "*" + data_suffix)))
             self.img_path_list = self.img_path_list + sub_path_list
             assert cls_dir in cls_label, f'Unknowk class: {cls_dir}'
             self.labels = self.labels + [cls_label[cls_dir], ] * len(sub_path_list)
         if pre_shuffle:
-            shuffled_index = np.random.shuffle(np.arange(len(self.img_path_list)))
+            shuffled_index = np.arange(len(self.img_path_list))
+            np.random.shuffle(shuffled_index)
             self.img_path_list = [self.img_path_list[i] for i in shuffled_index]
             self.labels = [self.labels[i] for i in shuffled_index]
+        self.crop_nonzero = None
+        if crop_nonzero:
+            if type(crop_nonzero) == dict:
+                self.crop_nonzero = partial(crop_boundingbox, **crop_nonzero)
+            else:
+                self.crop_nonzero = crop_boundingbox
     def __len__(self):
         return len(self.img_path_list)
     ### the dataset will not be stored in the memory
@@ -80,10 +97,12 @@ class ImgClsDataset(Dataset):
             img = load_img_as_numpy(img_path)
         else:
             img = load_itk(img_path)
+            if self.crop_nonzero:
+                img = self.crop_nonzero(data = img)[0]
         if self.data_transform is not None:
             img = self.data_transform(img)
-        if self.label_transform is not None:
-            label = self.label_transform(label)
+        if self.class_label_transform is not None:
+            label = self.class_label_transform(label)
         return img, label, img_path
 
 class ImgSegDataset(Dataset):
@@ -96,16 +115,20 @@ class ImgSegDataset(Dataset):
         label_suffix = label_suffix or data_suffix
         logger.info("loading data from the directory: {}".format(data_path))
         self.data_path = data_path
-        self.img_path_list = sorted(glob(os.path.join(data_path+'/' + data_dir, "*" + data_suffix)))
+        self.img_path_list = sorted(glob(os.path.join(data_path + '/' + data_dir, "*" + data_suffix)))
         self.mask_path_list = [rreplace(rreplace(ipath, data_suffix, label_suffix, 1), data_dir, label_dir, 1) for ipath in self.img_path_list]
         self.mode = mode
         self.data_transform = data_transform
         self.label_transform = label_transform
         self.dim = dim
         self.crop_by = None
-        if crop_nonzero is not None:
-            self.crop_nonzero = partial(crop_boundingbox, margin = crop_nonzero.get('margin', (0,0,0)), background=0)
-            self.crop_by = crop_nonzero.get('crop_by', 'raw')
+        if crop_nonzero:
+            self.crop_by = crop_nonzero.pop('crop_by', 'raw')
+            if type(crop_nonzero) == dict:
+                self.crop_nonzero = partial(crop_boundingbox, **crop_nonzero)
+            else:
+                self.crop_nonzero = crop_boundingbox
+            
     def __len__(self):
         return len(self.img_path_list)
     ### the dataset will not be stored in the memory
@@ -135,10 +158,6 @@ class ImgSegDataset(Dataset):
             # x_torch = torch.randn(10)
             set_random_state(n_state, t_state)
             mask = self.label_transform(mask)
-            # y = np.random.randn(10)
-            # y_torch = torch.randn(10)
-            # print((x == y).all(), torch.all(torch.eq(x_torch, y_torch)))
-        # print(mask.max(), mask.shape)
         return img, mask, img_path
 
 
@@ -153,15 +172,18 @@ class ImgReconDataset(Dataset):
         logger.info("loading data from the directory: {}".format(data_path))
         self.data_path = data_path
         self.img_path_list = sorted(glob(os.path.join(data_path+'/' + data_dir, "*" + data_suffix)))
-        self.mask_path_list = [rreplace(rreplace(ipath, data_suffix, target_suffix, 1), data_dir, target_dir, 1) for ipath in self.img_path_list]
+        self.target_path_list = [rreplace(rreplace(ipath, data_suffix, target_suffix, 1), data_dir, target_dir, 1) for ipath in self.img_path_list]
         self.mode = mode
         self.data_transform = data_transform
         self.target_transform = target_transform
         self.dim = dim
         self.crop_by = None
-        if crop_nonzero is not None:
-            self.crop_nonzero = partial(crop_boundingbox, margin = crop_nonzero.get('margin', (0,0,0)), background=0)
-            self.crop_by = crop_nonzero.get('crop_by', 'raw')
+        if crop_nonzero:
+            self.crop_by = crop_nonzero.pop('crop_by', 'raw')
+            if type(crop_nonzero) == dict:
+                self.crop_nonzero = partial(crop_boundingbox, **crop_nonzero)
+            else:
+                self.crop_nonzero = crop_boundingbox
     def __len__(self):
         return len(self.img_path_list)
     ### the dataset will not be stored in the memory
@@ -169,33 +191,29 @@ class ImgReconDataset(Dataset):
         """Get the images"""
         img_path = self.img_path_list[index]
         
-        mask_path = self.mask_path_list[index]
+        target_path = self.target_path_list[index]
         if self.dim == 2:
             img = load_img_as_numpy(img_path)
-            mask = load_img_as_numpy(mask_path)
+            target = load_img_as_numpy(target_path)
         else:
             img = load_itk(img_path)
-            mask = load_itk(mask_path)
+            target = load_itk(target_path)
             ### currently, crop_by only support 3D images
             if self.crop_by == 'raw':
-                img, mask, _ = self.crop_nonzero(data = img, follows = mask)
-            elif self.crop_by == 'mask':
-                mask, img, _ = self.crop_nonzero(data = mask, follows = img)
+                img, target, _ = self.crop_nonzero(data = img, follows = target)
+            elif self.crop_by == 'target':
+                target, img, _ = self.crop_nonzero(data = target, follows = img)
         if self.data_transform is not None:
             ## why do we need to set the state here?
             # the purpose is to make sure that two transforms are applied on the same state. 
             n_state, t_state = get_random_state()
             img = self.data_transform(img)
-            ### to check if the mask and image has the same random transforms
+            ### to check if the target and image has the same random transforms
             # x = np.random.randn(10)
             # x_torch = torch.randn(10)
             set_random_state(n_state, t_state)
-            mask = self.target_transform(mask)
-            # y = np.random.randn(10)
-            # y_torch = torch.randn(10)
-            # print((x == y).all(), torch.all(torch.eq(x_torch, y_torch)))
-        # print(mask.max(), mask.shape)
-        return img, mask, img_path
+            target = self.target_transform(target)
+        return img, target, img_path
     
 
 class MultiModalityImgSegDataset(Dataset):
@@ -234,16 +252,18 @@ class MultiModalityImgSegDataset(Dataset):
                 self.img_path_list.append(sorted(glob(os.path.join(data_path+'/' + rd, "*" + sf))))
             else:
                 self.img_path_list.append([rreplace( rreplace(rpath, data_suffix[0], sf, 1), data_dir[0], rd, 1) for rpath in self.img_path_list[0]])
-        # print(self.img_path_list)
         for ld, lsf in zip(label_dir, label_suffix):
             self.mask_path_list.append([rreplace(rreplace(rpath, data_suffix[0], lsf, 1), data_dir[0], ld, 1) for rpath in self.img_path_list[0]])
         self.mode = mode
         self.data_transform = data_transform
         self.label_transform = label_transform
         self.crop_by = None
-        if crop_nonzero is not None:
-            self.crop_nonzero = partial(crop_boundingbox, margin = crop_nonzero.get('margin', (0,0,0)), background=0)
-            self.crop_by = crop_nonzero.get('crop_by', 'raw')
+        if crop_nonzero:
+            self.crop_by = crop_nonzero.pop('crop_by', 'raw')
+            if type(crop_nonzero) == dict:
+                self.crop_nonzero = partial(crop_boundingbox, **crop_nonzero)
+            else:
+                self.crop_nonzero = crop_boundingbox
         if data_combine is None:
             self.data_combine = lambda x: x
         elif data_combine == 'sum':
@@ -297,15 +317,170 @@ class MultiModalityImgSegDataset(Dataset):
                 # the purpose is to make sure that two transforms are applied on the same state. 
                 n_state, t_state = get_random_state()
                 img = self.data_transform(img)
-                ### to check if the mask and image has the same random transforms
-                # x = np.random.randn(10)
-                # x_torch = torch.randn(10)
                 set_random_state(n_state, t_state)
                 mask = self.label_transform(mask)
-                # y = np.random.randn(10)
-                # y_torch = torch.randn(10)
-                # print((x == y).all(), torch.all(torch.eq(x_torch, y_torch)))
                 return img, mask, img_paths[0]
+
+class ImgSegWithClassLabelDataset(Dataset):
+    def __init__(self, data_path, dim = 2,
+                 data_transform = None, 
+                 label_transform = None,
+                 class_label_transform = None, 
+                 mode = 'train', 
+                 data_dir = 'partial', 
+                 label_dir = 'label', 
+                 data_suffix = '.png', 
+                 label_suffix = None, 
+                 cls_label = {},
+                 pre_shuffle = True,
+                 crop_nonzero = None, 
+                 **kwargs):
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters: {}".format(kwargs))
+        logger.info("loading data from the directory: {}".format(data_path))
+        self.data_path = data_path
+        self.dim = dim
+        self.mode = mode
+        self.data_transform = data_transform
+        self.class_label_transform = class_label_transform
+        self.label_transform = label_transform
+        self.img_path_list = []
+        self.mask_path_list = []
+        self.class_labels = []
+        label_suffix = label_suffix or data_suffix
+        class_dirs = list(cls_label.keys())
+
+        for cls_dir in class_dirs:
+            sub_path_list = sorted(glob(os.path.join(data_path, cls_dir, data_dir,  "*" + data_suffix)))
+            self.img_path_list = self.img_path_list + sub_path_list
+            sub_mask_path_list = [rreplace(rreplace(s, data_dir, label_dir, 1), data_suffix, label_suffix, 1) for s in sub_path_list]
+            self.mask_path_list = self.mask_path_list + sub_mask_path_list
+            assert cls_dir in cls_label, f'Unknowk class: {cls_dir}'
+            self.class_labels = self.class_labels + [cls_label[cls_dir], ] * len(sub_path_list)
+        if pre_shuffle:
+            shuffled_index = np.arange(len(self.img_path_list))
+            np.random.shuffle(shuffled_index)
+            self.img_path_list = [self.img_path_list[i] for i in shuffled_index]
+            self.mask_path_list = [self.mask_path_list[i] for i in shuffled_index]
+            self.class_labels = [self.class_labels[i] for i in shuffled_index]
+        self.crop_by = None
+        if crop_nonzero:
+            self.crop_by = crop_nonzero.pop('crop_by', 'raw')
+            if type(crop_nonzero) == dict:
+                self.crop_nonzero = partial(crop_boundingbox, **crop_nonzero)
+            else:
+                self.crop_nonzero = crop_boundingbox
+    def __len__(self):
+        return len(self.img_path_list)
+
+    def __getitem__(self, index):
+        """Get the images"""
+        img_path = self.img_path_list[index]
+        
+        mask_path = self.mask_path_list[index]
+        if self.dim == 2:
+            img = load_img_as_numpy(img_path)
+            mask = load_img_as_numpy(mask_path)
+        else:
+            img = load_itk(img_path)
+            mask = load_itk(mask_path)
+            ### currently, crop_by only support 3D images
+            if self.crop_by == 'raw':
+                img, mask, _ = self.crop_nonzero(data = img, follows = mask)
+            elif self.crop_by == 'mask':
+                mask, img, _ = self.crop_nonzero(data = mask, follows = img)
+            
+        cls_label = self.class_labels[index]
+        if self.data_transform:
+            n_state, t_state = get_random_state()
+            img = self.data_transform(img)
+            set_random_state(n_state, t_state)
+            mask = self.label_transform(mask)
+            if self.class_label_transform:
+                cls_label = self.class_label_transform(cls_label)
+        return img, mask, cls_label, self.img_path_list[index]
+
+
+class ImgReconWithClassLabelDataset(Dataset):
+    def __init__(self, data_path, dim = 2,
+                 data_transform = None, 
+                 target_transform = None,
+                 class_label_transform = None, 
+                 mode = 'train', 
+                 data_dir = 'partial', 
+                 target_dir = 'target', 
+                 data_suffix = '.png', 
+                 target_suffix = None, 
+                 cls_label = {},
+                 pre_shuffle = True,
+                 crop_nonzero = None, 
+                 **kwargs):
+        super().__init__()
+        if len(kwargs) > 0:
+            logger.debug("redundant parameters: {}".format(kwargs))
+        logger.info("loading data from the directory: {}".format(data_path))
+        self.data_path = data_path
+        self.dim = dim
+        self.mode = mode
+        self.data_transform = data_transform
+        self.class_label_transform = class_label_transform
+        self.target_transform = target_transform
+        self.img_path_list = []
+        self.target_path_list = []
+        self.class_labels = []
+        target_suffix = target_suffix or data_suffix
+        class_dirs = list(cls_label.keys())
+
+        for cls_dir in class_dirs:
+            sub_path_list = sorted(glob(os.path.join(data_path, cls_dir, data_dir,  "*" + data_suffix)))
+            self.img_path_list = self.img_path_list + sub_path_list
+            sub_target_path_list = [rreplace(rreplace(s, data_dir, target_dir, 1), data_suffix, target_suffix, 1) for s in sub_path_list]
+            self.target_path_list = self.target_path_list + sub_target_path_list
+            assert cls_dir in cls_label, f'Unknowk class: {cls_dir}'
+            self.class_labels = self.class_labels + [cls_label[cls_dir], ] * len(sub_path_list)
+        if pre_shuffle:
+            shuffled_index = np.arange(len(self.img_path_list))
+            np.random.shuffle(shuffled_index)
+            self.img_path_list = [self.img_path_list[i] for i in shuffled_index]
+            self.target_path_list = [self.target_path_list[i] for i in shuffled_index]
+            self.class_labels = [self.class_labels[i] for i in shuffled_index]
+        self.crop_by = None
+        if crop_nonzero:
+            self.crop_by = crop_nonzero.pop('crop_by', 'raw')
+            if type(crop_nonzero) == dict:
+                self.crop_nonzero = partial(crop_boundingbox, **crop_nonzero)
+            else:
+                self.crop_nonzero = crop_boundingbox
+    def __len__(self):
+        return len(self.img_path_list)
+
+    def __getitem__(self, index):
+        """Get the images"""
+        img_path = self.img_path_list[index]
+        
+        target_path = self.target_path_list[index]
+        if self.dim == 2:
+            img = load_img_as_numpy(img_path)
+            target = load_img_as_numpy(target_path)
+        else:
+            img = load_itk(img_path)
+            target = load_itk(target_path)
+            ### currently, crop_by only support 3D images
+            if self.crop_by == 'raw':
+                img, target, _ = self.crop_nonzero(data = img, follows = target)
+            elif self.crop_by == 'target':
+                target, img, _ = self.crop_nonzero(data = target, follows = img)
+            
+        cls_label = self.class_labels[index]
+        if self.data_transform:
+            n_state, t_state = get_random_state()
+            img = self.data_transform(img)
+            set_random_state(n_state, t_state)
+            target = self.target_transform(target)
+            if self.class_label_transform:
+                cls_label = self.class_label_transform(cls_label)
+        return img, target, cls_label, self.img_path_list[index]
 
 class MNISTWrapper(MNIST):
     def __init__(self, data_path, data_transform = None, mode = 'train', **kwargs):

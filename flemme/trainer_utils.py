@@ -321,7 +321,6 @@ def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None,
                 'specified_model_components should be a string, list or tuple.'
             for smc in specified_model_componets:
                 assert hasattr(model, smc), f"{smc} is not an attribute of the model."
-                # print(trained_model_state_dict.keys())
                 specifed_keys = list(trained_model_state_dict.keys())
                 specifed_keys = [k for k in specifed_keys if k.startswith(smc)]
                 specifed_dict = { k[len(smc)+1:]: trained_model_state_dict[k] for k in specifed_keys}
@@ -354,14 +353,23 @@ def process_results(results, x, y, c, res, data_form, path = None,
         res_dict = {
             'input': x.cpu().detach().numpy(),
         }
+        if c is not None: 
+            res_dict['condition'] = c.cpu().detach().numpy()
         if y is not None:
             if is_supervised:
                 res_dict['target'] = y.cpu().detach().numpy()
-            elif is_conditional:
+            else:
                 res_dict['condition'] = y.cpu().detach().numpy()
-            ## y is not used.
-        if c is not None and is_conditional and is_supervised:
-            res_dict['condition'] = c.cpu().detach().numpy()
+
+        # if c is not None and is_conditional and is_supervised:
+        #     res_dict['condition'] = c.cpu().detach().numpy()
+        # if y is not None:
+        #     if is_supervised:
+        #         res_dict['target'] = y.cpu().detach().numpy()
+        #     elif is_conditional:
+        #         res_dict['condition'] = y.cpu().detach().numpy()
+        #    ## y is not used.
+
         if path is not None:
             res_dict['path'] = path
         if slice_indices is not None:
@@ -428,7 +436,6 @@ def merge_patches_in_results(results, pickle_results = False, pickle_path = 'pic
     merged_shapes = [0, 0, 0]
     new_results = []
     def patch_to_volume():
-        # print(merged_shapes, merged_shapes)
         input_c = merged_patch_inputs[0].shape[0]
         label_c = merged_patch_targets[0].shape[0]
         tmp_input = np.zeros([input_c, ] + merged_shapes)
@@ -439,7 +446,6 @@ def merge_patches_in_results(results, pickle_results = False, pickle_path = 'pic
         weight_label = np.zeros([label_c, ] + merged_shapes)
 
         for patch_id, si in enumerate(merged_patch_indices):
-            # print(isi, lsi, tmp_input.shape)
             isi = (slice(0, input_c),) + si
             lsi = (slice(0, label_c),) + si
             tmp_input[isi] += merged_patch_inputs[patch_id]
@@ -624,11 +630,16 @@ def forward_pass(model, x, y, c, **kwargs):
     return res
 
 #### save tsne visualization
-def construct_tsne_vis(embeddings, labels, vis_dim = 2, label_names = None, top_n = 10, title = 't-SNE Visualization'):
+def construct_tsne_vis(embeddings, labels, vis_dim = 2, label_names = None, top_n = 10, 
+    title = 't-SNE Visualization', size = 10, alpha = 0.3, 
+    random_state = 42, perplexity = 30, remove_ticks = False, 
+    color_map = 'jet', legend = True, **kwargs):
+    from sklearn.preprocessing import StandardScaler
+    embeddings = StandardScaler().fit_transform(embeddings)
     if top_n > 0:
         unique_elements, counts = np.unique(labels, return_counts=True)
+        # print(unique_elements, counts, labels)
         unique_elements = unique_elements[np.argsort(-counts)][:top_n]
-        # print(unique_elements, counts[np.argsort(-counts)][:top_n])
         indices = (labels == unique_elements[0])
         for i in range(1, len(unique_elements)):
             indices = np.logical_or(indices, labels == unique_elements[i])
@@ -638,40 +649,69 @@ def construct_tsne_vis(embeddings, labels, vis_dim = 2, label_names = None, top_
         labels = inverse.reshape(labels.shape)
         if label_names:
             label_names = [label_names[u] for u in unique_elements]
-    kwargs = {}
+        # else:
+        #     label_names = [u for u in unique_elements]
 
     if embeddings.shape[1] > vis_dim:
-        tsne = TSNE(n_components = vis_dim, random_state=42)
+        tsne = TSNE(n_components = vis_dim, 
+                random_state=random_state, 
+                perplexity = perplexity, **kwargs)
         compressed_vec = tsne.fit_transform(embeddings)
     else:
         compressed_vec = embeddings
-    # kwargs = {'c':labels, 
-    #     'cmap':plt.cm.get_cmap('jet', labels.max() + 1)}
-    # if label_names is not None:
-    #     kwargs['label'] = [label_names[l] for l in labels]
+    cmap = plt.cm.get_cmap(color_map)
     if vis_dim == 2:
         label_count = labels.max() + 1
         fig, ax = plt.subplots()
         for l in range(label_count):
             tmp_vec = compressed_vec[labels == l]
-            color = plt.cm.get_cmap('jet', labels.max() + 1)(l)
-            ln = label_names[l]
-            ax.scatter(tmp_vec[:, 0], tmp_vec[:, 1], s = 10, alpha=0.3, color = color, label = ln, **kwargs)
-        ax.legend(loc='best')        
+            color = cmap(l)
+            ln = label_names[l] if label_names else ln
+            ax.scatter(tmp_vec[:, 0], tmp_vec[:, 1], s = size, alpha=alpha, color = color, label = ln)
+        if remove_ticks:
+            for tick in ax.xaxis.get_major_ticks():
+                tick.tick1line.set_visible(False)
+                tick.tick2line.set_visible(False)
+                tick.label1.set_visible(False)
+                tick.label2.set_visible(False)
+            for tick in ax.yaxis.get_major_ticks():
+                tick.tick1line.set_visible(False)
+                tick.tick2line.set_visible(False)
+                tick.label1.set_visible(False)
+                tick.label2.set_visible(False)
+        if legend:
+            ax.legend(loc='best') 
     elif vis_dim == 3:
         fig = plt.figure()
         ax = fig.add_subplot(projection='3d')
         label_count = labels.max() + 1
         for l in range(label_count):
             tmp_vec = compressed_vec[labels == l]
-            color = plt.cm.get_cmap('jet', labels.max() + 1)(l)
-            ln = label_names[l]
+            color = cmap(l)
+            ln = label_names[l] if label_names else ln
             ax.scatter(tmp_vec[:, 0], tmp_vec[:, 1], 
-                    tmp_vec[:, 2], s = 10, color = color, label = ln, **kwargs)
-        ax.legend(loc='best')
+                    tmp_vec[:, 2], s = size, alpha = alpha, color = color, label = ln)
+        if remove_ticks:
+            for tick in ax.xaxis.get_major_ticks():
+                tick.tick1line.set_visible(False)
+                tick.tick2line.set_visible(False)
+                tick.label1.set_visible(False)
+                tick.label2.set_visible(False)
+            for tick in ax.yaxis.get_major_ticks():
+                tick.tick1line.set_visible(False)
+                tick.tick2line.set_visible(False)
+                tick.label1.set_visible(False)
+                tick.label2.set_visible(False)
+            for tick in ax.zaxis.get_major_ticks():
+                tick.tick1line.set_visible(False)
+                tick.tick2line.set_visible(False)
+                tick.label1.set_visible(False)
+                tick.label2.set_visible(False)        
+        if legend:
+            ax.legend(loc='best') 
     plt.title(title)
     plt.tight_layout()
-    return plt.gcf()        
+    return plt.gcf()          
 
 ### figs in batch form
 def combine_figures(figs, row_length, size = (32, 32)):
@@ -864,7 +904,7 @@ def get_load_function(suffix, transpose = False):
 #             input_c = results['input'][0].shape[0]
 #             label_c = results['target'][0].shape[0]
 #             for i in range(len(merged_paths)):
-#                 # print(merged_shapes, merged_shapes)
+#                 
 #                 tmp_input = np.zeros([input_c, ] + merged_shapes[i])
 #                 weight_input = np.zeros([input_c, ] + merged_shapes[i])
 #                 tmp_target = np.zeros([label_c, ] + merged_shapes[i])
@@ -873,7 +913,7 @@ def get_load_function(suffix, transpose = False):
 #                 weight_label = np.zeros([label_c, ] + merged_shapes[i])
 
 #                 for patch_id, si in enumerate(merged_patch_indices[i]):
-#                     # print(isi, lsi, tmp_input.shape)
+#                     
 #                     isi = (slice(0, input_c),) + si
 #                     lsi = (slice(0, label_c),) + si
 #                     tmp_input[isi] += merged_patch_inputs[i][patch_id]

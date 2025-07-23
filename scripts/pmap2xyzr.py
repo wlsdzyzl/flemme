@@ -48,10 +48,8 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
         ## save skeleton
         if skeleton_file is not None:
             ske_array = skeletonize(_mask_array)
-            # print('finish skeletonization')
             selector = (ske_array >= 0.5).reshape((-1))
             ske = vol_coor[selector]
-            # print(len(ske))
             save_ply(skeleton_file + suffix +'.ply', ske)
             print('extract {} points for skeleton, save to {}'.format(len(ske), skeleton_file + suffix +'.ply'))  
         if xyzr_file is not None and surface_file is not None and skeleton_file is not None:

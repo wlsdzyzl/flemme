@@ -37,7 +37,7 @@ class PcdDataset(Dataset):
 class PcdClsDataset(Dataset):
     def __init__(self, data_path, 
                 data_transform = None, 
-                label_transform = None,
+                class_label_transform = None,
                 mode = 'train', 
                 pre_shuffle = True,
                 data_suffix = '.ply',
@@ -50,7 +50,7 @@ class PcdClsDataset(Dataset):
         self.data_path = data_path
         self.mode = mode
         self.data_transform = data_transform
-        self.label_transform = label_transform
+        self.class_label_transform = class_label_transform
         self.pcd_path_list = []
         self.labels = []
         class_dirs = list(cls_label.keys())
@@ -72,8 +72,8 @@ class PcdClsDataset(Dataset):
         label = self.labels[index]
         if self.data_transform:
             pcd = self.data_transform(pcd)
-        if self.label_transform is not None:
-            label = self.label_transform(label)
+        if self.class_label_transform is not None:
+            label = self.class_label_transform(label)
         return pcd, label, self.pcd_path_list[index]
 
 ### pcd segmentation dataset
@@ -91,7 +91,6 @@ class PcdSegDataset(PcdDataset):
         """Get the pcds"""
         pcd = load_pcd(self.pcd_path_list[index])
         label = np.loadtxt(self.label_path_list[index])
-        # print(label.max(), label.min())
         if self.data_transform:
             n_state, t_state = get_random_state()
             pcd = self.data_transform(pcd)
@@ -115,7 +114,6 @@ class PcdReconDataset(PcdDataset):
         """Get the pcds"""
         pcd = load_pcd(self.pcd_path_list[index])
         target = load_pcd(self.target_path_list[index])
-        # print(target.max(), target.min())
         if self.data_transform:
             n_state, t_state = get_random_state()
             pcd = self.data_transform(pcd)
@@ -127,11 +125,11 @@ class PcdReconDataset(PcdDataset):
 class PcdReconWithClassLabelDataset(Dataset):
     def __init__(self, data_path, 
                  data_transform = None, 
-                 label_transform = None, 
                  target_transform = None,
+                 class_label_transform = None, 
                  mode = 'train', 
                  data_dir = 'partial', 
-                 target_dir = 'label', 
+                 target_dir = 'target', 
                  data_suffix = '.ply', 
                  target_suffix='.ply', 
                  cls_label = {},
@@ -144,11 +142,11 @@ class PcdReconWithClassLabelDataset(Dataset):
         self.data_path = data_path
         self.mode = mode
         self.data_transform = data_transform
-        self.label_transform = label_transform
+        self.class_label_transform = class_label_transform
         self.target_transform = target_transform
         self.pcd_path_list = []
         self.target_path_list = []
-        self.labels = []
+        self.class_labels = []
 
         class_dirs = list(cls_label.keys())
 
@@ -158,13 +156,13 @@ class PcdReconWithClassLabelDataset(Dataset):
             sub_target_path_list = [rreplace(rreplace(s, data_dir, target_dir, 1), data_suffix, target_suffix, 1) for s in sub_path_list]
             self.target_path_list = self.target_path_list + sub_target_path_list
             assert cls_dir in cls_label, f'Unknowk class: {cls_dir}'
-            self.labels = self.labels + [cls_label[cls_dir], ] * len(sub_path_list)
+            self.class_labels = self.class_labels + [cls_label[cls_dir], ] * len(sub_path_list)
         if pre_shuffle:
             shuffled_index = np.arange(len(self.pcd_path_list))
             np.random.shuffle(shuffled_index)
             self.pcd_path_list = [self.pcd_path_list[i] for i in shuffled_index]
             self.target_path_list = [self.target_path_list[i] for i in shuffled_index]
-            self.labels = [self.labels[i] for i in shuffled_index]
+            self.class_labels = [self.class_labels[i] for i in shuffled_index]
 
     def __len__(self):
         return len(self.pcd_path_list)
@@ -173,15 +171,14 @@ class PcdReconWithClassLabelDataset(Dataset):
         """Get the pcds"""
         pcd = load_pcd(self.pcd_path_list[index])
         target = load_pcd(self.target_path_list[index])
-        label = self.labels[index]
-        # print(label.max(), label.min())
+        cls_label = self.class_labels[index]
         if self.data_transform:
             n_state, t_state = get_random_state()
             pcd = self.data_transform(pcd)
             set_random_state(n_state, t_state)
             target = self.target_transform(target)
-            if self.label_transform:
-                label = self.label_transform(label)
+            if self.class_label_transform:
+                cls_label = self.class_label_transform(cls_label)
             # save_pcd(pcd_path+'.transformed.ply', pcd.numpy())
-        return pcd, target, label, self.pcd_path_list[index]
+        return pcd, target, cls_label, self.pcd_path_list[index]
 

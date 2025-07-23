@@ -87,5 +87,3 @@ if __name__=='__main__':
     h = HilbertSort3D(bins=32, radius=1)
     x = np.random.randn(10, 3)
     x = normalize(x, channel_dim=-1)
-    # print(x)
-    # print(h.sort(x))

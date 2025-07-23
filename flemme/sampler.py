@@ -139,7 +139,6 @@ class NormalSampler:
             cond = torch.stack([cond for _ in range(inter_latent.shape[0])])
         
         x_bar = self.sample(inter_latent, cond)
-        # print(x_bar)
         return x_bar
 
     def generate_rand(self, n = 16, cond = None):
@@ -151,6 +150,5 @@ class NormalSampler:
                                  or not cond.shape[0] == n):
             ## all data use the same condition
             cond = torch.stack([cond for _ in range(n)])
-            # print(cond.shape, z.shape)
         return self.sample(z, cond)
     

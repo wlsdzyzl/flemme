@@ -62,6 +62,7 @@ def check_random_transforms(data_trans_config_list, label_trans_config_list):
             logger.error(f'random transforms for label: {label_random_transform_list}')
             exit(1)
 def select_label_transforms(trans_config_list, data_form):
+    # print('')
     label_config_list = []
     selector = []
     if data_form == DataForm.IMG:

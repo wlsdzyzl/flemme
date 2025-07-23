@@ -70,7 +70,6 @@ def main():
         input_suffix = loader_config['dataset'].get('data_suffix', 'png')
         if type(input_suffix) == tuple or type(input_suffix) == list:
             input_suffix = input_suffix[0]
-        # print(input_suffix)
         for t in tqdm(data_loader, desc="Predicting"):
             ### split x, y, path in later implementation.
             x, y, _, _, path = process_input(t)

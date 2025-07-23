@@ -68,7 +68,6 @@ class DiffusionImplicit(DDPM):
         sqrt_one_minus_alpha = (1. - alpha) ** 0.5
         ## same as ddpm
         x0_pred = (xt - sqrt_one_minus_alpha * eps_theta) / alpha ** 0.5
-        # print(clipped)
         if clipped:
             x0_pred = x0_pred.clamp(*clip_range)
         dir_to_xt =  (1 - alpha_prev - sigma ** 2) ** 0.5 * eps_theta

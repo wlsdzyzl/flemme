@@ -104,7 +104,7 @@ class PointMamba2Encoder(Point2Encoder):
                                         condition_channel = condition_channel,
                                         condition_injection = condition_injection,
                                         condition_first = condition_first)
-        # print(self.msg_path)
+        
         msg_sequence = [MSGLayer(in_channel = self.msg_path[fid], 
             out_channels = self.sub_out_channels[fid],
             num_fps_points = self.num_fps_points[fid],

@@ -194,6 +194,5 @@ class EDM(nn.Module):
         weight = (sigma ** 2 + self.sigma_data ** 2) / (sigma * self.sigma_data) ** 2
         n = torch.randn_like(x) * sigma.reshape(self.sigma_shape)
         ### sigma is time step, c is condition
-        # print(sigma.max(), sigma.min(), self.P_mean, self.P_std, self.sigma_data, rnd_normal.min(), rnd_normal.max())
         D_yn = self.denoise(x + n, sigma, c)
         return {'recon_dpm': D_yn, 'weight_dpm': weight}

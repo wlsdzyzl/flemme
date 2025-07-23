@@ -19,11 +19,12 @@ class ToOneHot:
         self.to_onehot = partial(label_to_onehot, num_classes = num_classes, 
             ignore_background = ignore_background, channel_dim = 0)
     def __call__(self, m):
-        assert m.ndim == 2 or m.ndim == 3, "Not a 2D image"
-        if m.ndim == 3:
-            assert m.shape[0] == 1, \
-                "Label is a multi channel image. Check if it's already a one hot embedding."
-            m = m[0]
+        if not type(m) == int:
+            assert m.ndim == 2 or m.ndim == 3, "Not a 2D image or class label"
+            if m.ndim == 3:
+                assert m.shape[0] == 1, \
+                    "Label is a multi channel 2D image. Check if it's already a one hot embedding."
+                m = m[0]
         return self.to_onehot(m)
 
 class Resize:
@@ -170,7 +171,7 @@ class ClipTransform:
             Resize(size, mode='bicubic'),
             CenterCrop(size),
             _convert_image_to_rgb,
-            TToTensor(),
+            ToTensor(),
             Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
         ])
     def __call__(self, m):

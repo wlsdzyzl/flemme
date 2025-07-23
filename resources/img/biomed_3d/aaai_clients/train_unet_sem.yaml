@@ -1,0 +1,96 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: train
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: UNet
+    image_size: [40, 136, 120]
+    in_channel: 1
+    patch_size: 2
+    down_channels: [64, 128]
+    middle_channels: [256, 256]
+    building_block: single
+    normalization: group
+    # dense_channels: [512, 512]
+  condition_embedding:
+    combine_condition: injection
+    condition_injection: gate_bias
+    encoder:
+      name: OneHot
+      type: categories
+      out_channel: 128
+      num_classes: 18
+    decoder: same_as_encoder
+  segmentation_losses: 
+    - name: Dice
+      normalization: sigmoid
+    - name: BCE
+loader:
+  dataset: 
+    name: ImgSegWithClassLabelDataset
+    dim: 3
+    data_dir: train/imagesTr
+    label_dir: train/labelsTr
+    data_suffix: .nii.gz
+    label_suffix: .nii.gz
+    crop_nonzero:
+      margin: [2,2,2]
+      crop_by: raw
+    cls_label: 
+      Dataset101_MSDliver: 1
+      Dataset102_MSDpancreas: 2
+      Dataset103_MSDvessel: 3
+      Dataset104_MSDspleen: 4  
+      Dataset105_MSDcolon: 5
+      Dataset110_THORheart: 6
+      Dataset111_THORaorta: 7
+      Dataset112_THORtrachea: 8
+      Dataset113_THOResophagus: 9    
+      Dataset120_TOSliver: 10
+      Dataset121_TOSlung: 11
+      Dataset122_TOSpancreas: 12 
+      Dataset123_TOSspleen: 13
+      Dataset124_TOScolon: 14
+      Dataset125_TOSheart: 15
+      Dataset126_TOSaorta: 16
+      Dataset127_TOStrachea: 17
+      Dataset128_TOSesophagus: 18
+  data_path_list: 
+    - /media/wlsdzyzl/DATA1/datasets/img/aaai_clients
+  batch_size: 4
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      size: [40, 136, 120]
+    - name: ToTensor
+  class_label_transforms:
+    - name: ToOneHot
+      num_classes: 19
+      ignore_background: True
+    - name: ToTensor
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/aaai_clients/CNN_SeM
+resume: true
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0001
+  weight_decay: 0.00000001
+evaluation_metrics:
+  seg:
+    - name: Dice
+    - name: ACC
+    - name: mIoU
+score_metric:
+  name: Dice
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 100
+write_after_iters: 20
+save_after_epochs: 2

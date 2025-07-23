@@ -114,6 +114,8 @@ def main():
     warmup_epochs = train_config.get('warmup_epochs', 0)
     scheduler_config = train_config.get('lr_scheduler', None)
     eval_batch_num = train_config.get('eval_batch_num', 8)
+    if eval_batch_num < 0:
+        eval_batch_num = float('inf')
     write_sample_num= train_config.get('write_sample_num', 16)
     ignore_mismatched_keys = train_config.get('ignore_mismatched_keys', [])
     clip_grad = train_config.get('clip_grad', None)
@@ -211,7 +213,6 @@ def main():
                 y = y.to(device)
             if c is not None:
                 c = c.to(device)
-
             if not x.shape[1:] == tuple(model.get_input_shape()):
                 logger.error("Inconsistent sample shape between data and model: {} and {}".format(x.shape[1:], tuple(model.get_input_shape())))
                 exit(1)                

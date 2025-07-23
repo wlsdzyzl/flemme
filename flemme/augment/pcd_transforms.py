@@ -21,6 +21,8 @@ class ToTensor(object):
         elif dtype == 'double':
             self.dtype = torch.double
     def __call__(self, data):
+        if type(data) == int:
+            return torch.tensor(data)
         return torch.tensor(data).type(self.dtype)
 
 
@@ -259,4 +261,10 @@ class ToOneHot:
         self.to_onehot = partial(label_to_onehot, num_classes = num_classes, 
             ignore_background = ignore_background, channel_dim = -1)
     def __call__(self, m):
+        if not type(m) == int:
+            assert m.ndim == 1 or m.ndim == 2, "Not a per-point label or class label"
+            if m.ndim == 2:
+                assert m.shape[-1] == 1, \
+                    "Label is a multi channel point cloud. Check if it's already a one hot embedding."
+                m = m[..., 0]
         return self.to_onehot(m)

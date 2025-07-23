@@ -1,6 +1,7 @@
 #### This file is a script, and the code style sucks. 
 from .trainer_utils import *
 import torch.nn.functional as F
+import math
 from flemme.model import create_model, ClM
 from flemme.dataset import create_loader
 from flemme.logger import get_logger
@@ -106,7 +107,6 @@ def main():
                     y = y.to(device)
                 if c is not None:
                     c = c.to(device)
-                # print(x.shape, y.shape, len(path))
                 ### move data to cuda
                 if not x.shape[1:] == tuple(model.get_input_shape()):
                     logger.error("Inconsistent sample shape between data and model")
@@ -144,30 +144,50 @@ def main():
             tsne_config = test_config.get('tsne_visualization', None)
             if tsne_config:
                 label_names = tsne_config.get('label_names', None)
+                tsne_path = tsne_config.pop('tsne_path', './tsne.png')
+                ## one matrix to one vector
+                one_to_one = tsne_config.pop('one_to_one', True)
                 if type(label_names) == str:
                     from flemme.dataset.label_dict import get_label_cls
                     label_names = list(get_label_cls(label_names).values())
                     tsne_config['label_names'] = label_names
                 latents = extract_results(results, 'latent')
+                ### get the label
+                labels = None
+                ### classification model
+                if isinstance(model, ClM):
+                    labels = extract_results(results, 'target')
+                else:
+                    labels = extract_results(results, 'condition')
                 if latents is None:
                     logger.warning('There is no latent for tsne visualization.')
-                elif not latents.ndim == 2:
-                    logger.warning('TSNE only supports to visualize vector embeddings.')
+                elif labels is None or not labels.ndim == 2:
+                    logger.warning('There is no label (should be one-hot classification label) for tsne visualization.')
                 else:
-                    labels = None
-                    ### classification model
-                    if isinstance(model, ClM):
-                        labels = extract_results(results, 'target')
-                    elif is_conditional:
-                        labels = extract_results(results, 'condition'), 
-                    if labels is None:
-                        logger.warning('There is no label for tsne visualization.')
-                    else:
-                        labels = onehot_to_label(labels, channel_dim=channel_dim)
-                        if not labels.ndim == 1:
-                            logger.warning('Cannnot be visualized through TSNE because there is no label information.')
-                        tsne_fig = construct_tsne_vis(latents, labels = labels, **tsne_config)
-                        save_img('tsne.png', tsne_fig)
+                    ### process latents and labels for tsne visualization
+                    ## latent is not a vector
+                    repeat = 1
+                    if not latents.ndim == 2:
+                        logger.info('Latents will be reshaped to vector embeddings for TSNE visualization.')
+                        if one_to_one:
+                            ### one matrix to one vector
+                            latents = latents.reshape((latents.shape[0], -1))
+                        else:
+                            if model.feature_channel_dim == 1:
+                                if latents.ndim == 3:
+                                    latents = latents.transpose((0, 2, 1))
+                                elif latents.ndim == 4:
+                                    latents = latents.transpose((0, 2, 3, 1))
+                                elif latents.ndim == 5:
+                                    latents = latents.transpose((0, 2, 3, 4, 1))
+                            repeat = math.prod(latents.shape[1:-1][:1])
+                            latents = latents.reshape((latents.shape[0] * repeat, -1))
+                    ### onehot to label
+                    labels = onehot_to_label(labels, channel_dim=-1)
+                    labels = np.repeat(labels, repeat)
+                    ### tsne
+                    tsne_fig = construct_tsne_vis(latents, labels = labels, **tsne_config)
+                    save_img(tsne_path, tsne_fig)
 
             ### saving results of reconstruction and segmentation
             recon_dir = test_config.get('recon_dir', None)

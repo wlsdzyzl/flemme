@@ -348,7 +348,6 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                         'Point2Encoder should have a same number of feature propagating layers and sampling and grouping layers.'
 
                     if return_encoder:
-                        # print(encoder_config)
                         encoder = Encoder(point_dim=in_channel, 
                                                     projection_channel = projection_channel,
                                                     time_channel = time_channel,

@@ -15,7 +15,9 @@ import argparse
 import yaml
 from flemme.block import channel_recover
 import shutil
-
+### close warning "unexpected scales in sform"
+if model_config['suppress_simpleitk_warning']:
+    sitk.ProcessObject.SetGlobalWarningDisplay(False)
 logger = get_logger('utils')
 
 class DataForm(Enum):
@@ -283,7 +285,6 @@ def save_itk(filename, img_array, origin = None, spacing = None):
 # from mhd to nii.gz
 def mhd2nii(mhd_file, nii_file):
     data, origin, spacing = load_itk(mhd_file, True)
-    # print(data)
     save_itk(nii_file, data, origin = origin, spacing = spacing)
 def nii2mhd(nii_file, mhd_file):
     data, origin, spacing = load_itk(nii_file, True)
@@ -315,7 +316,6 @@ def load_img(input_path):
         pt = Imath.PixelType(Imath.PixelType.FLOAT)
         dw = exrFile.header()['dataWindow']
         width, height = (dw.max.x - dw.min.x + 1, dw.max.y - dw.min.y + 1)
-        # print(size)
         channels = exrFile.channels(["R", "G", "B"], pt)
         def to_numpy(channel):
             return np.frombuffer(channel, dtype=np.float32).reshape(height, width)
@@ -354,7 +354,7 @@ def save_img(img_path, img):
         img = Image.fromarray(img)
         img.save(img_path)
     elif isinstance(img, mpl_figure.Figure):
-        img.savefig(img_path)
+        img.savefig(img_path, dpi=600)
 def save_npy(npy_path, data):
     np.save(npy_path, data)
 def load_npy(npy_path):

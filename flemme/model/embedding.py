@@ -17,7 +17,6 @@ def get_embedding(emb_config):
     emb_name = emb_config.get('name')
 
     ### wait for image embedding and point embedding.
-    # print(emb_name, supported_encoders)
     if emb_name in supported_encoders:
         logger.info('Using encoder\'{}\' to compute embedding'.format(emb_name))    
         return create_encoder(emb_config, return_decoder=False)[0]
@@ -33,7 +32,7 @@ def get_embedding(emb_config):
             logger.info('Using one-hot embedding, input should be categories.')         
             ## use one-hot embedding for categories
             num_classes = emb_config.get('num_classes')
-            apply_onehot = emb_config.get('apply_onehot', True)
+            apply_onehot = emb_config.get('apply_onehot', False)
             emb = OneHotEmbeddingBlock(num_classes=num_classes, out_channel=out_channel,
                                                     activation=activation, apply_onehot=apply_onehot)
         elif emb_name == "Time":

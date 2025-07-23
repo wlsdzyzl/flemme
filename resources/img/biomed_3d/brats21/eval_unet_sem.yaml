@@ -34,7 +34,7 @@ prediction:
   path: /media/wlsdzyzl/DATA1/flemme-results/UNet/BRATS21
   suffix: flair.nii.gz
 pickle_results: true
-pickle_path:  /media/wlsdzyzl/DATA1/flemme-pickled
+pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled
 
 # eval_batch_num: 2
 evaluation_metrics:

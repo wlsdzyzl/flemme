@@ -41,7 +41,6 @@ class ACC:
         self.channel_dim = channel_dim
         logger.info('using Accuracy')
     def __call__(self, x, y):
-        ### at least one of [x, y] should not be one hot
         assert x.shape == y.shape, "Inputs should have the same shape!"
         ### transfer one-hot embedding to label
         if self.channel_dim is not None and x.shape[self.channel_dim] > 1 and max(y.max(), x.max()) == 1:
@@ -53,7 +52,6 @@ class TopKACC:
         self.k = 5
         logger.info('using Top-k Accuracy')
     def __call__(self, x, y):
-        ### at least one of [x, y] should not be one hot
         assert x.shape == y.shape, "Inputs should have the same shape!"
         ### transfer one-hot embedding to label
         assert self.channel_dim is not None and x.shape[self.channel_dim] > self.k, \
@@ -72,7 +70,6 @@ class SegMetrics:
         self.channel_dim = channel_dim
     
     def __channel_rearrange__(self, x, y, soft = False):
-        # print(x.shape, y.shape)
         assert x.shape == y.shape, "Inputs should have the same shape!"
         multi_channel = self.channel_dim is not None and x.shape[self.channel_dim] > 1
         channel_dim = self.channel_dim

@@ -52,7 +52,6 @@ class VariationalAutoEncoder(AutoEncoder):
     def forward(self, x, c = None):
         gaussian = self.encode(x, c)
         z = gaussian.sample()
-        # print(z.shape, c.shape)
         # sample from the mean (mean) and log-variance (logvar)
         # reparameterization
         return {"recon":self.decode(z, c), "gaussian":gaussian, 'latent':z} 

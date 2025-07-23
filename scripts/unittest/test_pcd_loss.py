@@ -19,18 +19,23 @@ pcds = [ to_tensor( fixed_points(load_ply(p_path))) for p_path in pcd_paths]
 ### stack will create a new axis
 pcds = torch.stack(pcds, dim = 0).to(device)
 print('input_size: ',pcds.shape)
-losses = [ChamferLoss(), DCDLoss(), SinkhornLoss()]
-loss_names = ['chamfer', 'DCD',  'sinkhorn']
-init = torch.randn((pcds.shape[0], 256, 3), device = device)
+losses = [ChamferLoss(), DCDLoss(), EMDLoss(), SinkhornLoss()]
+loss_names = ['chamfer', 'DCD', 'EMD', 'sinkhorn']
+init = torch.randn((pcds.shape[0], 4096, 3), device = device)
 for loss, loss_name in zip(losses, loss_names):
     X = [init.clone().detach().requires_grad_(),]
-    lr = 0.1
+    lr = 0.005
     ### training process
     optimizer = optim.Adam(X, lr)
-    max_iter = 500
+    max_iter = 10000
     start_time = time.perf_counter()
     for iter_id in range(max_iter):
         l = loss(X[0], pcds)
+        ## DCD loss is more sensitive to the learning rate
+        ## use a smaller learning rate for DCD loss is preferred
+        ## A combination of DCD and chamfer loss helps to reach the convergence faster
+        if loss_name == 'DCD':
+            l += losses[0](X[0], pcds)
         optimizer.zero_grad()
         l.backward()
         optimizer.step()

@@ -33,7 +33,7 @@ loader:
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold1
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold2
     - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold3
-  batch_size: 32
+  batch_size: 16
   num_workers: 8
   shuffle: true
   data_transforms:

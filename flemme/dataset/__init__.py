@@ -20,6 +20,8 @@ img_dataset_dict = {
     'MultiModalityImgSegDataset': MultiModalityImgSegDataset,
     'PatchImgSegDataset': PatchImgSegDataset,
     'MultiModalityPatchImgSegDataset': MultiModalityPatchImgSegDataset,
+    'ImgReconWithClassLabelDataset': ImgReconWithClassLabelDataset,
+    'ImgSegWithClassLabelDataset': ImgSegWithClassLabelDataset,
     'MNIST': MNISTWrapper,
     'CIFAR10': CIFAR10Wrapper,
     'CelebA': CelebAWrapper,
@@ -29,8 +31,9 @@ vec_dataset_dict = {}
 graph_dataset_dict = {}
 
 process_label_datasets = [ImgSegDataset, MultiModalityImgSegDataset, 
-                        PatchImgSegDataset, MultiModalityPatchImgSegDataset]
-process_target_datasets = [ImgReconDataset, ]
+                            PatchImgSegDataset, MultiModalityPatchImgSegDataset,
+                            ImgSegWithClassLabelDataset]
+process_target_datasets = [ImgReconDataset, ImgReconWithClassLabelDataset]
 
 if module_config['point-cloud']:
     from .pcd import *
@@ -165,7 +168,14 @@ def create_loader(loader_config):
         target_transforms = Compose(target_transforms)
         dataset_config['target_transform'] = target_transforms
 
+    ### to process class label
+    class_label_trans_config_list = loader_config.get('class_label_transforms', None)
+    if class_label_trans_config_list is not None:
+        class_label_transforms = get_transforms(class_label_trans_config_list, data_form, img_dim=img_dim)
+        class_label_transforms = Compose(class_label_transforms)
+        dataset_config['class_label_transform'] = class_label_transforms
     
+
     num_workers = loader_config.get('num_workers', 1)
     logger.info(f'Number of workers for {mode} dataloader: {num_workers}')
     batch_size = loader_config.get('batch_size', 1)
@@ -216,4 +226,5 @@ def create_loader(loader_config):
             batch_size = batch_size, shuffle = shuffle, 
             num_workers = num_workers, drop_last = drop_last,
             collate_fn = custom_collate)
+    logger.info('Data sample ({}) count: {}'.format(mode, len(loader['data_loader'].dataset)))
     return loader

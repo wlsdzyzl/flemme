@@ -48,7 +48,8 @@ class OnlyEncoder(nn.Module):
 
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         self.data_form = self.encoder.data_form
-        self.channel_dim = -1 if self.data_form == DataForm.PCD else 1
+        self.channel_dim = self.encoder.channel_dim 
+        self.feature_channel_dim = self.encoder.feature_channel_dim
         self.out_channel = self.encoder.out_channel
     def __str__(self):
         _str = '********************* OnlyEncoder ({}) *********************\n------- Encoder -------\n{}'.format(self.encoder_name, self.encoder.__str__())
@@ -135,7 +136,8 @@ class OnlyDecoder(nn.Module):
         self.is_supervised = False
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         self.data_form = self.decoder.data_form
-        self.channel_dim = -1 if self.data_form == DataForm.PCD else 1
+        self.channel_dim = self.decoder.channel_dim 
+        self.feature_channel_dim = self.decoder.feature_channel_dim
 
     def __str__(self):
         _str = '********************* OnlyDecoder ({}) *********************\n------- Decoder -------\n{}'.format(self.decoder_name, self.decoder.__str__())

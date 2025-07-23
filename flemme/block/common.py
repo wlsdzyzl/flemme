@@ -422,11 +422,9 @@ class GateBiasBlock(nn.Module):
         self.channel_dim = channel_dim
     def forward(self, x, t):
         if t is None: return x
-        # print("fuck3", x.mean(), t.mean())
         gate = expand_as(self.hyper_gate(t), x, channel_dim = self.channel_dim)
         bias = expand_as(self.hyper_bias(t), x, channel_dim = self.channel_dim)
         x = x * (1 + gate) + bias
-        # print("fuck4", x.mean(), t.mean())
         return x
     
 ## transfer class label to one-hot vector which is encoded through FC block.
@@ -648,7 +646,6 @@ class ContextInjectionBlock(nn.Module):
             self.cond = get_context_injection(condition_injection, condition_channel, out_channel, channel_dim=channel_dim)
         self.condition_first = condition_first
     def forward(self, x, t, c):
-        # print(t, c)
         if self.merger:
             t = self.merger(t, c)
             c = None
@@ -676,7 +673,6 @@ class DenseBlock(NormBlock):
         super().__init__(_channel_dim = -1)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
-        # print(in_channel, out_channel)
         self.linear = nn.Linear(in_channel, out_channel, bias = bias)
         ## normalization layer
 
@@ -697,23 +693,16 @@ class DenseBlock(NormBlock):
                 channel_dim = -1,
                 condition_first = condition_first)
     def forward(self, x, t = None, c = None):
-        # print(x.mean(), "input of dense block", self.act)
         size = x.shape[1:-1]
         if len(size) > 1:
             x = x.reshape(x.shape[0], -1, x.shape[-1])
         x = self.linear(x)
-        # print(x.mean(), "after linear", self.act)
         x = self.normalize(x)
         x = self.dropout(self.act(x))
-        # if c is not None:
-        #     print("fuck1", x.mean(), c.mean())
         if self.cinj:
             x = self.cinj(x, t, c)
-        # if c is not None:
-        #     print("fuck2", x.mean(), c.mean())
         if len(size) > 1:
             x = x.reshape(*((x.shape[0], ) + size + (x.shape[-1], )))
-        # print(x.mean(), "output of dense block", self.act)
         return x
     @staticmethod
     def is_sequence_modeling():
@@ -948,7 +937,6 @@ class ECANSBlock(nn.Module):
         B, C = x.shape[0], x.shape[1]
         y = self.avg_pool(x)
         y = y.reshape(B, C, 1, 1)
-        # print(y.shape, self.k)
         y = nn.functional.unfold(y.transpose(-1, -3), kernel_size=(1, self.k), padding=(0, (self.k - 1) // 2 ))
         y = self.conv(y.transpose(-1, -2)).squeeze(-1)
         y = self.sigmoid(y)
@@ -1172,7 +1160,6 @@ class CombineLayer(nn.Module):
                     ### fft to time frequency space
                     fx = self.fft(x[i])
                     w = torch.view_as_complex(self.pos_emb[i])
-                    # print(fx.shape, w.shape)
                     fx = fx * w
                     ### back to pixel space
                     x[i] = self.ifft(fx)

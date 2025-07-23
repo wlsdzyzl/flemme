@@ -22,13 +22,12 @@ model:
   is_supervised: True
   condition_embedding:
     combine_condition: injection
-    condition_injection: bias
+    condition_injection: gate_bias
     encoder:
       name: OneHot
       type: categories
       out_channel: 128
       num_classes: 46
-      apply_onehot: False
     decoder: same_as_encoder
   reconstruction_losses: 
     - name: DCD
@@ -61,7 +60,7 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-  label_transforms:
+  class_label_transforms:
     - name: ToOneHot
       num_classes: 47
       ignore_background: true

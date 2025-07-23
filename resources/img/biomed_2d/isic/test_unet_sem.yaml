@@ -43,7 +43,7 @@ loader:
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ISIC/UNet/ckp_best_loss.pth
 seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/ISIC/UNet
 pickle_results: true
-# pickle_path:  /media/wlsdzyzl/DATA1/flemme-pickled
+# pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled
 save_target: true
 save_input: true
 save_colorized: true

@@ -1,0 +1,98 @@
+# train ae or vae
+mode: train
+model:
+  # can be AE, VAE and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: VMambaU
+    image_size: [112, 192, 112]
+    in_channel: 1
+    out_channel: 1
+    patch_size: 2
+    down_channels: [64, 128]
+    middle_channels: [256, 256]
+    building_block: vmamba
+    normalization: group
+    flip_scan: True
+  ### loss function
+  segmentation_losses: 
+    - name: Dice
+      normalization: sigmoid
+    - name: BCE
+  # some other information related to the model
+  # in ddpm, it can be the time steps and so on.
+loader:
+  dataset: 
+    name: ImgSegDataset
+    dim: 3
+    data_dir: imagesTr
+    data_suffix: .nii.gz
+    label_dir: labelsTr
+    label_suffix: .nii.gz
+    # data_combine: mean
+    crop_nonzero:
+      margin: [2,2,2]
+      crop_by: raw
+  data_path_list: 
+    - /media/wlsdzyzl/DATA1/datasets/flairED/train/
+  batch_size: 2
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      size: [112, 192, 112]
+    - name: ToTensor
+  label_transforms:
+    - name: Resize
+      size: [112, 192, 112]
+    - name: ToTensor
+
+val_loader:
+  dataset: 
+    name: ImgSegDataset
+    dim: 3
+    data_dir: imagesTr
+    data_suffix: .nii.gz
+    label_dir: labelsTr
+    label_suffix: .nii.gz
+    # data_combine: mean
+    crop_nonzero:
+      margin: [2,2,2]
+      crop_by: raw
+  data_path_list: 
+    - /media/wlsdzyzl/DATA1/datasets/flairED/val/
+  batch_size: 2
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Resize
+      size: [112, 192, 112]
+    - name: ToTensor
+  label_transforms:
+    - name: Resize
+      size: [112, 192, 112]
+    - name: ToTensor
+
+# model_path: /data/jingyunyang/FLasap/checkpoints/MRI/target/FeTS/flairED/mambau/ASAP/ckp_last.pth
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/flairED/MambaU
+eval_batch_num: -1
+optimizer:
+  name: Adam
+  lr: 0.0003
+  weight_decay: 0.00000001
+
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+evaluation_metrics:
+  seg:
+    - name: Dice
+    - name: ACC
+    - name: mIoU
+    # - name: HD
+    #   method: modified
+max_epoch: 100
+write_after_iters: 5
+save_after_epochs: 1

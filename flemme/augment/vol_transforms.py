@@ -184,7 +184,6 @@ class CenterCropXY:
 
     @staticmethod
     def _start_and_pad(crop_size, max_size):
-        # print('center crop')
         if crop_size < max_size:
             return (max_size - crop_size) // 2, (0, 0)
         else:
@@ -216,7 +215,6 @@ class RandomCropXY(CenterCropXY):
         super().__init__(size = size)
     @staticmethod
     def _start_and_pad(crop_size, max_size):
-        # print('random crop')
         if crop_size < max_size:
             return np.random.randint(max_size - crop_size), (0, 0)
         else:
@@ -346,11 +344,12 @@ class ToTensor:
         self.dtype = dtype
 
     def __call__(self, m):
-        assert m.ndim in [3, 4], 'Supports only 3D (DxHxW) or 4D (CxDxHxW) images'
+        if type(m) == int:
+            return torch.tensor(m)
+        assert m.ndim in [1, 3, 4], 'Supports only onehot-label (C), 3D (DxHxW) or 4D (CxDxHxW) images'
         # add channel dimension
         if self.expand_dims and m.ndim == 3:
             m = np.expand_dims(m, axis=0)
-
         return torch.from_numpy(m.astype(dtype=self.dtype))
 
 
@@ -362,6 +361,12 @@ class ToOneHot:
         self.to_onehot = partial(label_to_onehot, num_classes = num_classes, 
             ignore_background = ignore_background, channel_dim = 0)
     def __call__(self, m):
+        if not type(m) == int:
+            assert m.ndim == 3 or m.ndim == 4, "Not a 3D image or class label"
+            if m.ndim == 4:
+                assert m.shape[0] == 1, \
+                    "Label is a multi channel 3D image. Check if it's already a one hot embedding."
+                m = m[0]
         return self.to_onehot(m)
 
 

@@ -40,7 +40,7 @@ loader:
       num: 2048
     - name: ToTensor
       dtype: float
-  label_transforms:
+  class_label_transforms:
     - name: ToOneHot
       num_classes: 47
       ignore_background: true
