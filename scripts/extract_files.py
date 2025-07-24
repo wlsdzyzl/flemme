@@ -2,11 +2,10 @@
 import sys, getopt
 import os
 import shutil
-import math
 from glob import glob
 from flemme.logger import get_logger
 from flemme.utils import rkdirs
-logger = get_logger('scripts')
+logger = get_logger('scripts::extract_files')
 def main(argv):
     source_dir = None
     template_dir = None
@@ -54,7 +53,7 @@ def main(argv):
     for tf in template_files:
         sf = tf.replace(template_dir, source_dir+'/')
         of = tf.replace(template_dir, output_dir+'/')
-        print('{} from {} to {}'.format(mn, sf, of))
+        logger.info('{} from {} to {}'.format(mn, sf, of))
         method(sf, of)
 
 if __name__ == "__main__":

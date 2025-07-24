@@ -79,15 +79,22 @@ evaluation_metrics:
     - name: Dice
     - name: ACC
     - name: mIoU
+
+pickle_results: true
+# pickle_path: /data/guoqingzhang/flemme-pickled/mri
+load_pickle_results: true
+
 tsne_visualization: 
   top_n: 10
   title: t-SNE Visualization
   vis_dim: 2
-  perplexity: 50
+  perplexity: 10
   size: 10
+  color_map: jet
   alpha: 0.8
   # early_exaggeration: 6
-  one_to_one: true
+  one_to_multiple: 5
+  noise_level: 0.06
   random_state: 2025
   label_names:       
     - MSDliver

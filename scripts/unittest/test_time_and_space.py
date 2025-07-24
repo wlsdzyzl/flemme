@@ -3,7 +3,7 @@ from flemme.trainer_utils import *
 from flemme.logger import get_logger
 import time
 
-logger = get_logger('unittest')
+logger = get_logger('unittest::test_time_and_space')
 config_file = './model_config.yaml'
 model_configs = load_config(config_file).get('models')
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -29,7 +29,6 @@ for model_config in model_configs:
         loss, _ = compute_loss(model, x, y)
         loss = sum(loss)
         loss.backward()
-        # print(torch.cuda.memory_reserved()/ 1024.0 ** 3)
         allocated_memory += torch.cuda.memory_reserved() / 1024.0 ** 3
     end_time = time.time()
     train_time = end_time - start_time

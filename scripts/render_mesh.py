@@ -3,13 +3,14 @@ import numpy as np
 from flemme.utils import load_ply, load_img, save_img, save_ply
 from flemme.color_table import color_table
 import os
-
+from flemme.logger import get_logger
+logger = get_logger('scripts::render_mesh')
 def standardize_bbox(pcl):
     mins = np.amin(pcl, axis=0)
     maxs = np.amax(pcl, axis=0)
     center = ( mins + maxs ) / 2.
     scale = np.amax(maxs-mins)
-    print("Center: {}, Scale: {}".format(center, scale))
+    logger.info("(After standardizing) Center: {}, Scale: {}".format(center, scale))
     result = ((pcl - center)/scale).astype(np.float32) # [-0.5, 0.5]
     return result
 

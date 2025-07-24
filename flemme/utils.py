@@ -16,7 +16,7 @@ import yaml
 from flemme.block import channel_recover
 import shutil
 ### close warning "unexpected scales in sform"
-if model_config['suppress_simpleitk_warning']:
+if module_config['suppress_simpleitk_warning']:
     sitk.ProcessObject.SetGlobalWarningDisplay(False)
 logger = get_logger('utils')
 
@@ -137,14 +137,14 @@ def topk(array, k, axis=-1, sorted=True):
 def normalize(data, channel_dim = None, 
               scaling_per_channel = False, 
               method='minmax', return_transform = False, 
-              center = None, scaling = None):
+              center = None, scaling = None, batch = False):
     assert center is not None or method in ['minmax', 'mean'], \
         'At least one of center or method should be specified. method should be minmax or mean.'
-    if channel_dim is None: reduced_dims = None 
+    if channel_dim is None and not batch: reduced_dims = None 
     else:
         if channel_dim < 0: 
             channel_dim = data.ndim + channel_dim
-        reduced_dims = tuple(filter(lambda x: not x == channel_dim, range(data.ndim)))
+        reduced_dims = tuple(filter(lambda x: not x == channel_dim, range(1 if batch else 0, data.ndim)))
     ### numpy array
     if not torch.is_tensor(data):
         if center is None:
@@ -200,33 +200,6 @@ def normalize_img(img, method = 'minmax',
     if return_transform:
         return 0.5 * (res[0] + 1.0), res[1]
     return 0.5 * (res + 1.0)
-#### normalize each image in the batch
-def batch_normalize(bdata, channel_dim = None, 
-                    scaling_per_channel = False, 
-                    method = 'minmax', return_transform = False, 
-                    center = None, scaling = None):
-    ### keep 0 and channel dims
-    if not channel_dim is None: 
-        if channel_dim < 0: 
-            channel_dim = bdata.ndim + channel_dim
-    reduced_dims = tuple(filter(lambda x: not x == channel_dim, range(1, bdata.ndim)))
-    if center is None:
-        if method == 'minmax':
-            center = (torch.amax(bdata, dim = reduced_dims, keepdim = True) + \
-                torch.amin(bdata, dim = reduced_dims, keepdim = True)) / 2
-        else:
-            center = torch.mean(bdata, dim = reduced_dims, keepdim = True)
-    cdata = bdata - center
-    data_range = torch.amax(cdata.abs(), dim = reduced_dims, keepdim = True) 
-    if scaling is None:
-        if not channel_dim is None and not scaling_per_channel: 
-            scaling =  1.0 / torch.amax(data_range, dim = channel_dim, keepdim=True)
-        else:
-            scaling = 1.0 / data_range
-    res = torch.clamp(torch.nan_to_num(cdata * scaling), -1.0, 1.0)
-    if return_transform:
-        return res, (center, scaling)
-    return res
 
 def load_config(config_path = None):
     if config_path is None:
@@ -455,7 +428,7 @@ def crop_boundingbox(data = None, margin = (0, 0, 0), background = 0, follows = 
     return cropped_follows, (start_idx, end_idx)
 
 if module_config['point-cloud'] or module_config['graph']:
-    from plyfile import PlyData,PlyElement
+    from plyfile import PlyData, PlyElement
     from stl import mesh
     ##### load ply file for training
     ## here we only focus on the coordinate information.

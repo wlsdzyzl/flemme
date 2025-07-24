@@ -4,7 +4,7 @@ import sys, getopt
 import os
 from glob import glob
 import numpy as np
-logger = get_logger('scripts')
+logger = get_logger('scripts::get_info_from_label')
 
 def get_sample_info(label):
     unique_labels, counts = np.unique(label, return_counts=True)

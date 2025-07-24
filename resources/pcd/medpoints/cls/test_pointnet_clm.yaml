@@ -47,6 +47,7 @@ model_path: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointNet/PointNet_CLS/ckp
 # eval_batch_num: 8
 pickle_results: true
 pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled
+load_pickle_results: true
 evaluation_metrics:
   cls:
     - name: ACC
@@ -56,5 +57,9 @@ tsne_visualization:
   vis_dim: 2
   size: 10
   alpha: 0.5
+  color_map: jet
+  one_to_multiple: 5
+  noise_level: 0.06
   perplexity: 30
   label_names: MedPointS
+  tsne_path: ./tsne.png

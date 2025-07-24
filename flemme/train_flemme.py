@@ -196,7 +196,8 @@ def main():
         sampler = create_sampler(model=model, sampler_config = sampler_config)
     
     pickle_results = train_config.get('pickle_results', False)
-    pickle_path = train_config.get('pickle_path', 'pickled')
+    pickle_path = train_config.get('pickle_path', 'flemme-pickled')
+    ## pickled result during traning should never be used later
     if pickle_results:
         mkdirs(pickle_path)
 

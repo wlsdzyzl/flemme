@@ -3,7 +3,8 @@ import sys, getopt
 import numpy as np 
 import os
 from glob import glob
-from flemme.utils import rkdirs
+from flemme.logger import get_logger
+logger = get_logger('scripts::crop_by')
 def f(wait_to_crop, output_files, margin, 
     background, crop_by = None, boundingbox = None):
     data_array, origin, spacing = load_itk(wait_to_crop[0], True)
@@ -11,17 +12,17 @@ def f(wait_to_crop, output_files, margin,
     wait_to_crop_data = wait_to_crop_data + \
         [ load_itk(wait_to_crop[i]) for i in range(1, len(wait_to_crop))]
     if crop_by is not None:
-        print('crop {} by {} with margin {}'.format(wait_to_crop, crop_by, margin))
+        logger.info('crop {} by {} with margin {}'.format(wait_to_crop, crop_by, margin))
         _, cropped_follows, (start_idx, _) = crop_boundingbox(data = load_itk(crop_by), 
             margin = margin, background = background, boundingbox = boundingbox, 
             follows = wait_to_crop_data)
     else:
-        print('crop {} by bounding box {} with margin {}'.format(wait_to_crop, boundingbox, margin))
+        logger.info('crop {} by bounding box {} with margin {}'.format(wait_to_crop, boundingbox, margin))
         cropped_follows, (start_idx, _) = crop_boundingbox(margin = margin, 
             background = background, boundingbox = boundingbox, 
             follows = wait_to_crop_data)
     origin = origin + start_idx.astype(float) * spacing
-    print('crop from', str(wait_to_crop_data[0].shape), 'to', str(cropped_follows[0].shape))
+    logger.info('crop from', str(wait_to_crop_data[0].shape), 'to', str(cropped_follows[0].shape))
     for op, od in zip(output_files, cropped_follows):
         save_itk(op, od, origin = origin, spacing = spacing)
 
@@ -39,11 +40,11 @@ def main(argv):
     opts, args = getopt.getopt(argv, "hp:o:m:b:", ['help', 'dataset_path=', 'sub_dirs=', 'suffix=', 'crop_by=', 'output_dir=',  'margin=', 'background=', 'separately', 'boundingbox='])
     
     if len(opts) == 0:
-        print('unknow options, usage: crop_by.py -p <dataset_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --crop_by <crop_by=None> -o <output_dir=.> -m <margin = 20,20,20>  -b <background = 0.0> --boundingbox <boundingbox = None>.')
+        logger.error('unknow options, usage: crop_by.py -p <dataset_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --crop_by <crop_by=None> -o <output_dir=.> -m <margin = 20,20,20>  -b <background = 0.0> --boundingbox <boundingbox = None>.')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            print('usage: crop_by.py -p <dataset_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --crop_by <crop_by=None> -o <output_dir=.> -m <margin = 20,20,20>  -b <background = 0.0> --boundingbox <boundingbox = None>.')
+            logger.info('usage: crop_by.py -p <dataset_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --crop_by <crop_by=None> -o <output_dir=.> -m <margin = 20,20,20>  -b <background = 0.0> --boundingbox <boundingbox = None>.')
             sys.exit()
         if opt in ('-p', '--dataset_path'):
             dataset_path = arg
@@ -58,7 +59,7 @@ def main(argv):
         elif opt in ("-m", '--margin'):
             margin = tuple(int(s) for s in arg.split(','))
             if len(margin) != 3:
-                print('Error: The length of margin need to be 3. Example: -m 20,20,20')
+                logger.info('Error: The length of margin need to be 3. Example: -m 20,20,20')
                 sys.exit() 
         elif opt in ('-b', '--background'):
             background = float(arg)        
@@ -67,10 +68,10 @@ def main(argv):
         elif opt in ('--boundingbox',):
             boundingbox = tuple(int(s) for s in arg.split(','))
             if len(boundingbox) != 6:
-                print('Error: The length of boundingbox need to be 6. Example: --boundingbox 0,0,0,100,200,100')
+                logger.info('Error: The length of boundingbox need to be 6. Example: --boundingbox 0,0,0,100,200,100')
                 sys.exit() 
         else:
-            print('usage: crop_by.py -p <dataset_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --crop_by <crop_by=None> -o <output_dir=.> -m <margin = 20,20,20>  -b <background = 0.0> --boundingbox <boundingbox = None>.')
+            logger.info('usage: crop_by.py -p <dataset_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --crop_by <crop_by=None> -o <output_dir=.> -m <margin = 20,20,20>  -b <background = 0.0> --boundingbox <boundingbox = None>.')
             sys.exit()
     if len(suffix) == 1:
         suffix = suffix * len(sub_dirs)
@@ -99,19 +100,19 @@ def main(argv):
         if crop_by_id >= 0:
             boundingboxes = []
             for il in contained_files[crop_by_id]:
-                print('read from {}'.format(il))
+                logger.info('read from {}'.format(il))
                 label_array = load_itk(il)
                 tmp_bb = get_boundingbox(label_array)
-                print('get bounding box:', tmp_bb)
+                logger.info('get bounding box:', tmp_bb)
                 boundingboxes.append(tmp_bb)
             final_bb = get_boundingbox_from_list(boundingboxes = boundingboxes)
-            print('final bounding box:', final_bb)
+            logger.info('final bounding box:', final_bb)
         else:
             final_bb = np.array(boundingbox[0:3]), np.array(boundingbox[3:])
-            print('get bounding box from input:', final_bb)
+            logger.info('get bounding box from input:', final_bb)
     else:
         if boundingbox is not None:
-            print('Crop separately, input boundingbox is ignored.')
+            logger.info('Crop separately, input boundingbox is ignored.')
             
     for idx in range(len(contained_files[0])):
         wait_to_crop = [contained_files[sub_id][idx] for sub_id in range(len(contained_files))]

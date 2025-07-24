@@ -1,5 +1,5 @@
 import numpy as np
-from matplotlib import colormaps as mpl_colormaps
+from matplotlib import pyplot as plt
 from flemme.config import module_config
 scannet_color_table = np.array([[150, 150, 150],
             [174, 199, 232],     # wall
@@ -50,11 +50,20 @@ custom_color_table = np.array([
                 [255, 255, 51],
                 [0, 0, 255],
                 ]) / 255
-def get_color_table(table_name):
+def get_mpl_cmap(name, label_count):
+    if name in ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2',
+                      'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b',
+                      'tab20c']:
+        colors = plt.get_cmap(name).colors
+    else:
+        cm = plt.get_cmap(name, label_count)
+        colors = tuple(cm(l) for l in range(label_count))
+    return np.array(colors)
+def get_color_table(table_name, label_count = 20):
     if table_name == 'Scannet':
         return scannet_color_table
     elif table_name == 'Custom':
         return custom_color_table
     else:
-        return mpl_colormaps[table_name].colors
+        return get_mpl_cmap(table_name, label_count)
 color_table = get_color_table(module_config['color_map'])

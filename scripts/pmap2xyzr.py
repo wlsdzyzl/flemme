@@ -3,11 +3,11 @@ import numpy as np
 import sys, getopt
 import os
 import glob
-import shutil
 from scipy.ndimage import binary_erosion, binary_dilation, label
 from skimage.morphology import skeletonize as skeletonize
 from scipy.spatial import cKDTree
-
+from flemme.logger import get_logger
+logger = get_logger('scripts::pmap2xyzr')
 def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xyzr_file = None, normalized = True, prob_threshold = None, 
         label_value = None, cc_axis = None):
     if (inputfile[-3:] == 'npy'):
@@ -32,7 +32,7 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
         if mask_file is not None:
             save_ply(mask_file + suffix +'.ply', mask)        
 
-            print('extract {} points for mask, save to {}'.format(len(mask), mask_file + suffix +'.ply'))
+            logger.info('extract {} points for mask, save to {}'.format(len(mask), mask_file + suffix +'.ply'))
         ## save surface
         if surface_file is not None:
             sur_array = np.logical_xor(_mask_array, binary_erosion(_mask_array))
@@ -44,14 +44,14 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
             save_ply(surface_file + suffix +'.ply', sur)
         
 
-            print('extract {} points for surface, save to {}'.format(len(sur), surface_file + suffix +'.ply'))  
+            logger.info('extract {} points for surface, save to {}'.format(len(sur), surface_file + suffix +'.ply'))  
         ## save skeleton
         if skeleton_file is not None:
             ske_array = skeletonize(_mask_array)
             selector = (ske_array >= 0.5).reshape((-1))
             ske = vol_coor[selector]
             save_ply(skeleton_file + suffix +'.ply', ske)
-            print('extract {} points for skeleton, save to {}'.format(len(ske), skeleton_file + suffix +'.ply'))  
+            logger.info('extract {} points for skeleton, save to {}'.format(len(ske), skeleton_file + suffix +'.ply'))  
         if xyzr_file is not None and surface_file is not None and skeleton_file is not None:
             # find radius of left skeleton
             tree = cKDTree(sur)
@@ -69,12 +69,12 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
         label_array, num_features = label(mask_array, structure = np.ones((3, 3, 3), dtype = int))
         mask_mean = []
         along_axis = 0 if cc_axis == 'x' else 1 if cc_axis == 'y' else 2 
-        print(f'found {num_features} connected components.')
+        logger.info(f'found {num_features} connected components.')
         valid_label = []
         for l in range(1, num_features + 1):
             selector = (label_array == l).reshape((-1))
             if selector.sum() < 1000:
-                print(f'remove label {l}')
+                logger.info(f'remove label {l}')
                 continue
             valid_label.append(l)
             mask = vol_coor[selector]
@@ -102,11 +102,11 @@ def main(argv):
     suffix = 'nii.gz'
     cc_axis = None
     if len(opts) == 0:
-        print('unknow options, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
+        logger.error('unknow options, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            print('usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
+            logger.info('usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
             sys.exit()
         elif opt in ("-i", '--input'):
             inputfile = arg
@@ -131,7 +131,7 @@ def main(argv):
         elif opt in ('--no_normalized',):
             normalized = False
         else:
-            print('unknow option, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
+            logger.error('unknow option, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
             sys.exit()
     assert label_value is not None or prob_threshold is not None, "At least one of [prob_threshold, label_value] should not be None."
     input_files = []

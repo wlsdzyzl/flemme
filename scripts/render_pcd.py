@@ -3,6 +3,8 @@ import numpy as np
 from flemme.utils import load_ply, load_img, save_img
 from flemme.color_table import color_table
 import os
+from flemme.logger import get_logger
+logger = get_logger('scripts::render_pcd')
 def standardize_bbox(pcl, points_per_object, pcl_color = None):
     if points_per_object > 0:
         pt_indices = np.random.choice(pcl.shape[0], points_per_object, replace=False)
@@ -13,7 +15,7 @@ def standardize_bbox(pcl, points_per_object, pcl_color = None):
     maxs = np.amax(pcl, axis=0)
     center = ( mins + maxs ) / 2.
     scale = np.amax(maxs-mins)
-    print("Center: {}, Scale: {}".format(center, scale))
+    logger.info("(After standardizing) Center: {}, Scale: {}".format(center, scale))
     result = ((pcl - center)/scale).astype(np.float32) # [-0.5, 0.5]
     if pcl_color is not None:
         pcl_color = pcl_color[pt_indices]
@@ -133,8 +135,6 @@ pcl_color = None
 if pcl.shape[1] == 6:
     pcl_color = pcl[..., 3:6] / 255.0
     pcl = pcl[..., :3]
-# print(pcl.shape)
-# print(pcl_color)
 pcl, pcl_color = standardize_bbox(pcl, 512, pcl_color)
 
 # heart

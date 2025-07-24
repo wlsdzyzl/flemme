@@ -7,7 +7,7 @@ from flemme.loss import ChamferLoss, DensityAwareChamferLoss as DCDLoss, EMDLoss
 from torch import optim
 from flemme.logger import get_logger
 import time
-logger = get_logger('scripts.test_pcd_loss')
+logger = get_logger('unittest::test_pcd_loss')
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -18,7 +18,7 @@ pcd_paths = sorted(glob.glob(os.path.join("./artery/", "*.ply")))
 pcds = [ to_tensor( fixed_points(load_ply(p_path))) for p_path in pcd_paths]
 ### stack will create a new axis
 pcds = torch.stack(pcds, dim = 0).to(device)
-print('input_size: ',pcds.shape)
+logger.info('input_size: ',pcds.shape)
 losses = [ChamferLoss(), DCDLoss(), EMDLoss(), SinkhornLoss()]
 loss_names = ['chamfer', 'DCD', 'EMD', 'sinkhorn']
 init = torch.randn((pcds.shape[0], 4096, 3), device = device)
@@ -45,4 +45,4 @@ for loss, loss_name in zip(losses, loss_names):
             X_np = X[0].detach().cpu().numpy()
             for _x, p_path in zip(X_np, pcd_paths):
                 save_ply('./recon/{}_{}'.format(loss_name, os.path.basename(p_path)), _x)
-    print("Runtime: %lfs" % (time.perf_counter() - start_time))
+    logger.info("Runtime: %lfs" % (time.perf_counter() - start_time))

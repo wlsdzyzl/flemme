@@ -10,6 +10,6 @@ module_config = {
     'graph': False,
     'logger_level': logging.INFO,
     'color_map': 'Scannet',
-    'suppress_simpleitk_warning': True
+    'suppress_simpleitk_warning': True,
     'cuda_arch_list': "5.0;6.0;6.1;7.0;7.5;8.0;8.6+PTX"
 }

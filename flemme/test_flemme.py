@@ -1,13 +1,12 @@
 #### This file is a script, and the code style sucks. 
 from .trainer_utils import *
 import torch.nn.functional as F
-import math
 from flemme.model import create_model, ClM
 from flemme.dataset import create_loader
 from flemme.logger import get_logger
 from flemme.sampler import create_sampler
 from tqdm import tqdm
-
+from glob import glob
 
 ## if we want to train pcd or image, 
 ## make sure that the image size from data loader and image size from the model parameters are identical
@@ -94,45 +93,52 @@ def main():
                 custom_res_dirs.append(res.get('dir'))
 
             pickle_results = test_config.get('pickle_results', False)
-            pickle_path = test_config.get('pickle_path', 'pickled')
-            if pickle_results:
-                mkdirs(pickle_path)
-
-            iter_id = 0
-            for t in tqdm(data_loader, desc="Predicting"):
-                ### split x, y, path in later implementation.
-                x, y, c, slice_indices, path = process_input(t)
-                x = x.to(device).float() 
-                if y is not None: 
-                    y = y.to(device)
-                if c is not None:
-                    c = c.to(device)
-                ### move data to cuda
-                if not x.shape[1:] == tuple(model.get_input_shape()):
-                    logger.error("Inconsistent sample shape between data and model")
-                    exit(1)   
-                ### here we want to generate raw image
-                res = forward_pass(model, x, y, c)
-                iter_id += 1
-                
-                if len(results) < eval_batch_num:
-                    process_results(results=results, x = x, y = y, c = c,
-                                            path = path, 
-                                            slice_indices = slice_indices,
-                                            res = res, 
-                                            data_form = model.data_form,
-                                            is_supervised=is_supervised,
-                                            is_conditional=is_conditional,
-                                            additional_keys = custom_res_names,
-                                            pickle_results=pickle_results, 
-                                            pickle_path=pickle_path)
-                else: break
-            if slice_indices is not None:
-                results = merge_patches_in_results(results=results, 
-                                                pickle_results=pickle_results, pickle_path=pickle_path)
+            pickle_path = test_config.get('pickle_path', 'flemme-pickled')
+            load_pickle_results = test_config.get('load_pickle_results', False)
+            if load_pickle_results:
+                logger.info('Loading tmp results from pickled files to skip predicting (You need to make sure the pickled files are what you want). ')
+                results = sorted(glob(os.path.join(pickle_path, "*.pkl")))
+                pickle_results = True
+                assert len(results) == len(data_loader), "mismatched number of results and data loader, please check your pickled files."
+            else:
+                ### test pickled results might be used later
+                if pickle_results:
+                    rkdirs(pickle_path)
+                iter_id = 0
+                for t in tqdm(data_loader, desc="Predicting"):
+                    ### split x, y, path in later implementation.
+                    x, y, c, slice_indices, path = process_input(t)
+                    x = x.to(device).float() 
+                    if y is not None: 
+                        y = y.to(device)
+                    if c is not None:
+                        c = c.to(device)
+                    ### move data to cuda
+                    if not x.shape[1:] == tuple(model.get_input_shape()):
+                        logger.error("Inconsistent sample shape between data and model")
+                        exit(1)   
+                    ### here we want to generate raw image
+                    res = forward_pass(model, x, y, c)
+                    iter_id += 1
+                    
+                    if len(results) < eval_batch_num:
+                        process_results(results=results, x = x, y = y, c = c,
+                                                path = path, 
+                                                slice_indices = slice_indices,
+                                                res = res, 
+                                                data_form = model.data_form,
+                                                is_supervised=is_supervised,
+                                                is_conditional=is_conditional,
+                                                additional_keys = custom_res_names,
+                                                pickle_results=pickle_results, 
+                                                pickle_path=pickle_path)
+                    else: break
+                if slice_indices is not None:
+                    results = merge_patches_in_results(results=results, 
+                                                    pickle_results=pickle_results, pickle_path=pickle_path)
             # results = compact_results(results, data_form = model.data_form,
             #                         additional_keys = custom_res_names)    
-
+            
             eval_metrics = test_config.get('evaluation_metrics', None)
             if eval_metrics is not None:
                 logger.info('evaluating the prediction accuracy ...')   
@@ -145,8 +151,10 @@ def main():
             if tsne_config:
                 label_names = tsne_config.get('label_names', None)
                 tsne_path = tsne_config.pop('tsne_path', './tsne.png')
+                logger.info(f'Use t-SNE algorithm to visualize the latents, the resulting figure will be saved to {tsne_path}.')
                 ## one matrix to one vector
-                one_to_one = tsne_config.pop('one_to_one', True)
+                one_to_multiple = tsne_config.pop('one_to_multiple', 1)
+                noise_level = tsne_config.pop('noise_level', 0)
                 if type(label_names) == str:
                     from flemme.dataset.label_dict import get_label_cls
                     label_names = list(get_label_cls(label_names).values())
@@ -166,26 +174,21 @@ def main():
                 else:
                     ### process latents and labels for tsne visualization
                     ## latent is not a vector
-                    repeat = 1
                     if not latents.ndim == 2:
-                        logger.info('Latents will be reshaped to vector embeddings for TSNE visualization.')
-                        if one_to_one:
-                            ### one matrix to one vector
-                            latents = latents.reshape((latents.shape[0], -1))
+                        logger.warning('Latents will be compact to vector embeddings for TSNE visualization.')
+                        if model.feature_channel_dim == 1:
+                            latents = latents.reshape(latents.shape[0], latents.shape[1], -1).mean(axis = -1)
                         else:
-                            if model.feature_channel_dim == 1:
-                                if latents.ndim == 3:
-                                    latents = latents.transpose((0, 2, 1))
-                                elif latents.ndim == 4:
-                                    latents = latents.transpose((0, 2, 3, 1))
-                                elif latents.ndim == 5:
-                                    latents = latents.transpose((0, 2, 3, 4, 1))
-                            repeat = math.prod(latents.shape[1:-1][:1])
-                            latents = latents.reshape((latents.shape[0] * repeat, -1))
-                    ### onehot to label
+                            latents = latents.reshape(latents.shape[0], -1, latents.shape[-1]).mean(axis = 1)
+                    latents = normalize(latents, channel_dim=-1)
                     labels = onehot_to_label(labels, channel_dim=-1)
-                    labels = np.repeat(labels, repeat)
-                    ### tsne
+                    ### We add noise to the latents so that we could have more points just for visualization.
+                    if one_to_multiple > 1:
+                        latents = np.repeat(latents, one_to_multiple, axis=0)
+                        labels = np.repeat(labels, one_to_multiple)
+                    if noise_level > 0:
+                        latents = latents + np.random.normal(0, noise_level, latents.shape)
+                    ### tsne visualization
                     tsne_fig = construct_tsne_vis(latents, labels = labels, **tsne_config)
                     save_img(tsne_path, tsne_fig)
 
@@ -298,17 +301,21 @@ def main():
                         if save_input and len(results['input']) > 0:
                             input_x = results['input'][idx]
                             save_data(input_x, data_form=model.data_form, output_path=output_path+'_input')
-            ## for generation with fixed condition
-            input_x = x[0]
-            if y is not None:
-                input_y = y[0]
-            if c is not None:
-                input_c = c[0]
         else:
             logger.warning('loader_config is None, reconstruction, segmentation, conditional generation and interpolation will be ignored.')
             cond = None
 
         if model.is_generative and eval_gen_config is not None:
+            ## for generation with fixed condition
+            if is_conditional and is_supervised:
+                ### this should never happen:
+                logger.error("Currently conditional and supervised generative model is not supported.")
+                #cond = c[0]
+                exit(1)
+            elif is_conditional:
+                cond = y[0]
+            elif is_supervised:
+                cond = x[0]
             sampler = None
             sampler_config = eval_gen_config.get('sampler', {'name':'NormalSampler'})
             if sampler_config:
@@ -358,15 +365,8 @@ def main():
                 if random_sample_num > 0:
                     logger.info('Gererating new samples from random noise ...')
                     ### ddpm
-                    if is_conditional and is_supervised:
-                        ### this should be happened:
-                        logger.error("Currently conditional and supervised generative model is not supported.")
-                        exit(1)
-                        # x_bar = sampler.generate_rand(n=random_sample_num, cond = input_c)
-                    elif is_conditional:
-                        x_bar = sampler.generate_rand(n=random_sample_num, cond = input_y)
-                    elif is_supervised:                      
-                        x_bar = sampler.generate_rand(n=random_sample_num, cond = input_x)
+                    if is_conditional or is_supervised:
+                        x_bar = sampler.generate_rand(n=random_sample_num, cond = cond)
                     else:
                         x_bar = sampler.generate_rand(n=random_sample_num)
                     ## save the images.

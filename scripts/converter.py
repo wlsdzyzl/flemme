@@ -2,24 +2,25 @@ from flemme.utils import mhd2nii
 import sys, getopt
 import os
 import glob
-
+from flemme.logger import get_logger
+logger = get_logger('scripts::converter')
 def main(argv):
     inputfile = ''
     outputfile = ''
     opts, args = getopt.getopt(argv, "hi:o:", ['help', 'input', 'output'])
     if len(opts) == 0:
-        print('unknow options, usage: converter.py -i <inputfile> -o <outputfile>')
+        logger.error('unknow options, usage: converter.py -i <inputfile> -o <outputfile>')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            print('usage: converter.py -i <inputfile> -o <outputfile> ')
+            logger.info('usage: converter.py -i <inputfile> -o <outputfile> ')
             sys.exit()
         elif opt in ("-i", '--input'):
             inputfile = arg
         elif opt in ("-o", '--output'):
             outputfile = arg
         else:
-            print('unknow option, usage: converter.py -i <inputfile> -o <outputfile>')
+            logger.error('unknow option, usage: converter.py -i <inputfile> -o <outputfile>')
             sys.exit()
 
     if os.path.isdir(inputfile):
@@ -32,7 +33,7 @@ def main(argv):
             # filename, _ = os.path.splitext(filename)
             filename = filename.split('_')[0]
             ofile = outputfile+'/'+ filename + '_g6.nii.gz'
-            print(f'Converting from {ifile} to {ofile} ...')
+            logger.info(f'Converting from {ifile} to {ofile} ...')
             mhd2nii(ifile, ofile)
     else:
         mhd2nii(inputfile, outputfile)

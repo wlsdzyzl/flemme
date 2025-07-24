@@ -3,6 +3,7 @@ from flemme.utils import *
 from torch import optim
 from .metrics import get_metrics
 from matplotlib import pyplot as plt
+from flemme.color_table import get_color_table
 from sklearn.manifold import TSNE
 from flemme.logger import get_logger
 from flemme.color_table import color_table
@@ -261,9 +262,6 @@ def create_scheduler(lr_config, optimizer):
     lr_config['optimizer'] = optimizer
     return clazz(**lr_config)
 ### get the TSNE embeddings
-## x is a set of latent embeddings
-def tsne(X, n_components = 2):
-    return TSNE(n_components=n_components, learning_rate='auto', init='random').fit_transform(X)
 #### wait to be implemented: save optimizer.
 def save_checkpoint(ckp_dir, model, optimizer = None, 
                     scheduler = None, 
@@ -634,8 +632,6 @@ def construct_tsne_vis(embeddings, labels, vis_dim = 2, label_names = None, top_
     title = 't-SNE Visualization', size = 10, alpha = 0.3, 
     random_state = 42, perplexity = 30, remove_ticks = False, 
     color_map = 'jet', legend = True, **kwargs):
-    from sklearn.preprocessing import StandardScaler
-    embeddings = StandardScaler().fit_transform(embeddings)
     if top_n > 0:
         unique_elements, counts = np.unique(labels, return_counts=True)
         # print(unique_elements, counts, labels)
@@ -659,13 +655,14 @@ def construct_tsne_vis(embeddings, labels, vis_dim = 2, label_names = None, top_
         compressed_vec = tsne.fit_transform(embeddings)
     else:
         compressed_vec = embeddings
-    cmap = plt.cm.get_cmap(color_map)
+
+    label_count = labels.max() + 1
+    ctable = get_color_table(color_map, label_count)
     if vis_dim == 2:
-        label_count = labels.max() + 1
         fig, ax = plt.subplots()
         for l in range(label_count):
             tmp_vec = compressed_vec[labels == l]
-            color = cmap(l)
+            color = ctable[l % len(ctable)]
             ln = label_names[l] if label_names else ln
             ax.scatter(tmp_vec[:, 0], tmp_vec[:, 1], s = size, alpha=alpha, color = color, label = ln)
         if remove_ticks:
@@ -684,10 +681,9 @@ def construct_tsne_vis(embeddings, labels, vis_dim = 2, label_names = None, top_
     elif vis_dim == 3:
         fig = plt.figure()
         ax = fig.add_subplot(projection='3d')
-        label_count = labels.max() + 1
         for l in range(label_count):
             tmp_vec = compressed_vec[labels == l]
-            color = cmap(l)
+            color = ctable[l % len(ctable)]
             ln = label_names[l] if label_names else ln
             ax.scatter(tmp_vec[:, 0], tmp_vec[:, 1], 
                     tmp_vec[:, 2], s = size, alpha = alpha, color = color, label = ln)
