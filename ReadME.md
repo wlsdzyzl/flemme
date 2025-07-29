@@ -40,7 +40,7 @@ python install mamba-ssmxxxxx.whl -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 #### For point cloud:
 ```
-POT plyfile KNN-CUDA fpsample geomloss numpy-stl
+POT plyfile KNN-CUDA fpsample geomloss trimesh
 ```
 KNN-CUDA is from https://github.com/unlimblue/KNN_CUDA.
 #### For graph:

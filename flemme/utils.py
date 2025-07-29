@@ -429,7 +429,7 @@ def crop_boundingbox(data = None, margin = (0, 0, 0), background = 0, follows = 
 
 if module_config['point-cloud'] or module_config['graph']:
     from plyfile import PlyData, PlyElement
-    from stl import mesh
+    import trimesh
     ##### load ply file for training
     ## here we only focus on the coordinate information.
     ## later we can add more informations
@@ -459,15 +459,6 @@ if module_config['point-cloud'] or module_config['graph']:
             if 'face' in plydata._element_lookup:
                 faces = np.array([ f.astype(np.int64) for f in plydata['face']['vertex_indices']])
             return pcd, faces
-    def load_stl(inputfile, with_edges = False):
-        stl_mesh = mesh.Mesh.from_file(inputfile)
-        points = np.concatenate(np.split(stl_mesh.points, 3, axis=1), axis=0)
-        ### can use inverse = True to get the edge index.
-        u_points = np.unique(points, axis=0)
-        if not with_edges:
-            return u_points
-        logger.warning('Currently, reading face from stl is not implemented.')
-        return u_points, None
     ### save ply file, with points and colors
     ## here, the face information will be ignored
     ## We can use other packages or cpp program for mesh extraction from point cloud
@@ -512,22 +503,22 @@ if module_config['point-cloud'] or module_config['graph']:
 
     def load_pcd(filename):
         basename = os.path.basename(filename)
-        suffix = basename.split('.')[-1]
+        suffix = (basename.split('.')[-1]).lower()
         if suffix == 'ply':
             return load_ply(filename)
-        elif suffix == 'stl':
-            return load_stl(filename)
         elif suffix == 'xyz' or suffix == 'pts':
             return load_xyz(filename)
         elif suffix == 'npy':
             return load_npy(filename)
+        elif suffix in ['obj', 'stl', 'off', 'glb']:
+            mesh = trimesh.load_mesh(filename)
+            return np.array(mesh.vertices)
         else:
             logger.error(f'unsupported file format {suffix}.')
             raise NotImplementedError
-            
     def save_pcd(filename, x):
         basename = os.path.basename(filename)
-        suffix = basename.split('.')[-1]
+        suffix = (basename.split('.')[-1]).lower()
         if suffix == 'ply':
             save_ply(filename, x)
         elif suffix == 'xyz' or suffix == 'pts':
@@ -536,7 +527,20 @@ if module_config['point-cloud'] or module_config['graph']:
             logger.warning('unknow file format, save as ply file.')
             save_ply(filename+'.ply', x)
 
-    ### related to point cloud processing.
+    def load_mesh(filename, clean = False):
+        basename = os.path.basename(filename)
+        suffix = (basename.split('.')[-1]).lower()
+        if suffix in ['obj', 'stl', 'off', 'glb', 'ply']:
+            mesh = trimesh.load_mesh(filename)
+            if clean:
+                # logger.info('Cleaning degenerated, duplicated faces and unreferenced vertices ...')
+                mesh.remove_degenerate_faces()
+                mesh.remove_duplicate_faces()
+                mesh.remove_unreferenced_vertices()
+            return mesh
+        else:
+            logger.error(f'unsupported mesh file format {suffix}.')
+            raise NotImplementedError
 
     ##### generate batch random rotation
     def _copysign(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
@@ -706,20 +710,20 @@ if module_config['graph']:
     from torch_geometric.data import Data as Graph
     def load_graph(filename, vertex_features = None):
         basename = os.path.basename(filename)
-        suffix = basename.split('.')[-1]
+        suffix = (basename.split('.')[-1]).lower()
         if suffix == 'ply':
             return load_ply(filename, vertex_features = vertex_features, with_edges = True)
-        elif suffix == 'xyz' or suffix == 'pts':
-            return load_xyz(filename), None
         ## graph saved by torch
         elif suffix == 'pt':
             return torch.load(filename)
+        elif suffix == 'xyz' or suffix == 'pts':
+            return load_xyz(filename), None
         else:
             logger.warning('unsupported file format.')
             raise NotImplementedError
     def save_graph(filename, graph_data, vertex_features = None):
         basename = os.path.basename(filename)
-        suffix = basename.split('.')[-1]
+        suffix = (basename.split('.')[-1]).lower()
         assert suffix in ['ply', 'pt'], 'Graph data can only be stored as ply or pt files.'
         if type(graph_data) == tuple:
             pos, feature, edge = graph_data
