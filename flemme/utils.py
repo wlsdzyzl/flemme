@@ -335,6 +335,9 @@ def load_npy(npy_path):
 def mkdirs(dir):
     if not os.path.isdir(dir):
         os.makedirs(dir)
+def rmdirs(dir):
+    if os.path.isdir(dir):
+        shutil.rmtree(dir)
 def rkdirs(dir):
     if os.path.isdir(dir):
         shutil.rmtree(dir)
@@ -537,6 +540,7 @@ if module_config['point-cloud'] or module_config['graph']:
                 mesh.remove_degenerate_faces()
                 mesh.remove_duplicate_faces()
                 mesh.remove_unreferenced_vertices()
+                # trimesh.repair.fix_inversion(mesh)
             return mesh
         else:
             logger.error(f'unsupported mesh file format {suffix}.')

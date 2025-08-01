@@ -4,7 +4,7 @@ import os
 from glob import glob
 from flemme.logger import get_logger
 from flemme.utils import rkdirs, get_boundingbox, save_img
-from flemme.trainer_utils import colorize_img_by_label, save_data, get_load_function
+from flemme.trainer_utils import colorize_img_by_label, save_data, get_load_function, expand_to_square_img
 from flemme.metrics import get_metrics
 import numpy as np
 from tqdm import tqdm
@@ -32,15 +32,22 @@ def main(argv):
     score_margin = 0.01
     ## for better visualization
     compute_middle_for_3d = False
-    opts, _ = getopt.getopt(argv, "h", ['help', 'result_path=', 'sub_dirs=', 'suffix=', 'target_path=',  'target_sub_dirs=', 'target_suffix=', 'input_path=', 'output_dir=', 'input_sub_dirs=', 'input_suffix=', 'conditions=', 'eval=', 'compute_middle_for_3d', 'minimum_ratio=', 'score_margin='])
+    expand_to_square_margin = -1
+    min_score = float('-inf')
+    max_score = float('inf')
+    opts, _ = getopt.getopt(argv, "h", ['help', 'result_path=', 'sub_dirs=', 
+        'suffix=', 'target_path=',  'target_sub_dirs=', 'target_suffix=', 
+        'input_path=', 'output_dir=', 'input_sub_dirs=', 'input_suffix=', 
+        'conditions=', 'eval=', 'compute_middle_for_3d', 'minimum_ratio=', 
+        'score_margin=', 'expand_to_square_margin=', 'min_score=', 'max_score='])
     ### move is faster, but with higher risk for losing data.
     if len(opts) == 0:
-        logger.info('unknow options, usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=.> --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None> --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05> --score_margin <score_margin=0.01>')
+        logger.info('Unknow option, usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=.> --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None> --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05> --score_margin <score_margin=0.01> --expand_to_square_margin <expand_to_square_margin=-1> --min_score <min_score=-inf> --max_score <max_score=inf>')
         sys.exit()
     for opt, arg in opts:
         # logger.info(arg)
         if opt in ('-h', '--help'):
-            logger.info('usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=\'\'>  --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None>  --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05> --score_margin <score_margin=0.01>')
+            logger.info('Usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=\'\'>  --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None>  --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05> --score_margin <score_margin=0.01> --expand_to_square_margin <expand_to_square_margin=-1> --min_score <min_score=-inf> --max_score <max_score=inf>')
             sys.exit()
         if opt in ('--result_path',):
             result_path = arg
@@ -72,6 +79,16 @@ def main(argv):
             minimum_ratio = float(arg)
         elif opt in ('--score_margin', ):
             score_margin = float(arg)
+        elif opt in('--expand_to_square_margin',):
+            expand_to_square_margin = int(arg)
+        elif opt in ('--min_score', ):
+            min_score = float(arg)
+        elif opt in ('--max_score', ):
+            max_score = float(arg)
+        else:
+            ## should never happen
+            logger.info('Unknown options, usage: select_samples_and_colorize.py --result_path <result_path> --sub_dirs <sub_dirs=.> --suffix <suffix=\'\'> --target_path <target_path=.> --target_sub_dirs <target_sub_dirs=.> --target_suffix <target_suffix=\'\'>  --input_path <input_path=None> --input_sub_dirs <input_sub_dirs=.> --input_suffix <input_suffix=.> --output_dir <output_dir=None>  --conditions <conditions=> --eval <eval=> --minimum_ratio <minimum_ratio=0.05> --score_margin <score_margin=0.01> --expand_to_square_margin <expand_to_square_margin=-1> --min_score <min_score=-inf> --max_score <max_score=inf>')
+            sys.exit()
     if result_path is None:
         logger.error('result_path is required.')
         sys.exit()
@@ -118,6 +135,59 @@ def main(argv):
 
     selected_samples = list(range(len(target_files[0])))
     selected_slices = [None for _ in selected_samples]
+    selected_scores = [None for _ in selected_samples]
+    for sub_id in range(len(sub_dirs)):
+        logger.info(f'filtering results that could not satisfy min-max score and min-ratio ...')
+        new_selected_samples = []
+        new_selected_slices = []
+        new_selected_scores = []
+        for idx, sample_id in tqdm(enumerate(selected_samples), total=len(selected_samples), desc="minmax"):
+            res = load_data(result_files[sub_id][sample_id])
+            tar = load_target_data(target_files[sub_id][sample_id])
+            if label_type == 'img':
+                res = ((res / 255) > 0.5).astype(int)
+                tar = ((tar / 255) > 0.5).astype(int)
+            if label_type == 'vol':
+                if compute_middle_for_3d:
+                    min_zxy, max_zxy = get_boundingbox(tar, background = 0)
+                    middle_z = int(min_zxy[0] + max_zxy[0]) // 2
+                    res, tar = res[middle_z], tar[middle_z]
+            if label_type == 'vol' and not compute_middle_for_3d:
+                tmp_selected_slices = []
+                tmp_selected_slice_scores = []
+                old_selected_slices = selected_slices[idx]
+                old_selected_slice_scores = selected_scores[idx]
+                if old_selected_slices is None: 
+                    z = res.shape[0]
+                    old_selected_slices = list(range(z))
+                    old_selected_slice_scores = [ [] for _ in range(z)]
+                for sidx, slice_id in enumerate(old_selected_slices):
+                    sres, star = res[slice_id], tar[slice_id], 
+                    if star.sum() / star.size <= minimum_ratio:
+                        continue
+                    score = eval_func(sres, star)
+                    if score < max_score and score > min_score:
+                        tmp_selected_slices.append(slice_id)
+                        tmp_selected_slice_scores.append(old_selected_slice_scores[sidx] + [score,])
+                if len(tmp_selected_slices) > 0:
+                    new_selected_samples.append(sample_id)
+                    new_selected_slices.append(tmp_selected_slices)
+                    new_selected_scores.append(tmp_selected_slice_scores)
+            else:
+                if tar.sum() / tar.size <= minimum_ratio:
+                    continue
+                score = eval_func(res, tar)
+                old_scores = selected_scores[idx]
+                if old_scores is None:
+                    old_scores = []
+                if score < max_score and score > min_score:
+                    new_selected_samples.append(sample_id)
+                    new_selected_scores.append(old_scores + [score,])
+        selected_samples = new_selected_samples
+        selected_slices = new_selected_slices
+        selected_scores = new_selected_scores
+        if len(selected_samples) == 0: break
+
     for cond in conditions:
         logger.info(f'processing the first condition: {cond}')
         assert '>' in cond or '<' in cond, 'conditions should be \'>\' or \'<\''
@@ -129,66 +199,31 @@ def main(argv):
         result_ids = [int(r) for r in result_ids]
         new_selected_samples = []
         new_selected_slices = []
-        for idx, sample_id in tqdm(enumerate(selected_samples), desc="Searching"):
-            res1 = load_data(result_files[result_ids[0]][sample_id])
-            res2 = load_data(result_files[result_ids[1]][sample_id])
-            tar1 = load_target_data(target_files[result_ids[0]][sample_id])
-            tar2 = load_target_data(target_files[result_ids[1]][sample_id])    
-            if label_type == 'img':
-                res1 = ((res1 / 255) > 0.5).astype(int)
-                res2 = ((res2 / 255) > 0.5).astype(int)
-                tar1 = ((tar1 / 255) > 0.5).astype(int)
-                tar2 = ((tar2 / 255) > 0.5).astype(int)
-            if label_type == 'vol':
-                # res1, res2, tar1, tar2 = res1[0], res2[0], tar1[0], tar2[0]
-                if compute_middle_for_3d:
-                    min_zxy, max_zxy = get_boundingbox(tar1, background = 0)
-                    middle_z = int(min_zxy[0] + max_zxy[0]) // 2
-                    res1, tar1 = res1[middle_z], tar1[middle_z]
-                    
-                    min_zxy, max_zxy = get_boundingbox(tar2, background = 0)
-                    middle_z = int(min_zxy[0] + max_zxy[0]) // 2
-                    res2, tar2 = res2[middle_z], tar2[middle_z]   
+        new_selected_scores = []
+        for idx, sample_id in tqdm(enumerate(selected_samples), desc="Searching", total=len(selected_samples)):
                 ### compute each slice, make sure the inputs has the same shape
             if label_type == 'vol' and not compute_middle_for_3d:
-                assert res1.shape[0] == res2.shape[0], 'If we evaluate each slice, the inputs should have the same length on z-dimension.'
                 tmp_selected_slices = []
+                tmp_selected_slice_scores = []
                 old_selected_slices = selected_slices[idx]
-                if old_selected_slices is None: 
-                    z = res1.shape[0]
-                    old_selected_slices = list(range(z))
-                for slice_id in old_selected_slices:
-                    sres1, sres2, star1, star2 = res1[slice_id], res2[slice_id], tar1[slice_id], tar2[slice_id]
-                    # logger.info(sres1.sum() / sres1.size)
-                    if sres1.sum() / sres1.size <= minimum_ratio or \
-                        sres2.sum() / sres2.size <= minimum_ratio or \
-                        star1.sum() / star1.size <= minimum_ratio or \
-                        star2.sum() / star2.size <= minimum_ratio: 
-                        continue
-                    score1, score2 = eval_func(star1, sres1), eval_func(star2, sres2)
-                    score1, score2 = score1.mean(), score2.mean()
-                    if score1-score2>score_margin:
+                old_selected_slice_scores = selected_scores[idx]
+                for sidx, slice_id in enumerate(old_selected_slices):
+                    score1, score2 = selected_scores[idx][sidx][result_ids[0]], selected_scores[idx][sidx][result_ids[1]]
+                    if score1-score2 > score_margin:
                         tmp_selected_slices.append(slice_id)
+                        tmp_selected_slice_scores.append(old_selected_slice_scores[sidx])
                 if len(tmp_selected_slices) > 0:
                     new_selected_samples.append(sample_id)
                     new_selected_slices.append(tmp_selected_slices)
+                    new_selected_scores.append(tmp_selected_slice_scores)
             else:
-                if res1.sum() / res1.size <= minimum_ratio or \
-                    res2.sum() / res2.size <= minimum_ratio or \
-                    tar1.sum() / tar1.size <= minimum_ratio or \
-                    tar2.sum() / tar2.size <= minimum_ratio: 
-                    continue
-                score1, score2 = eval_func(tar1, res1), eval_func(tar2, res2)
-                score1 = score1[score1 < 1]
-                score2 = score2[score2 < 1]
-                
-                score1, score2 = score1.mean(), score2.mean()
-
+                score1, score2 = selected_scores[idx][result_ids[0]], selected_scores[idx][result_ids[1]]
                 if score1-score2>score_margin:
                     new_selected_samples.append(sample_id)
-
+                    new_selected_scores.append(selected_scores[idx])
         selected_samples = new_selected_samples
         selected_slices = new_selected_slices
+        selected_scores = new_selected_scores
         if len(selected_samples) == 0: break
     sample_name = [os.path.basename(target_files[0][sid]) for sid in selected_samples]
     logger.info(f'selected {len(sample_name)} samples from {len(target_files[0])} samples')
@@ -223,13 +258,21 @@ def main(argv):
                         middle_z = int(min_zxy[0] + max_zxy[0]) // 2
                         res, tar, input_ = res[middle_z], tar[middle_z], input_[middle_z]
                 if label_type == 'vol' and not compute_middle_for_3d:
+                    if selected_slices[idx] == None:
+                        ## all slices are selected (there is no condition)
+                        selected_slices = list(range(res.shape[0]))
                     for slice_id in selected_slices[idx]:
                         sres, star, sinput = res[slice_id], tar[slice_id], input_[slice_id]
                         output_path = os.path.join(output_subdir, os.path.basename(result_files[group_id][sample_id]).replace(suffix[group_id], f'_{slice_id}.png'))
-                        cdata, raw_img =  colorize_img_by_label(sres[None, :], sinput[None, :], gt = star[None, :])                        
+                        cdata, raw_img =  colorize_img_by_label(sres[None, :], sinput[None, :], gt = star[None, :]) 
+                        if expand_to_square_margin >= 0:                       
+                            cdata = expand_to_square_img(cdata, expand_to_square_margin)
+                            raw_img = expand_to_square_img(raw_img, expand_to_square_margin)
                         save_img(output_path, (cdata * 255).astype('uint8') )
                         save_img(output_path + '.raw.png', (raw_img * 255).astype('uint8') )
                         ctar, _ = colorize_img_by_label(star[None, :], sinput[None, :], gt = star[None, :])
+                        if expand_to_square_margin >= 0:
+                            ctar = expand_to_square_img(ctar, expand_to_square_margin)
                         save_img(output_path + '.tar.png', (ctar * 255).astype('uint8') )
                 else:
                     if input_.ndim == 2:
@@ -237,10 +280,14 @@ def main(argv):
                         input_ = input_[None, ]
                     output_path = os.path.join(output_subdir, os.path.basename(result_files[group_id][sample_id]).replace(suffix[group_id], '.png'))
                     cdata, raw_img = colorize_img_by_label(res[None, :], input_, gt = tar[None, :])
+                    if expand_to_square_margin >= 0:                       
+                        cdata = expand_to_square_img(cdata, expand_to_square_margin)
+                        raw_img = expand_to_square_img(raw_img, expand_to_square_margin)
                     save_img(output_path, (cdata * 255).astype('uint8') )
                     save_img(output_path + '.raw.png', (raw_img * 255).astype('uint8') )
                     ctar, _ = colorize_img_by_label(tar[None, :], input_, gt = tar[None, :])
+                    if expand_to_square_margin >= 0:
+                        ctar = expand_to_square_img(ctar, expand_to_square_margin)
                     save_img(output_path + '.tar.png', (ctar * 255).astype('uint8') )
 if __name__ == "__main__":
     main(sys.argv[1:])
-

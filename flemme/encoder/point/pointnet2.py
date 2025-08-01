@@ -221,7 +221,7 @@ class Point2Encoder(nn.Module):
                     channel_dim = -1, gather_dim = 1)
                 features = features + self.vlf[lid](vfeatures, xyz, t, c)
             if hasattr(self, 'ca'):
-                self.ca[lid](features)
+                features = self.ca[lid](features)
 
             xyz_list.append(xyz)
             feature_list.append(features)
@@ -251,6 +251,8 @@ class Point2Encoder(nn.Module):
         if self.is_point2decoder:
             xyz_list.append(xyz)
             feature_list.append(features)
+            xyz_list = xyz_list[::-1]
+            feature_list = feature_list[::-1]
             return feature_list, xyz_list
         if self.return_xyz:
             return features, xyz
@@ -363,9 +365,8 @@ class Point2Decoder(nn.Module):
         feature_list, xyz_list = features_xyz
         if self.fp is None:
             raise NotImplementedError
-        assert self.point_num == xyz_list[0].shape[1], 'Unmatched point cloud size.'
-        feature_list = feature_list[::-1]
-        xyz_list = xyz_list[::-1]
+        assert self.point_num == xyz_list[-1].shape[1], 'Unmatched point cloud size.'
+
         for i in range(1, len(feature_list)):
             vfeatures = feature_list[i]
             feature_list[i] = self.fp[i-1]( xyz_list[i], xyz_list[i-1], feature_list[i], feature_list[i-1], t = t)

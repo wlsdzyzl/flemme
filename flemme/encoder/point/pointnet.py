@@ -133,7 +133,7 @@ class PointEncoder(nn.Module):
             if hasattr(self, 'vlf'):
                 x = x + self.vlf[lid](vx, pos, t, c)
             if hasattr(self, 'ca'):
-                self.ca[lid](x)
+                x = self.ca[lid](x)
             res.append(x)
         
         x = torch.concat(res, dim=-1)

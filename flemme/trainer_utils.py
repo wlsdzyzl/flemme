@@ -67,6 +67,17 @@ def colorize_img_by_label(label, img, gt = None, background = 0, threshold = 0.5
     
     return img.reshape(original_shape), raw_img.reshape(original_shape)
 
+### expand cropped image to square image for visualization 
+def expand_to_square_img(img, margin = 10):
+    assert img.ndim == 3, "Only support to expand 2D image"
+    length = max(img.shape[1:]) + margin * 2
+    expanded_img = np.zeros((img.shape[0], ) + (length, ) * (img.ndim - 1), dtype = img.dtype)
+    slice_x = slice((length - img.shape[1]) // 2, (length - img.shape[1]) // 2 + img.shape[1])
+    slice_y = slice((length - img.shape[2]) // 2, (length - img.shape[2]) // 2 + img.shape[2])
+    slice_c = slice(0, img.shape[1])
+    expanded_img[(slice_c, slice_x, slice_y)] = img
+    return expanded_img
+    
 ## Tensorboard Formatter for image, point cloud
 class ImageTensorboardFormatter:
     """

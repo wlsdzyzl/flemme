@@ -36,7 +36,8 @@ class SegmentationModel(BaseModel):
         return super().decode(z, c = c)
     def forward(self, x, c = None):
         seg_logits, z = super().forward(x, c = c, return_z = True)
-        if type(z) == tuple: z = z[0]
+        while type(z) == tuple or type(z) == list: 
+            z = z[0]
         return {'seg_logits': seg_logits,
                 'latent': z}
     def compute_loss(self, x, y, c = None):
