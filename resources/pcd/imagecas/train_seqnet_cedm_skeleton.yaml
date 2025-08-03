@@ -37,7 +37,7 @@ model:
         name: OneHot
         type: categories
         out_channel: 128
-        num_classes: 1
+        num_classes: 2
       decoder: same_as_encoder
   eps_loss:
     name: MSE
@@ -53,14 +53,12 @@ loader:
   shuffle: true
   data_transforms:
     - name: ToTensor
-      dtype: float
   label_transforms:
-    # - name: ToOneHot
-    #   num_classes: 3
-    #   ignore_background: true
-    - name: ToTensor
-      dtype: float
     - name: Relabel
+      offset: -1
+    - name: ToOneHot
+      num_classes: 2
+    - name: ToTensor
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas_surface/SeqNet_EDM_Skeleton
 ### parameter for optimizer
 optimizer:

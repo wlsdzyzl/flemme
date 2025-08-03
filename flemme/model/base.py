@@ -5,7 +5,7 @@ from flemme.utils import DataForm
 from flemme.logger import get_logger
 from flemme.model.embedding import get_embedding, add_embedding, concat_embedding
 from flemme.block import CombineLayer, ResConvBlock, ConvBlock, \
-    channel_recover, TimeEmbeddingBlock
+    channel_recover, PositionEmbeddingBlock
 from flemme.utils import DataForm
 from flemme.encoder import create_encoder
 from flemme.config import module_config
@@ -37,7 +37,7 @@ class BaseModel(nn.Module):
         ### time step embeddin
         if self.with_time_embedding:
             logger.info("Construct base model with time embedding.")
-            self.t_embed = TimeEmbeddingBlock(out_channel=self.time_channel, activation=self.time_act)
+            self.t_embed = PositionEmbeddingBlock(out_channel=self.time_channel, activation=self.time_act)
 
         ### condition_embedding
         en_emb_config, de_emb_config = None, None

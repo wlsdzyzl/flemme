@@ -45,15 +45,14 @@ loader:
     - name: FixedPoints
       num: 1024
     - name: ToTensor
-      dtype: float
   label_transforms:
     - name: FixedPoints
       num: 1024
+    - name: Relabel
+      offset: -1
     - name: ToOneHot
-      num_classes: 5
-      ignore_background: true
+      num_classes: 4
     - name: ToTensor
-      dtype: float
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/03001627/PointNet2_Seg
 ### parameter for optimizer
 optimizer:

@@ -49,7 +49,6 @@ loader:
       method: qfps
       num: 2560
     - name: ToTensor
-      dtype: float
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas/left/SeqTrans_VAE
 ### parameter for optimizer
 optimizer:

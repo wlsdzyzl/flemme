@@ -68,9 +68,10 @@ loader:
       size: [40, 136, 120]
     - name: ToTensor
   class_label_transforms:
+    - name: Relabel
+      offset: -1
     - name: ToOneHot
-      num_classes: 19
-      ignore_background: True
+      num_classes: 18
     - name: ToTensor
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/aaai_clients/CNN_SeM/ckp_best_score.pth
 

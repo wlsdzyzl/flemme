@@ -44,7 +44,6 @@ loader:
     - name: FixedPoints
       num: 1024
     - name: ToTensor
-      dtype: float
 
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/02691156/PointNet/PointNet_AE_EMD_LOCALK_FOLDING/ckp_best_loss.pth
 #### directory that saves the reconstructed images

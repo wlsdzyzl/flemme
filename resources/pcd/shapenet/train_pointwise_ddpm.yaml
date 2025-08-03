@@ -37,7 +37,6 @@ loader:
     - name: FixedPoints
       num: 2048
     - name: ToTensor
-      dtype: float
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/02691156/PointNet_DDPM
 ### parameter for optimizer
 optimizer:

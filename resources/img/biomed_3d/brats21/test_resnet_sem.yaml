@@ -51,7 +51,6 @@ loader:
         - [4, 3]
     - name: ToOneHot
       num_classes: 4
-      ignore_background: False
     - name: ToTensor
 
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/BRATS21/ResNet/ckp_last.pth

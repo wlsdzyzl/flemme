@@ -40,7 +40,6 @@ loader:
     - name: FixedPoints
       num: 2048
     - name: ToTensor
-      dtype: float
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas/PointNet_VAE_KL1eN4_DCD
 ### parameter for optimizer
 optimizer:

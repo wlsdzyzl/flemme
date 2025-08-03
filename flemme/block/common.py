@@ -361,21 +361,59 @@ class UpSamplingBlock(nn.Module):
         else:
             x = F.interpolate(x, scale_factor=self.scale_factor)
         return self.proj(x)
-class TimeEmbeddingBlock(nn.Module):
+# class PositionEmbeddingBlock(nn.Module):
+#     """
+#     ### Embeddings for time step t
+#     """
+
+#     def __init__(self, out_channel, activation = 'silu',):
+#         """
+#         * `out_channel` is the number of embedding dimensions
+#         """
+#         super().__init__()
+#         self.out_channel = out_channel
+#         self.dense1 = DenseBlock(self.out_channel // 4, self.out_channel, activation=activation)
+#         self.dense2 = DenseBlock(self.out_channel, self.out_channel, activation=None)
+
+#     def forward(self, t: torch.Tensor):
+#         # Create sinusoidal position embeddings
+#         # [same as those from the transformer](../../transformers/positional_encoding.html)
+#         #
+#         # \begin{align}
+#         # PE^{(1)}_{t,i} &= sin\Bigg(\frac{t}{10000^{\frac{i}{d - 1}}}\Bigg) \\
+#         # PE^{(2)}_{t,i} &= cos\Bigg(\frac{t}{10000^{\frac{i}{d - 1}}}\Bigg)
+#         # \end{align}
+#         #
+#         # where $d$ is `half_dim`, which is the freq_num
+#         half_dim = self.out_channel // 8
+#         emb = math.log(1e4) / (half_dim - 1)
+#         emb = torch.exp(torch.arange(half_dim, device=t.device) * -emb)
+#         emb = t[:, None] * emb[None, :]
+#         emb = torch.cat((emb.sin(), emb.cos()), dim=1)
+
+#         # Transform with the MLP
+#         emb = self.dense1(emb)
+#         emb = self.dense2(emb)
+#         return emb
+## embed a set of position (B * )
+class PositionEmbeddingBlock(nn.Module):
     """
     ### Embeddings for time step t
     """
-
-    def __init__(self, out_channel, activation = 'silu',):
+    ## channel dim has to be -1
+    def __init__(self, out_channel, activation = 'silu', in_channel = None):
         """
         * `out_channel` is the number of embedding dimensions
         """
         super().__init__()
+        self.in_channel = in_channel
         self.out_channel = out_channel
-        self.dense1 = DenseBlock(self.out_channel // 4, self.out_channel, activation=activation)
+        ## freq length = self.out_channel // 4
+        embed_channel = self.in_channel * self.out_channel // 4 if self.in_channel else self.out_channel // 4
+        self.dense1 = DenseBlock(embed_channel, self.out_channel, activation=activation)
         self.dense2 = DenseBlock(self.out_channel, self.out_channel, activation=None)
 
-    def forward(self, t: torch.Tensor):
+    def forward(self, pos: torch.Tensor):
         # Create sinusoidal position embeddings
         # [same as those from the transformer](../../transformers/positional_encoding.html)
         #
@@ -384,13 +422,13 @@ class TimeEmbeddingBlock(nn.Module):
         # PE^{(2)}_{t,i} &= cos\Bigg(\frac{t}{10000^{\frac{i}{d - 1}}}\Bigg)
         # \end{align}
         #
-        # where $d$ is `half_dim`
         half_dim = self.out_channel // 8
         emb = math.log(1e4) / (half_dim - 1)
-        emb = torch.exp(torch.arange(half_dim, device=t.device) * -emb)
-        emb = t[:, None] * emb[None, :]
-        emb = torch.cat((emb.sin(), emb.cos()), dim=1)
-
+        emb = torch.exp(torch.arange(half_dim, device=pos.device) * -emb)
+        emb = pos.unsqueeze(-1) * emb.reshape(pos.ndim *(1, ) + (-1, ))
+        emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
+        if self.in_channel:
+            emb = emb.flatten(start_dim=-2)
         # Transform with the MLP
         emb = self.dense1(emb)
         emb = self.dense2(emb)
@@ -431,6 +469,7 @@ class GateBiasBlock(nn.Module):
 class OneHotEmbeddingBlock(nn.Module):
     def __init__(self, num_classes, out_channel, activation, apply_onehot = True):
         super().__init__()
+        if num_classes == 2: num_classes = 1
         self.num_classes = num_classes
         self.apply_onehot = apply_onehot
         middle_channel = get_middle_channel(num_classes, out_channel) 
@@ -440,7 +479,7 @@ class OneHotEmbeddingBlock(nn.Module):
         self.dense1 = DenseBlock(self.num_classes, middle_channel, activation=activation)
         self.dense2 = DenseBlock(middle_channel, out_channel, activation=None)
     def forward(self, x):
-        if self.apply_onehot:
+        if self.apply_onehot and self.num_classes > 1:
             x = F.one_hot(x, self.num_classes).float()
         return self.dense2(self.dense1(x))
     

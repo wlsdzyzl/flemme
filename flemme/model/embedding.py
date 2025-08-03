@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from flemme.encoder import create_encoder, supported_encoders
-from flemme.block import OneHotEmbeddingBlock, TimeEmbeddingBlock, new_add, new_cat
+from flemme.block import OneHotEmbeddingBlock, PositionEmbeddingBlock, new_add, new_cat
 from flemme.logger import get_logger
 logger = get_logger('model.embedding')
 
@@ -35,9 +35,9 @@ def get_embedding(emb_config):
             apply_onehot = emb_config.get('apply_onehot', False)
             emb = OneHotEmbeddingBlock(num_classes=num_classes, out_channel=out_channel,
                                                     activation=activation, apply_onehot=apply_onehot)
-        elif emb_name == "Time":
-            logger.info('Using time step embedding, input should be time step or single value position.')    
-            emb = TimeEmbeddingBlock(out_channel=out_channel, activation=activation)
+        elif emb_name == "Position":
+            logger.info('Using Sinusoidal position (time_step) embedding.')    
+            emb = PositionEmbeddingBlock(out_channel=out_channel, activation=activation)
         else:
             logger.error('Unsupported data type or embedding method.')
             exit(1)

@@ -27,7 +27,6 @@ loader:
         - [4, 3]
     - name: ToOneHot
       num_classes: 4
-      ignore_background: False
     - name: ToTensor
 num_classes: 4
 prediction:

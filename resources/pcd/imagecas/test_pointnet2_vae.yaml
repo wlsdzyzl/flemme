@@ -36,7 +36,6 @@ loader:
     - name: FixedPoints
       num: 2048
     - name: ToTensor
-      dtype: float
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas/PointNet2_VAE_KL1eN4_DCD/ckp_best_loss.pth
 
 recon_dir: /media/wlsdzyzl/DATA1/flemme-results/recon/imagecas/lrply/surface/left/vae_pointnet2_dcd

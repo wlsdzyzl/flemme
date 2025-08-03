@@ -47,8 +47,8 @@ def get_transforms(trans_config_list, data_form = DataForm.IMG, img_dim = 2):
         if trans_class is not None:
             transforms.append(trans_class(**trans_config))
         else:
-            logger.warning(f"Unsupported transforms:{trans_name} for module {module}")
-    
+            logger.error(f"Unsupported transforms:{trans_name} for module {module}")
+            exit(1)
     return transforms
 def check_random_transforms(data_trans_config_list, label_trans_config_list):
     data_random_transform_list = [ t['name']  for t in data_trans_config_list if t['name'] in random_transforms or 'Random' in t['name']]
@@ -62,7 +62,6 @@ def check_random_transforms(data_trans_config_list, label_trans_config_list):
             logger.error(f'random transforms for label: {label_random_transform_list}')
             exit(1)
 def select_label_transforms(trans_config_list, data_form):
-    # print('')
     label_config_list = []
     selector = []
     if data_form == DataForm.IMG:

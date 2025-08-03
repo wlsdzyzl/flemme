@@ -27,7 +27,7 @@ model:
         name: OneHot
         type: categories
         out_channel: 128
-        num_classes: 1
+        num_classes: 2
       decoder: same_as_encoder
   eps_loss:
     name: MSE
@@ -49,14 +49,12 @@ loader:
     - name: FixedPoints
       num: 2560
     - name: ToTensor
-      dtype: float
-  label_transforms:
-    # - name: ToOneHot
-    #   num_classes: 3
-    #   ignore_background: true
+  class_label_transforms:
     - name: Relabel
+      offset: -1
+    - name: ToOneHot
+      num_classes: 2
     - name: ToTensor
-      dtype: float
     
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas_surface/SeqTrans_EDM
 resume: True

@@ -54,7 +54,6 @@ loader:
         - [4, 3]
     - name: ToOneHot
       num_classes: 4
-      ignore_background: False
     - name: ToTensor
 
 val_loader:
@@ -86,7 +85,6 @@ val_loader:
         - [4, 3]
     - name: ToOneHot
       num_classes: 4
-      ignore_background: False
     - name: ToTensor
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/BRATS21/MambaU
 

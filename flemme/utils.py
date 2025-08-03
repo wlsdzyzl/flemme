@@ -43,21 +43,22 @@ def onehot_to_label(label, channel_dim = 0, keepdim = False):
     else:
         return label.argmax(axis=channel_dim, keepdims=keepdim)
 
-def label_to_onehot(m, num_classes, channel_dim = 0, 
-    ignore_background = False):
-    if ignore_background:
-        ### negative labels will be ignored.
-        m = m - 1
-        num_classes = num_classes - 1
+def label_to_onehot(m, num_classes, channel_dim = 0):
     max_m = m if isinstance(m, int) else m.max()
+    min_m = m if isinstance(m, int) else m.min()
     assert channel_dim == 0 or channel_dim == -1, "channel dim should be 0 or -1."
     assert num_classes > max_m, 'Class values must be smaller than num_classes.'
+    assert min_m >= 0, 'Negative label.'
+    if num_classes == 2:
+        if type(m) == int:
+            m = np.array(m, dtype=float)
+        return m[None, ...] if channel_dim == 0 else m[..., None]
+
     if torch.is_tensor(m):
         m_shape = m.shape
         m = m.flatten()
-        m = m.int()
-        res = torch.zeros(( m.numel(), num_classes, ))
-        res[m >= 0] = F.one_hot(m[m >= 0], num_classes = num_classes).float()
+        res = torch.zeros(( m.numel(), num_classes, ), dtype = torch.float)
+        res = F.one_hot(m, num_classes = num_classes).float()
         res_shape = m_shape +  (num_classes, )
         if channel_dim == 0:
             res = res.transpose(0, 1)
@@ -66,9 +67,8 @@ def label_to_onehot(m, num_classes, channel_dim = 0,
     elif isinstance(m, np.ndarray):
         m_shape = m.shape
         m = m.flatten()
-        m = m.astype(int)
-        res = np.zeros(( num_classes, m.size, ))
-        res[m[m >= 0], np.arange(m.size)[m >= 0]] = 1
+        res = np.zeros(( num_classes, m.size, ), dtype=float)
+        res[m, np.arange(m.size)] = 1
         res_shape = (num_classes, )  + m_shape
         if channel_dim == -1:
             res = res.transpose()
@@ -76,8 +76,8 @@ def label_to_onehot(m, num_classes, channel_dim = 0,
         return res.reshape(res_shape)
     else:
         ## single number.
-        res = np.zeros((num_classes, ))
-        res[m] = 1
+        res = np.zeros((num_classes, ), dtype=float)
+        res[m] = 1.0
         return res
 def logits_to_onehot_label(logits, data_form):
     if torch.is_tensor(logits):

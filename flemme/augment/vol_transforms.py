@@ -339,27 +339,35 @@ class ToTensor:
         dtype (np.dtype): the desired output data type
     """
 
-    def __init__(self, expand_dims=True, dtype=np.float32, **kwargs):
+    def __init__(self, expand_dims=True, **kwargs):
         self.expand_dims = expand_dims
-        self.dtype = dtype
+        # assert dtype in ['float', 'double'], "Only support 'float' or 'double'"
+        # if dtype == 'float':
+        #     self.dtype = torch.float
+        # elif dtype == 'double':
+        #     self.dtype = torch.double
+
 
     def __call__(self, m):
-        if type(m) == int:
+        if type(m) == float or type(m) == int:
             return torch.tensor(m)
         assert m.ndim in [1, 3, 4], 'Supports only onehot-label (C), 3D (DxHxW) or 4D (CxDxHxW) images'
         # add channel dimension
         if self.expand_dims and m.ndim == 3:
             m = np.expand_dims(m, axis=0)
-        return torch.from_numpy(m.astype(dtype=self.dtype))
+        if m.dtype == int:
+            return torch.tensor(m)
+        return torch.tensor(m).float()
 
 
 class ToOneHot:
     """
     To one hot label, background value should be 0
     """
-    def __init__(self, num_classes, ignore_background = False, **kwargs):
-        self.to_onehot = partial(label_to_onehot, num_classes = num_classes, 
-            ignore_background = ignore_background, channel_dim = 0)
+    def __init__(self, num_classes, **kwargs):
+        self.to_onehot = partial(label_to_onehot, 
+            num_classes = num_classes, 
+            channel_dim = 0)
     def __call__(self, m):
         if not type(m) == int:
             assert m.ndim == 3 or m.ndim == 4, "Not a 3D image or class label"

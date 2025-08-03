@@ -43,7 +43,6 @@ loader:
     - name: FixedPoints
       num: 1024
     - name: ToTensor
-      dtype: float
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/02691156/PointNet/PointNet_AE_EMD_LOCAL_K
 ### parameter for optimizer
 optimizer:

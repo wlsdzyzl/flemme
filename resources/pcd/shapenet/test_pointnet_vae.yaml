@@ -29,7 +29,6 @@ loader:
     - name: FixedPoints
       num: 2048
     - name: ToTensor
-      dtype: float
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/02691156/PointNet_VAE_Chamfer
 ### parameter for optimizer
 model_path: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/02691156/PointNet_VAE/ckp_last.pth

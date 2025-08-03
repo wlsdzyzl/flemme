@@ -44,15 +44,14 @@ loader:
     - name: FixedPoints
       num: 4096
     - name: ToTensor
-      dtype: float
   label_transforms:
     - name: FixedPoints
       num: 4096
+    - name: Relabel
+      offset: -1
     - name: ToOneHot
-      num_classes: 47
-      ignore_background: true
+      num_classes: 46
     - name: ToTensor
-      dtype: float
 val_loader:
   dataset: 
     name: PcdSegDataset
@@ -70,15 +69,14 @@ val_loader:
     - name: FixedPoints
       num: 4096
     - name: ToTensor
-      dtype: float
   label_transforms:
     - name: FixedPoints
       num: 4096
+    - name: Relabel
+      offset: -1
     - name: ToOneHot
-      num_classes: 47
-      ignore_background: true
+      num_classes: 46
     - name: ToTensor
-      dtype: float
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointTrans2/PointTrans2_SEG
 ### parameter for optimizer
 optimizer:

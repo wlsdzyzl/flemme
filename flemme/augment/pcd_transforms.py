@@ -14,17 +14,10 @@ from .img_transforms import Relabel
 class ToTensor(object):
     r"""Numpy to tensor"""
 
-    def __init__(self, dtype = 'float'):
-        assert dtype in ['float', 'double'], "Only support 'float' or 'double'"
-        if dtype == 'float':
-            self.dtype = torch.float
-        elif dtype == 'double':
-            self.dtype = torch.double
     def __call__(self, data):
-        if type(data) == int:
+        if type(data) == float or type(data) == int or data.dtype == int:
             return torch.tensor(data)
-        return torch.tensor(data).type(self.dtype)
-
+        return torch.tensor(data).float()
 
 
 class Normalize(object):
@@ -257,9 +250,10 @@ class ToOneHot:
     """
     To one hot label, background value should be 0
     """
-    def __init__(self, num_classes, ignore_background = False, **kwargs):
-        self.to_onehot = partial(label_to_onehot, num_classes = num_classes, 
-            ignore_background = ignore_background, channel_dim = -1)
+    def __init__(self, num_classes, **kwargs):
+        self.to_onehot = partial(label_to_onehot, 
+            num_classes = num_classes, 
+            channel_dim = -1)
     def __call__(self, m):
         if not type(m) == int:
             assert m.ndim == 1 or m.ndim == 2, "Not a per-point label or class label"

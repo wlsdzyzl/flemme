@@ -68,19 +68,17 @@ loader:
     - name: FixedPoints
       num: 2048
     - name: ToTensor
-      dtype: float
   target_transforms:
     - name: Normalize
     - name: FixedPoints
       num: 2048
     - name: ToTensor
-      dtype: float
   class_label_transforms:
+    - name: Relabel
+      offset: -1
     - name: ToOneHot
-      num_classes: 47
-      ignore_background: true
+      num_classes: 46
     - name: ToTensor
-      dtype: float
 val_loader:
   dataset: 
     name: PcdReconWithClassLabelDataset
@@ -99,19 +97,17 @@ val_loader:
     - name: FixedPoints
       num: 2048
     - name: ToTensor
-      dtype: float
   target_transforms:
     - name: Normalize
     - name: FixedPoints
       num: 2048
     - name: ToTensor
-      dtype: float
   class_label_transforms:
+    - name: Relabel
+      offset: -1
     - name: ToOneHot
-      num_classes: 47
-      ignore_background: true
+      num_classes: 46
     - name: ToTensor
-      dtype: float
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointMamba2/PointMamba2_KNN_SFC_CPL
 resume: True
 ### parameter for optimizer

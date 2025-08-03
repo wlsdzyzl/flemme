@@ -36,7 +36,6 @@ loader:
     - name: FixedPoints
       num: 2048
     - name: ToTensor
-      dtype: float
 check_point_dir: /media/wlsdzyzl/DATA1/vcg-ckp/imagecas/PointNet_AE_EMD
 ### parameter for optimizer
 optimizer:

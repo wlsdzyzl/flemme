@@ -15,9 +15,10 @@ class ToOneHot:
     """
     To one hot label, background value should be 0
     """
-    def __init__(self, num_classes, ignore_background = False, **kwargs):
-        self.to_onehot = partial(label_to_onehot, num_classes = num_classes, 
-            ignore_background = ignore_background, channel_dim = 0)
+    def __init__(self, num_classes, **kwargs):
+        self.to_onehot = partial(label_to_onehot, 
+            num_classes = num_classes, 
+            channel_dim = 0)
     def __call__(self, m):
         if not type(m) == int:
             assert m.ndim == 2 or m.ndim == 3, "Not a 2D image or class label"
@@ -67,16 +68,23 @@ class Relabel:
     at hand and would like to create a one-hot-encoding for it. Without a consecutive labeling the task would be harder.
     """
 
-    def __init__(self, map = [], **kwargs):
+    def __init__(self, map = [], offset = None, **kwargs):
         self.map = map
+        self.offset = offset
     def __call__(self, m):
-        if len(self.map) > 0:
-            for kv in self.map:
-                k, v = kv
-                m[m == k] = v
+        if self.offset is not None:
+            m = m + self.offset
+        elif len(self.map) > 0:
+            if type(m) == int:
+                if m in self.map:
+                    m = self.map(m)
+            else:              
+                for kv in self.map:
+                    k, v = kv
+                    m[m == k] = v
         else:
             if torch.is_tensor(m):
-                _, unique_labels = torch.unique(m, return_inverse=True)
+                _, unique_labels = torch.unique(m, return_inverse = True)
             else:
                 _, unique_labels = np.unique(m, return_inverse = True)
             m = unique_labels.reshape(m.shape)
