@@ -361,44 +361,10 @@ class UpSamplingBlock(nn.Module):
         else:
             x = F.interpolate(x, scale_factor=self.scale_factor)
         return self.proj(x)
-# class PositionEmbeddingBlock(nn.Module):
-#     """
-#     ### Embeddings for time step t
-#     """
 
-#     def __init__(self, out_channel, activation = 'silu',):
-#         """
-#         * `out_channel` is the number of embedding dimensions
-#         """
-#         super().__init__()
-#         self.out_channel = out_channel
-#         self.dense1 = DenseBlock(self.out_channel // 4, self.out_channel, activation=activation)
-#         self.dense2 = DenseBlock(self.out_channel, self.out_channel, activation=None)
-
-#     def forward(self, t: torch.Tensor):
-#         # Create sinusoidal position embeddings
-#         # [same as those from the transformer](../../transformers/positional_encoding.html)
-#         #
-#         # \begin{align}
-#         # PE^{(1)}_{t,i} &= sin\Bigg(\frac{t}{10000^{\frac{i}{d - 1}}}\Bigg) \\
-#         # PE^{(2)}_{t,i} &= cos\Bigg(\frac{t}{10000^{\frac{i}{d - 1}}}\Bigg)
-#         # \end{align}
-#         #
-#         # where $d$ is `half_dim`, which is the freq_num
-#         half_dim = self.out_channel // 8
-#         emb = math.log(1e4) / (half_dim - 1)
-#         emb = torch.exp(torch.arange(half_dim, device=t.device) * -emb)
-#         emb = t[:, None] * emb[None, :]
-#         emb = torch.cat((emb.sin(), emb.cos()), dim=1)
-
-#         # Transform with the MLP
-#         emb = self.dense1(emb)
-#         emb = self.dense2(emb)
-#         return emb
-## embed a set of position (B * )
 class PositionEmbeddingBlock(nn.Module):
     """
-    ### Embeddings for time step t
+    ### Embeddings for time step t and position
     """
     ## channel dim has to be -1
     def __init__(self, out_channel, activation = 'silu', in_channel = None):
