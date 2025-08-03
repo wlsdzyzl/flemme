@@ -15,8 +15,11 @@ class ToTensor(object):
     r"""Numpy to tensor"""
 
     def __call__(self, data):
-        if type(data) == float or type(data) == int or data.dtype == int:
+        ## automatically transfer to torch.float or torch.int64
+        if type(data) == float or type(data) == int:
             return torch.tensor(data)
+        elif data.dtype == int or data.dtype == np.int32:
+            return torch.tensor(data).long()
         return torch.tensor(data).float()
 
 
@@ -248,9 +251,9 @@ class ReorderByHilbert(object):
 
 class ToOneHot:
     """
-    To one hot label, background value should be 0
+    To one hot label
     """
-    def __init__(self, num_classes, **kwargs):
+    def __init__(self, num_classes):
         self.to_onehot = partial(label_to_onehot, 
             num_classes = num_classes, 
             channel_dim = -1)

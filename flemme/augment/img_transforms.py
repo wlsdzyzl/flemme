@@ -15,7 +15,7 @@ class ToOneHot:
     """
     To one hot label, background value should be 0
     """
-    def __init__(self, num_classes, **kwargs):
+    def __init__(self, num_classes):
         self.to_onehot = partial(label_to_onehot, 
             num_classes = num_classes, 
             channel_dim = 0)
@@ -68,7 +68,7 @@ class Relabel:
     at hand and would like to create a one-hot-encoding for it. Without a consecutive labeling the task would be harder.
     """
 
-    def __init__(self, map = [], offset = None, **kwargs):
+    def __init__(self, map = [], offset = None):
         self.map = map
         self.offset = offset
     def __call__(self, m):

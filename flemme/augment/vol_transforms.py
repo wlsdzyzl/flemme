@@ -19,7 +19,7 @@ class RandomFlip:
     otherwise the models won't converge.
     """
 
-    def __init__(self, axis_prob=0.5, **kwargs):
+    def __init__(self, axis_prob=0.5):
         self.axes = (0, 1, 2)
         self.axis_prob = axis_prob
 
@@ -47,7 +47,7 @@ class RandomRotate90:
     IMPORTANT: assumes DHW axis order (that's why rotation is performed across (1,2) axis)
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         # always rotate around z-axis
         self.axis = (1, 2)
 
@@ -72,7 +72,7 @@ class RandomRotate:
     Rotation axis is picked at random from the list of provided axes.
     """
 
-    def __init__(self, angle_spectrum=30, axes=None, mode='reflect', order=0, **kwargs):
+    def __init__(self, angle_spectrum=30, axes=None, mode='reflect', order=0):
         if axes is None:
             axes = [(1, 0), (2, 1), (2, 0)]
         else:
@@ -102,7 +102,7 @@ class RandomContrast:
     Adjust contrast by scaling each voxel to `mean + alpha * (v - mean)`.
     """
 
-    def __init__(self, alpha=(0.5, 1.5), mean=0.0, execution_probability=0.1, **kwargs):
+    def __init__(self, alpha=(0.5, 1.5), mean=0.0, execution_probability=0.1):
         assert len(alpha) == 2
         self.alpha = alpha
         self.mean = mean
@@ -175,7 +175,7 @@ class ElasticDeform:
 
 
 class CenterCropXY:
-    def __init__(self, size=(256, 256), **kwargs):
+    def __init__(self, size=(256, 256)):
         self.crop_y, self.crop_x = size
     @staticmethod
     def _padding(pad_total):
@@ -211,7 +211,7 @@ class CenterCropXY:
             return np.stack(channels, axis=0)
 
 class RandomCropXY(CenterCropXY):
-    def __init__(self, size=(256, 256), **kwargs):
+    def __init__(self, size=(256, 256)):
         super().__init__(size = size)
     @staticmethod
     def _start_and_pad(crop_size, max_size):
@@ -225,7 +225,7 @@ class Normalize:
     Apply Z-score normalization to a given input tensor, i.e. re-scaling the values to be 0-mean and 1-std.
     """
 
-    def __init__(self, mean=None, std=None, channelwise=False, **kwargs):
+    def __init__(self, mean=None, std=None, channelwise=False):
         if mean is not None or std is not None:
             assert mean is not None and std is not None
         self.mean = mean
@@ -260,7 +260,7 @@ class MinMaxNormalize:
     list/tuple channelwise if enabled.
     """
 
-    def __init__(self, min_value=None, max_value=None, norm01=True, channelwise=False, **kwargs):
+    def __init__(self, min_value=None, max_value=None, norm01=True, channelwise=False):
         if min_value is not None and max_value is not None:
             assert max_value > min_value
         self.min_value = min_value
@@ -339,7 +339,7 @@ class ToTensor:
         dtype (np.dtype): the desired output data type
     """
 
-    def __init__(self, expand_dims=True, **kwargs):
+    def __init__(self, expand_dims=True):
         self.expand_dims = expand_dims
         # assert dtype in ['float', 'double'], "Only support 'float' or 'double'"
         # if dtype == 'float':
@@ -355,8 +355,8 @@ class ToTensor:
         # add channel dimension
         if self.expand_dims and m.ndim == 3:
             m = np.expand_dims(m, axis=0)
-        if m.dtype == int:
-            return torch.tensor(m)
+        if m.dtype == int or m.dtype == np.int32:
+            return torch.tensor(m).long()
         return torch.tensor(m).float()
 
 
@@ -364,7 +364,7 @@ class ToOneHot:
     """
     To one hot label, background value should be 0
     """
-    def __init__(self, num_classes, **kwargs):
+    def __init__(self, num_classes):
         self.to_onehot = partial(label_to_onehot, 
             num_classes = num_classes, 
             channel_dim = 0)
@@ -379,7 +379,7 @@ class ToOneHot:
 
 
 class GaussianBlur:
-    def __init__(self, sigma=[.1, 2.], execution_probability=0.5, **kwargs):
+    def __init__(self, sigma=[.1, 2.], execution_probability=0.5):
         self.sigma = sigma
         self.execution_probability = execution_probability
 
