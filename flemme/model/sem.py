@@ -49,7 +49,7 @@ class SegmentationModel(BaseModel):
     
 class HSegmentationModel(HBaseModel):
     def __init__(self, model_config, create_encoder_func):
-        super().__init__(model_config)
+        super().__init__(model_config, create_encoder_func)
         seg_loss_configs = model_config.get('segmentation_losses', [{'name':'Dice'}])
         if not type(seg_loss_configs) == list:
             seg_loss_configs = [seg_loss_configs, ]

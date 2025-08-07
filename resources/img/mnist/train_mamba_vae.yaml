@@ -8,13 +8,13 @@ model:
     in_channel: 1
     ## the value can be list or int
     image_size: 32
-    patch_size: 2
+    patch_size: 1
     down_channels: [16, 32]
     middle_channels: [32, 32]
     # up_channels: [16, 8]
     building_block: vmamba
     normalization: layer
-    dense_channels: [128]
+    # dense_channels: [128]
     # decoder_dense_channels: [64, 32]
   ### loss function
   reconstruction_losses: 
@@ -28,7 +28,7 @@ loader:
   dataset: 
     name: MNIST
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/MNIST  
+    - /media/wlsdzyzl/DATA1/datasets/img/MNIST  
   batch_size: 128
   num_workers: 8
   shuffle: true
@@ -41,7 +41,7 @@ loader:
       mean: [0.1307]
       std: [0.3081]
 
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/Swin_VAE
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/Mamba_VAE
 ### parameter for optimizer
 optimizer:
   name: Adam

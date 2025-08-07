@@ -2,6 +2,7 @@
 from flemme.config import module_config
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from flemme.logger import get_logger
 from .ssim import create_window, create_window_3D, _ssim, _ssim_3D
 
@@ -30,7 +31,8 @@ class TorchLoss(nn.Module):
             return res.mean()
 
 class SSIMLoss(torch.nn.Module):
-    def __init__(self, image_dim = 2, image_channel = 1, window_size = 11, reduction = 'mean', sigma = 1.5, **kwargs):
+    def __init__(self, image_dim = 2, image_channel = 1, 
+                 window_size = 11, reduction = 'mean', sigma = 1.5, **kwargs):
         super().__init__()
         self.channel = image_channel
         self.dim = image_dim
@@ -39,6 +41,7 @@ class SSIMLoss(torch.nn.Module):
             self.window = create_window_3D(window_size, self.channel, sigma = sigma)
         self.reduction = reduction
     def forward(self, x, y, mask = 1.0, sample_weight = 1.0):
+        x, y = F.sigmoid(x), F.sigmoid(y)
         x, y = x * mask, y * mask
         assert x.shape[1] == self.channel and y.shape[1] == self.channel, \
                 'Channel size mis-matched for SSIM loss.'

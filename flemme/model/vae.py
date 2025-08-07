@@ -1,8 +1,6 @@
 # variational autoencoder for 2D image and 3D point cloud
 import torch
 import torch.nn as nn
-
-
 from .ae import AutoEncoder
 from flemme.loss import get_loss
 from flemme.model.distribution import GaussianDistribution as Gaussian

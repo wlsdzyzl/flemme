@@ -12,7 +12,7 @@ logger = get_logger("encoder.image.vit")
 class ViTEncoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
                     patch_size = 2, patch_channel = 32,
-                    building_block = 'vit', dense_channels = [256], 
+                    building_block = 'vit', dense_channels = [], 
                     time_channel = 0,
                     mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
                     down_channels = [128, 256], middle_channels = [256, 256], 
@@ -102,7 +102,7 @@ class ViTEncoder(nn.Module):
                            for i in range(len(down_channels) - 1)]
             self.dca = nn.ModuleList(ca_sequence)
 
-        self.down_path = [self.image_channel, ] + down_channels
+        self.down_path = down_channels
 
         dense_channels = [ middle_channels[-1], ] + dense_channels
         self.dense_path = dense_channels.copy()
@@ -162,13 +162,14 @@ class ViTEncoder(nn.Module):
             return x, res
         return x
     def __str__(self):
-        _str = ''
+        _str = f'Projection layer: {self.image_channel}->{self.patch_channel}\n'
         # print down sampling
         _str += 'Patch merging and vision transformer layers: '
-        for c in self.down_path[:-1]:
-            _str += '{}->'.format(c)  
-        _str += str(self.down_path[-1])
-        _str += '\n'
+        if len(self.down_path) > 1:
+            for c in self.down_path[:-1]:
+                _str += '{}->'.format(c)  
+            _str += str(self.down_path[-1])
+            _str += '\n'
 
         if len(self.middle_path) > 1:
             _str += 'Middle vit tranformer layers: '
@@ -187,7 +188,7 @@ class ViTEncoder(nn.Module):
 
 class ViTDecoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, latent_channel = 256,
-                    patch_size = 2, dense_channels = [256], 
+                    patch_size = 2, dense_channels = [], 
                     building_block = 'vit',
                     time_channel = 0,
                     mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 

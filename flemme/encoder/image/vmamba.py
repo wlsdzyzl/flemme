@@ -15,7 +15,7 @@ class VMambaEncoder(nn.Module):
                 time_channel = 0,
                 down_channels = [128, 256], middle_channels = [256, 256], 
                 mlp_hidden_ratios=[4., ], state_channel=None, 
-                building_block = 'vmamba', dense_channels = [256], 
+                building_block = 'vmamba', dense_channels = [], 
                 conv_kernel_size=3,
                 inner_factor = 2.0,
                 dt_rank=None, dt_min=0.001, 
@@ -109,7 +109,7 @@ class VMambaEncoder(nn.Module):
                                                      out_channel = down_channels[i+1],
                                                      norm = normalization, 
                                                      num_norm_groups = num_norm_groups)  for i in range(self.d_depth)])
-        self.down_path = [self.image_channel, ] + down_channels        
+        self.down_path = down_channels        
         if channel_attention is not None:
             if isinstance(channel_attention, str):
                 channel_attention = {'method': channel_attention}
@@ -178,13 +178,14 @@ class VMambaEncoder(nn.Module):
         return x
 
     def __str__(self):
-        _str = ''
+        _str = f'Projection layer: {self.image_channel}->{self.patch_channel}\n'
         # print down sampling
         _str += 'Patch merging and mamba SSM layers: '
-        for c in self.down_path[:-1]:
-            _str += '{}->'.format(c)  
-        _str += str(self.down_path[-1])
-        _str += '\n'
+        if len(self.down_path) > 1:
+            for c in self.down_path[:-1]:
+                _str += '{}->'.format(c)  
+            _str += str(self.down_path[-1])
+            _str += '\n'
 
         if len(self.middle_path) > 1:
             _str += 'Middle mamba SSM layers: '
@@ -204,7 +205,7 @@ class VMambaEncoder(nn.Module):
 class VMambaDecoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
                 patch_size = 2, latent_channel = 256,
-                mlp_hidden_ratios=[4., ], dense_channels = [256], 
+                mlp_hidden_ratios=[4., ], dense_channels = [], 
                 up_channels = [128, 64], final_channels = [64, 64], 
                 time_channel = 0,
                 building_block = 'vmamba',

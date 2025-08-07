@@ -185,6 +185,9 @@ class BaseModel(nn.Module):
         return res
     def get_latent_shape(self):
         if self.data_form == DataForm.IMG and not self.encoder.vector_embedding:
+            if self.feature_channel_dim == -1:
+                return [int(im_size / (2** self.encoder.d_depth)) for im_size in self.encoder.image_size ] + \
+                    [self.encoder.out_channel, ]
             return [self.encoder.out_channel, ] + \
                         [int(im_size / (2** self.encoder.d_depth)) for im_size in self.encoder.image_size ]
         if self.data_form == DataForm.PCD and not self.encoder.vector_embedding:

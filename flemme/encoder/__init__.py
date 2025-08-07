@@ -121,8 +121,8 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     isinstance(middle_channels, list) and \
                     isinstance(final_channels, list),\
                 'feature channels should be a list.'
-            if len(down_channels) + len(up_channels) == 0:
-                down_channels = [64, 128, 256]
+            # if len(down_channels) + len(up_channels) == 0:
+            #     down_channels = [64, 128, 256]
             if not len(up_channels):
                 up_channels = down_channels[::-1]    
             if not len(down_channels):
@@ -138,11 +138,11 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                     "the number of down-sampling layers for U-Net should be larger than 1"
                 assert sum( d != u for d, u in zip(down_channels, up_channels[::-1])) == 0, \
                     'For DNet and UNet, up_channels should be a reversed down_channels'
+                assert len(dense_channels) == 0, "DNet and UNet doesn't support dense layers in encoder."
                 if 'UNet' in encoder_name or encoder_name[-1] == 'U':
                     assert len(middle_channels) > 0 and middle_channels[-1] == 2 * down_channels[-1],\
                         "UNet follows a special structure, the last value of middle channels should be twice of the last value of down channels."
-                
-            if len(dense_channels) == 0:
+            elif len(dense_channels) == 0:
                 logger.info('Current model doesn\'t contain any fully connected (dense) layers')
 
             ### convolution based mmodel
@@ -190,7 +190,6 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                 building_block=building_block, 
                                                 **encoder_config)
             elif encoder_name in ['ViT', 'ViTU', 'ViTD', 'Swin', 'SwinU', 'SwinD']:
-
                 down_num_heads = encoder_config.pop('down_num_heads', 3)
                 if not isinstance(down_num_heads, list): 
                     down_num_heads = [down_num_heads for _ in down_channels] 
@@ -214,6 +213,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                         down_num_heads = down_num_heads, 
                                         middle_num_heads = middle_num_heads,
                                         building_block=building_block,
+                                        dense_channels=dense_channels,
                                         **encoder_config)
                     latent_channel = encoder.out_channel
                 if return_decoder:
@@ -225,6 +225,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                     up_num_heads = up_num_heads, 
                                     final_num_heads = final_num_heads,
                                     building_block=building_block,
+                                    dense_channels = de_dense_channels, 
                                     **encoder_config)
             elif encoder_name in ['VMamba', 'VMambaU', 'VMambaD']:
                 if return_encoder:
@@ -233,6 +234,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                 down_channels = down_channels, 
                                 middle_channels = middle_channels,
                                 building_block=building_block,
+                                dense_channels = dense_channels, 
                                 **encoder_config)
                     latent_channel = encoder.out_channel
                 if return_decoder:
@@ -241,6 +243,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                 latent_channel = latent_channel,
                                 up_channels = up_channels, 
                                 final_channels = final_channels,
+                                dense_channels = de_dense_channels, 
                                 building_block=building_block,
                                 **encoder_config)
             ## set image size

@@ -14,7 +14,7 @@ model:
     patch_size: 2
     # kernel_size: 5
     down_channels: [64, 128, 256]
-    up_attens: [null, null, atten]
+    down_attens: [null, null, atten]
     middle_channels: [512, 512]
     building_block: single
     normalization: batch

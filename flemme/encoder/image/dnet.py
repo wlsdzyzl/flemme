@@ -47,7 +47,7 @@ class DNetEncoder(CNNEncoder):
             condition_first = condition_first)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
-        down_channels = [self.image_patch_channel, ] + down_channels
+        down_channels = [self.patch_channel, ] + down_channels
 
         self.d_conv = nn.ModuleList( [MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
                                                         dim=self.dim, in_channel=down_channels[i] if i < 2 else sum(down_channels[1:i+1]), 

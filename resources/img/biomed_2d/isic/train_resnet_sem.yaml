@@ -11,7 +11,7 @@ model:
     out_channel: 1
     patch_channel: 32
     patch_size: 2
-    down_channels: [64, 128, 256]
+    # down_channels: [64, 128, 256]
     middle_channels: [512, 512]
     building_block: res
     num_blocks: 1
@@ -30,9 +30,9 @@ loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/ISIC/fold1/
-    - /media/wlsdzyzl/DATA1/datasets/ISIC/fold2/
-    - /media/wlsdzyzl/DATA1/datasets/ISIC/fold3/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold1/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold2/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
@@ -49,7 +49,7 @@ val_loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/ISIC/fold4/
+    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false

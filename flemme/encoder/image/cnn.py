@@ -26,7 +26,7 @@ class CNNEncoder(nn.Module):
                 down_channels = [64, 128], down_attens = [None, None], 
                 shape_scaling = [2, 2],  middle_channels = [256, 256], 
                 middle_attens = [None, None], depthwise = False, kernel_size = 3, 
-                dense_channels = [256], dsample_function = 'conv', building_block='single', 
+                dense_channels = [], dsample_function = 'conv', building_block='single', 
                 normalization = 'group', num_norm_groups = 8, num_blocks = 2,
                 activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
                 qkv_bias = True, qk_scale = None, atten_dropout = None, 
@@ -44,7 +44,7 @@ class CNNEncoder(nn.Module):
         self.dim = len(image_size)
         self.dsample_function = dsample_function
         self.image_size = image_size
-        self.image_patch_channel = patch_channel
+        self.patch_channel = patch_channel
         self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
         ## down sample times
         self.d_depth = 0 if not isinstance(down_channels, list) else len(down_channels)
@@ -71,14 +71,14 @@ class CNNEncoder(nn.Module):
                                         condition_first = condition_first)
         ## down-sampling and convolution layers
         self.image_proj = DownSamplingBlock(dim=self.dim, scale_factor=patch_size, in_channel=image_channel, 
-                                               out_channel=self.image_patch_channel, func=dsample_function)
+                                               out_channel=self.patch_channel, func=dsample_function)
         self.absolute_pos_embed = None
         if abs_pos_embedding:
             self.absolute_pos_embed = nn.Parameter(
-                torch.zeros([1, self.image_patch_channel] + [s // self.patch_size for s in self.image_size] ))
+                torch.zeros([1, self.patch_channel] + [s // self.patch_size for s in self.image_size] ))
             nn.init.trunc_normal_(self.absolute_pos_embed, std=.02)
 
-        down_channels = [self.image_patch_channel, ] + down_channels
+        down_channels = [self.patch_channel, ] + down_channels
         self.down = nn.ModuleList([DownSamplingBlock(dim=self.dim, in_channel=down_channels[i], 
                                                         func=dsample_function, scale_factor=shape_scaling[i-1]) for i in range(1, len(down_channels))])    
         self.d_conv = nn.ModuleList( [MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
@@ -95,7 +95,7 @@ class CNNEncoder(nn.Module):
                            for i in range(len(down_channels) - 1)]
             self.dca = nn.ModuleList(ca_sequence)
 
-        self.down_path = [self.image_channel, ] + down_channels
+        self.down_path = down_channels
 
 
         dense_channels = [ middle_channels[-1], ] + dense_channels
@@ -133,9 +133,9 @@ class CNNEncoder(nn.Module):
         self.out_channel = dense_channels[-1]
         self.return_feature_list = return_feature_list
     def __str__(self):
-        _str = ''
+        _str = f'Projection layer: {self.image_channel}->{self.patch_channel}\n'
         if len(self.down_path) > 1:
-            _str += 'Down-sampling and convolution layers: '
+            _str += 'Down-sampling convolution layers: '
             for c in self.down_path[:-1]:
                _str += '{}->'.format(c)  
             _str += str(self.down_path[-1])
@@ -193,7 +193,7 @@ class CNNDecoder(nn.Module):
     value would be the dimension of output embedding vectors.
     '''
     def __init__(self, image_size, image_channel = 3, patch_size = 2, latent_channel = 256,  time_channel = 0, 
-                 dense_channels = [256], up_channels = [128, 64], up_attens = [None, None], 
+                 dense_channels = [], up_channels = [128, 64], up_attens = [None, None], 
                  shape_scaling = [2, 2], final_channels = [], 
                  final_attens = [], depthwise = False, kernel_size = 3, 
                  usample_function = 'conv', building_block='single', 
@@ -304,7 +304,7 @@ class CNNDecoder(nn.Module):
             _str += '\n'
 
         if len(self.up_path) > 1:
-            _str += 'Up-sampling and convolution layers: '
+            _str += 'Up-sampling convolution layers: '
             for c in self.up_path[:-1]:
                _str += '{}->'.format(c)  
             _str += str(self.up_path[-1])

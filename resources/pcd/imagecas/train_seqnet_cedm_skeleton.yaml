@@ -53,7 +53,7 @@ loader:
   shuffle: true
   data_transforms:
     - name: ToTensor
-  label_transforms:
+  class_label_transforms:
     - name: Relabel
       offset: -1
     - name: ToOneHot

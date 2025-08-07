@@ -13,7 +13,7 @@ class SwinEncoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
                  window_size = 8, time_channel = 0,
                  patch_size = 2, patch_channel = 32,
-                 building_block = 'swin', dense_channels = [256], 
+                 building_block = 'swin', dense_channels = [], 
                  mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
                  down_channels = [128, 256], middle_channels = [256, 256], 
                  down_num_heads = [3, 3], middle_num_heads = [3, 3],
@@ -105,7 +105,7 @@ class SwinEncoder(nn.Module):
             ca_sequence = [get_ca(dim = self.dim, channel = down_channels[i+1], channel_dim = -1, **channel_attention) 
                            for i in range(len(down_channels) - 1)]
             self.dca = nn.ModuleList(ca_sequence)
-        self.down_path = [self.image_channel, ] + down_channels
+        self.down_path = down_channels
         dense_channels = [ middle_channels[-1], ] + dense_channels
         self.dense_path = dense_channels.copy()
         self.middle_path = [down_channels[-1], ] + middle_channels 
@@ -166,13 +166,14 @@ class SwinEncoder(nn.Module):
             return x, res
         return x
     def __str__(self):
-        _str = ''
+        _str = f'Projection layer: {self.image_channel}->{self.patch_channel}\n'
         # print down sampling
-        _str += 'Patch merging and swin transformer layers: '
-        for c in self.down_path[:-1]:
-            _str += '{}->'.format(c)  
-        _str += str(self.down_path[-1])
-        _str += '\n'
+        if len(self.down_path) > 1:
+            _str += 'Patch merging and swin transformer layers: '
+            for c in self.down_path[:-1]:
+                _str += '{}->'.format(c)  
+            _str += str(self.down_path[-1])
+            _str += '\n'
 
         if len(self.middle_path) > 1:
             _str += 'Middle swin tranformer layers: '
@@ -191,7 +192,7 @@ class SwinEncoder(nn.Module):
 
 class SwinDecoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, latent_channel = 256,
-                 window_size = 8, patch_size = 2, dense_channels = [256], 
+                 window_size = 8, patch_size = 2, dense_channels = [], 
                  building_block = 'swin', time_channel = 0,
                  mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
                  up_channels = [128, 64], final_channels = [64, 64], 
