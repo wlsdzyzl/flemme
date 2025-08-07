@@ -1,5 +1,4 @@
 import torch
-import torch.nn.functional as F
 from torch import nn
 from flemme.block import get_building_block, \
     LocalGraphLayer, MultipleBuildingBlocks

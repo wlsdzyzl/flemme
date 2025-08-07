@@ -4,7 +4,7 @@ from flemme.utils import DataForm
 from flemme.logger import get_logger
 from flemme.model.embedding import get_embedding, add_embedding, concat_embedding
 from flemme.utils import DataForm
-from flemme.encoder import create_encoder
+
 logger = get_logger('model.half')
 ### some times we may want to construct a model with only encoder or decoder with conditional embedding.
 ### this might be useful, for a classification model
@@ -13,7 +13,7 @@ class OnlyEncoder(nn.Module):
     Base model for ae and vae. It follows a encoder-decoder structure, the output can be reconstruction or predicted mask.
     Loss is not specified.
     '''
-    def __init__(self, model_config):
+    def __init__(self, model_config, create_encoder_func):
         super().__init__()
         encoder_config = model_config.get('encoder', None)
 
@@ -40,7 +40,7 @@ class OnlyEncoder(nn.Module):
                 assert self.in_channel == self.en_cemb.out_channel, \
                     "condition embedding of encoder and input data should have the same shape for addition."
 
-        self.encoder = create_encoder(encoder_config=encoder_config, return_decoder=False)[0]
+        self.encoder = create_encoder_func(encoder_config=encoder_config, return_decoder=False)[0]
 
         self.is_generative = False
         self.is_conditional = hasattr(self, 'en_cemb')
@@ -101,14 +101,14 @@ class OnlyDecoder(nn.Module):
     Base model for ae and vae. It follows a encoder-decoder structure, the output can be reconstruction or predicted mask.
     Loss is not specified.
     '''
-    def __init__(self, model_config):
+    def __init__(self, model_config, create_encoder_func):
         super().__init__()
         decoder_config = model_config.get('encoder', None)
         decoder_config = decoder_config or model_config.get('decoder', None)
 
         assert decoder_config is not None, 'There is no decoder configuration.'
         self.decoder_name = decoder_config.get('name')
-        self.in_channel = decoder_config.get('decoder_in_channel')
+        self.in_channel = decoder_config.get('latent_channel')
         self.out_channel = decoder_config.get('out_channel')
 
         ### condition_embedding
@@ -123,14 +123,14 @@ class OnlyDecoder(nn.Module):
             logger.info("Create conditional embedding for decoder.")
             self.de_cemb = get_embedding(cemb_config)
             if self.combine_condition == 'cat':
-                decoder_config['decoder_in_channel'] += self.de_cemb.out_channel
+                decoder_config['latent_channel'] += self.de_cemb.out_channel
             elif self.combine_condition == 'injection':
                 decoder_config['decoder_condition_channel'] = self.de_cemb.out_channel
             else:
                 assert self.in_channel == self.de_cemb.out_channel, \
                     "condition embedding of decoder and the output of encoder should have the same shape for addition."
         ### create decoder
-        self.decoder = create_encoder(encoder_config=decoder_config, return_encoder=False)[1]
+        self.decoder = create_encoder_func(encoder_config=decoder_config, return_encoder=False)[1]
         self.is_generative = False
         self.is_conditional = hasattr(self, 'de_cemb')
         self.is_supervised = False

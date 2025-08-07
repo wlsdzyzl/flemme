@@ -1,6 +1,5 @@
 ### swin-encoder: window and patch based vision transformer
 import torch
-import torch.nn.functional as F
 from torch import nn
 import math
 from flemme.block import PatchConstructionBlock, PatchRecoveryBlock,\
@@ -191,7 +190,7 @@ class SwinEncoder(nn.Module):
         return _str 
 
 class SwinDecoder(nn.Module):
-    def __init__(self, image_size, image_channel = 3, in_channel = 64,
+    def __init__(self, image_size, image_channel = 3, latent_channel = 256,
                  window_size = 8, patch_size = 2, dense_channels = [256], 
                  building_block = 'swin', time_channel = 0,
                  mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
@@ -228,7 +227,7 @@ class SwinDecoder(nn.Module):
         if not isinstance(window_size, tuple) and not isinstance(window_size, list):
             self.window_size = [self.window_size for _ in range(self.dim)]
         self.patch_size = patch_size
-        self.in_channel = in_channel
+        
         self.patch_image_pyramid = [ [s //patch_size // (2 **i) for s in self.image_size] for i in range(self.u_depth + 1)][::-1]
 
         ### building block: swin transformer block
@@ -247,7 +246,7 @@ class SwinDecoder(nn.Module):
                                 activation = activation,
                                 condition_first = condition_first)
         ## fully connected layer
-        dense_channels = [in_channel, ] + dense_channels 
+        dense_channels = [latent_channel, ] + dense_channels 
         if not sum([im_size % (self.patch_size * (2** self.u_depth)) for im_size in self.image_size ]) == 0:
             logger.error('Please check your image size, patch size and downsample depth to make sure the image size can be divisible.')
             exit(1)

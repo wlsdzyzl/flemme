@@ -7,7 +7,6 @@ from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.utils.checkpoint as checkpoint
 from einops import rearrange, repeat
 
 logger = get_logger('mamba_block')

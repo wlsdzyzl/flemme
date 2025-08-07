@@ -1,6 +1,5 @@
 # encode image to an vector embedding
 import torch
-import torch.nn.functional as F
 from torch import nn
 import math
 from flemme.block import DenseBlock, DownSamplingBlock, UpSamplingBlock, \
@@ -22,20 +21,21 @@ class CNNEncoder(nn.Module):
     value would be the dimension of output embedding vectors.
     zcount: int, zcount is the number of output embedding vectors
     '''
-    def __init__(self, image_size, image_channel = 3, time_channel = 0, patch_channel = 32, patch_size = 2,
-                 down_channels = [64, 128], down_attens = [None, None], 
-                 shape_scaling = [2, 2],  middle_channels = [256, 256], 
-                 middle_attens = [None, None], depthwise = False, kernel_size = 3, 
-                 dense_channels = [256], dsample_function = 'conv', building_block='single', 
-                 normalization = 'group', num_norm_groups = 8, num_blocks = 2,
-                 activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
-                 qkv_bias = True, qk_scale = None, atten_dropout = None, 
-                 abs_pos_embedding = False, return_feature_list = False,
-                 channel_attention = None,
-                 time_injection = 'gate_bias', 
-                 condition_channel = 0,
-                 condition_injection = 'gate_bias',
-                 condition_first = False,
+    def __init__(self, image_size, image_channel = 3, time_channel = 0, 
+                patch_size = 2, patch_channel = 32,
+                down_channels = [64, 128], down_attens = [None, None], 
+                shape_scaling = [2, 2],  middle_channels = [256, 256], 
+                middle_attens = [None, None], depthwise = False, kernel_size = 3, 
+                dense_channels = [256], dsample_function = 'conv', building_block='single', 
+                normalization = 'group', num_norm_groups = 8, num_blocks = 2,
+                activation = 'relu', dropout = 0., num_heads = 1, d_k = None, 
+                qkv_bias = True, qk_scale = None, atten_dropout = None, 
+                abs_pos_embedding = False, return_feature_list = False,
+                channel_attention = None,
+                time_injection = 'gate_bias', 
+                condition_channel = 0,
+                condition_injection = 'gate_bias',
+                condition_first = False,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -192,7 +192,7 @@ class CNNDecoder(nn.Module):
     dense_channels: list. dimensions of embedding vectors during the 'fully connected layer' stage. The length of dense_channels determines the number of fc layers. The last
     value would be the dimension of output embedding vectors.
     '''
-    def __init__(self, image_size, image_channel = 3, patch_size = 2, in_channel = 256,  time_channel = 0, 
+    def __init__(self, image_size, image_channel = 3, patch_size = 2, latent_channel = 256,  time_channel = 0, 
                  dense_channels = [256], up_channels = [128, 64], up_attens = [None, None], 
                  shape_scaling = [2, 2], final_channels = [], 
                  final_attens = [], depthwise = False, kernel_size = 3, 
@@ -236,7 +236,7 @@ class CNNDecoder(nn.Module):
                                         condition_injection = condition_injection,
                                         condition_first = condition_first)
         ## fully connected layer
-        dense_channels = [in_channel, ] + dense_channels 
+        dense_channels = [latent_channel, ] + dense_channels 
         if not sum([im_size % (patch_size * math.prod(shape_scaling)) for im_size in self.image_size ]) == 0:
             logger.error('Please check your image size, patch size and downsample depth to make sure the image size can be divisible.')
             exit(1)

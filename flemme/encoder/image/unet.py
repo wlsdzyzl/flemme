@@ -2,7 +2,6 @@
 # it actually encode image to a feature map instead of a vector embedding
 from flemme.config import module_config
 import torch
-import torch.nn.functional as F
 from torch import nn
 from flemme.block import *
 from flemme.logger import get_logger
@@ -13,7 +12,7 @@ logger = get_logger('encoder.image.unet')
 ### UNet encoder
 ### Possible improvement: A more elegant implementation is that Unet encoder can be inherited from CNN encoder
 class UNetEncoder(CNNEncoder):
-    def __init__(self, image_size, image_channel = 3,  patch_channel = 32, patch_size = 2, down_channels = [64, 128], 
+    def __init__(self, image_size, image_channel = 3,  patch_size = 2, patch_channel = 32, down_channels = [64, 128], 
                  down_attens = [None, None], shape_scaling = [2, 2], middle_channels = [256, 256], middle_attens = [None, None],
                  kernel_size = 3, depthwise = False, time_channel = 0, dsample_function = 'conv', num_blocks = 2,
                  building_block='res_t', normalization = 'group', num_norm_groups = 8,
@@ -49,7 +48,7 @@ class UNetEncoder(CNNEncoder):
            logger.debug("redundant parameters:{}".format(kwargs))
     
 class UNetDecoder(CNNDecoder):
-    def __init__(self, image_size, image_channel = 3, in_channel = 256, time_channel = 0, patch_size = 2,
+    def __init__(self, image_size, image_channel = 3, latent_channel = 256, time_channel = 0, patch_size = 2,
                  up_channels = [128, 64], up_attens = [None, None], shape_scaling = [2, 2],
                  final_channels = [], final_attens = [], depthwise = False, usample_function = 'conv', 
                  kernel_size = 3, building_block='res_t', normalization = 'group',
@@ -66,7 +65,7 @@ class UNetDecoder(CNNDecoder):
                  condition_first = False,
                  **kwargs):
         super().__init__(image_size = image_size, image_channel = image_channel, 
-            in_channel = in_channel, time_channel = time_channel, patch_size=patch_size,
+            latent_channel = latent_channel, time_channel = time_channel, patch_size=patch_size,
             up_channels = up_channels, up_attens = up_attens, 
             shape_scaling=shape_scaling, final_channels = final_channels, kernel_size = kernel_size, 
             final_attens = final_attens, depthwise = depthwise, usample_function = usample_function,
@@ -82,7 +81,7 @@ class UNetDecoder(CNNDecoder):
             condition_first = condition_first)
         if len(kwargs) > 0:
            logger.debug("redundant parameters:{}".format(kwargs))
-        up_channels = [in_channel, ] + up_channels
+        up_channels = [latent_channel, ] + up_channels
         self.up = nn.ModuleList([UpSamplingBlock(dim=self.dim, in_channel=up_channels[i], out_channel=up_channels[i + 1], 
                                                 func=usample_function, scale_factor=shape_scaling[i]) for i in range(len(up_channels)-1)])
         self.u_conv = nn.ModuleList([MultipleBuildingBlocks(n = self.num_blocks, BuildingBlock=self.BuildingBlock, 
@@ -149,7 +148,7 @@ if module_config['transformer']:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class ViTUNetDecoder(ViTDecoder):
         def __init__(self, image_size, image_channel = 3, 
-                    patch_size = 2, in_channel = 64,
+                    patch_size = 2, latent_channel = 256,
                     time_channel = 0,
                     building_block = 'vit',
                     mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
@@ -166,7 +165,7 @@ if module_config['transformer']:
                     condition_first = False,
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
-                patch_size = patch_size, in_channel = in_channel, time_channel = time_channel,
+                patch_size = patch_size, latent_channel = latent_channel, time_channel = time_channel,
                 building_block = building_block, mlp_hidden_ratios = mlp_hidden_ratios, qkv_bias = qkv_bias,
                 qk_scale = qk_scale, up_channels = up_channels, final_channels = final_channels,
                 up_num_heads = up_num_heads, final_num_heads = final_num_heads,
@@ -182,7 +181,7 @@ if module_config['transformer']:
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
-            up_channels = [in_channel] + up_channels
+            up_channels = [latent_channel, ] + up_channels
             self.up = nn.ModuleList([PatchExpansionBlock(dim = self.dim,
                                                         in_channel = up_channels[i],
                                                         out_channel = up_channels[i] // 2,
@@ -254,7 +253,7 @@ if module_config['transformer']:
     class SwinUNetDecoder(SwinDecoder):
         def __init__(self, image_size, image_channel = 3, 
                     window_size = 8, time_channel = 0,
-                    patch_size = 2, in_channel = 64,
+                    patch_size = 2, latent_channel = 256,
                     building_block = 'swin',
                     mlp_hidden_ratios=[4., ], qkv_bias=True, qk_scale=None, 
                     up_channels = [128, 64], final_channels = [64, 64], 
@@ -271,7 +270,7 @@ if module_config['transformer']:
                     **kwargs):
             super().__init__(image_size = image_size, image_channel = image_channel,
                 window_size = window_size, time_channel = time_channel,
-                patch_size = patch_size, in_channel = in_channel,
+                patch_size = patch_size, latent_channel = latent_channel,
                 building_block = building_block, mlp_hidden_ratios = mlp_hidden_ratios, qkv_bias = qkv_bias,
                 qk_scale = qk_scale, up_channels = up_channels, final_channels = final_channels,
                 up_num_heads = up_num_heads, final_num_heads = final_num_heads,
@@ -287,7 +286,7 @@ if module_config['transformer']:
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
 
-            up_channels = [in_channel] + up_channels
+            up_channels = [latent_channel, ] + up_channels
             self.up = nn.ModuleList([PatchExpansionBlock(dim = self.dim,
                                                         in_channel = up_channels[i],
                                                         out_channel = up_channels[i] // 2,
@@ -381,7 +380,7 @@ if module_config['mamba']:
                 logger.debug("redundant parameters:{}".format(kwargs))
     class VMambaUNetDecoder(VMambaDecoder):
         def __init__(self, image_size, image_channel = 3, 
-                    patch_size = 2, in_channel = 64,
+                    patch_size = 2, latent_channel = 256,
                     time_channel = 0,
                     mlp_hidden_ratios=[4., ],
                     up_channels = [128, 64], final_channels = [64, 64], 
@@ -408,7 +407,7 @@ if module_config['mamba']:
                     condition_first = False,
                     **kwargs):
             super().__init__(image_size, image_channel = image_channel, 
-                    patch_size = patch_size, in_channel = in_channel,
+                    patch_size = patch_size, latent_channel = latent_channel,
                     time_channel = time_channel,
                     mlp_hidden_ratios=mlp_hidden_ratios,
                     up_channels = up_channels, final_channels = final_channels, 
@@ -435,7 +434,7 @@ if module_config['mamba']:
             if len(kwargs) > 0:
                 logger.debug("redundant parameters:{}".format(kwargs))
             ### use patch expansion block for up sampling
-            up_channels = [in_channel] + up_channels
+            up_channels = [latent_channel, ] + up_channels
             self.up = nn.ModuleList([PatchExpansionBlock(dim = self.dim,
                                                         in_channel = up_channels[i],
                                                         out_channel = up_channels[i] // 2,

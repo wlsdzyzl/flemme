@@ -6,7 +6,6 @@ from functools import partial
 from scipy.ndimage import map_coordinates, gaussian_filter
 import numpy as np
 import torch
-import torch.nn.functional as F
 from flemme.utils import label_to_onehot
 from scipy.ndimage import distance_transform_edt as eucl_distance
 

@@ -1,6 +1,5 @@
 ### vision transformer
 import torch
-import torch.nn.functional as F
 from torch import nn
 import math
 from flemme.block import PatchConstructionBlock, PatchRecoveryBlock,\
@@ -187,7 +186,7 @@ class ViTEncoder(nn.Module):
         return _str 
 
 class ViTDecoder(nn.Module):
-    def __init__(self, image_size, image_channel = 3, in_channel = 64,
+    def __init__(self, image_size, image_channel = 3, latent_channel = 256,
                     patch_size = 2, dense_channels = [256], 
                     building_block = 'vit',
                     time_channel = 0,
@@ -224,7 +223,7 @@ class ViTDecoder(nn.Module):
         self.qkv_bias = qkv_bias
         self.qk_scale = qk_scale
         self.patch_size = patch_size
-        self.in_channel = in_channel
+        
         ### building block: vision transformer block
         assert 'vit' in building_block, 'ViTDecoder only support transformer-related building blocks.'
         self.BuildingBlock = get_building_block(building_block, 
@@ -242,7 +241,7 @@ class ViTDecoder(nn.Module):
                                 condition_injection = condition_injection,
                                 condition_first = condition_first)
         ## fully connected layer
-        dense_channels = [in_channel, ] + dense_channels 
+        dense_channels = [latent_channel, ] + dense_channels 
         if not sum([im_size % (self.patch_size * (2** self.u_depth)) for im_size in self.image_size ]) == 0:
             logger.error('Please check your image size, patch size and downsample depth to make sure the image size can be divisible.')
             exit(1)

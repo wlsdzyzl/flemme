@@ -1,7 +1,6 @@
 import math
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, get_ca, \
     FoldingLayer, LocalGraphLayer, MultipleBuildingBlocks, MultiLayerPerceptionBlock,\
@@ -252,7 +251,7 @@ class PointNetEncoder(PointEncoder):
         self.lf = nn.ModuleList(lf_sequence)
 class PointNetDecoder(nn.Module):
     def __init__(self, point_dim=3, point_num = 2048, 
-                in_channel = 256, dense_channels = [256], 
+                latent_channel = 256, dense_channels = [256], 
                 time_channel = 0,
                 normalization = 'group', num_norm_groups = 8, 
                 activation = 'lrelu', dropout = 0., 
@@ -276,7 +275,7 @@ class PointNetDecoder(nn.Module):
         self.vector_embedding = vector_embedding
         self.folding_times = folding_times
         ## fully connected layer
-        dense_channels = [in_channel,] + dense_channels 
+        dense_channels = [latent_channel,] + dense_channels 
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
                                         time_channel = time_channel,
                                         norm = normalization, num_norm_groups=num_norm_groups, 
@@ -290,10 +289,10 @@ class PointNetDecoder(nn.Module):
         if self.folding_times > 0:
             assert self.vector_embedding, \
                 'point cloud decoder with folding operations should have vector embeddings.'
-            assert folding_times > 1, 'You need fold twice at least.'
+            assert folding_times > 1, 'You need to fold twice at least.'
 
             base_shape = base_shape_config.get('type', 'grid2d')
-            logger.info(f'using {base_shape} as base shape for folding.')
+            logger.info(f'using {base_shape} as base shape for folding {self.folding_times} times.')
             
             if base_shape == 'grid2d':
                 grid_len = int(point_num**0.5)

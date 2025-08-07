@@ -9,6 +9,7 @@ from flemme.loss import get_loss
 # from flemme.utils import DataForm
 from flemme.logger import get_logger
 from flemme.model.distribution import GaussianDistribution as Gaussian
+
 logger = get_logger('model.ddpm')
 def gather(consts, t, dim = 2):
     """Gather consts for $t$ and reshape to feature map shape"""
@@ -36,25 +37,25 @@ def cosine_schedule(num_steps, max_beta = 0.999):
 
 supported_eps_models = {'Base': Base, 'HBase': HBase}
 
-def _create_eps_model(eps_config):
+def _create_eps_model(eps_config, create_encoder_func):
     model_name = eps_config.pop('name', 'Base')
     if not model_name in supported_eps_models:
         raise RuntimeError(f'Unsupported model class: {model_name}')
-    eps_model = supported_eps_models[model_name](eps_config)
+    eps_model = supported_eps_models[model_name](eps_config, create_encoder_func)
     assert eps_model.with_time_embedding, \
         'You need a encoder with time embedding for ddpm.'
     return eps_model, model_name
 
 class DiffusionProbabilistic(nn.Module):
     
-    def __init__(self, model_config):
+    def __init__(self, model_config, create_encoder_func):
         super().__init__()
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         # noise predictor should be a base model with time embedding.
         eps_config = model_config.get('eps_model')
         eps_config['loss_reduction'] = self.loss_reduction
         self.eps_model, self.eps_model_name = \
-            _create_eps_model(eps_config)
+            _create_eps_model(eps_config, create_encoder_func)
         self.num_steps = model_config.get('num_steps', 1000)
         # Create $\beta_1, \dots, \beta_T$ linearly increasing variance schedule
         self.is_conditional = self.eps_model.is_conditional

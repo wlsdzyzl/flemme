@@ -2,11 +2,11 @@
 import math
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, get_ca,\
     SamplingAndGroupingLayer as MSGLayer, FeaturePropogatingLayer as FPLayer, \
-    SampledFeatureCatLayer as SFCLayer, gather_features, VoxelLayer
+    SampledFeatureCatLayer as SFCLayer, gather_features, VoxelLayer, \
+    PositionEmbeddingBlock
 from flemme.logger import get_logger
 import copy
 logger = get_logger("encoder.point.pointnet2")
@@ -68,6 +68,9 @@ class Point2Encoder(nn.Module):
         self.point_dim = point_dim
         self.activation = activation
         self.num_neighbors_k = num_neighbors_k
+        assert num_neighbors_k > 0 , \
+            'The number of neighbors must be set and larger than 0 for Point2Encoder.' 
+
         self.neighbor_radius = neighbor_radius
         self.num_scales = num_scales
         self.dropout = dropout
@@ -93,8 +96,14 @@ class Point2Encoder(nn.Module):
             logger.info(f'Perform ball query on xyz space.')
         self.return_xyz = return_xyz
         if pos_embedding:
-            self.pos_embed = nn.Linear(3, projection_channel)
-            logger.info("Using point cloud positional embedding.")
+            if pos_embedding == 'sin':
+                self.pos_embed = PositionEmbeddingBlock(in_channel = 3, 
+                    out_channel = projection_channel,
+                    activation = self.activation)
+                logger.info("Using sinusoidal point cloud positional embedding.")
+            else:
+                self.pos_embed = nn.Linear(3, projection_channel)
+                logger.info("Using point cloud positional embedding.")
         if not type(self.num_fps_points) == list:
             self.num_fps_points = [self.num_fps_points,] * len(fps_feature_channels)
 
@@ -276,7 +285,7 @@ class Point2Encoder(nn.Module):
 class Point2Decoder(nn.Module):
     def __init__(self, point_dim, point_num, 
                 ### provide by encoder
-                in_channels, time_channel,
+                latent_channels, time_channel,
                 num_blocks,
                 fp_channels, 
                 dense_channels, normalization, 
@@ -298,9 +307,9 @@ class Point2Decoder(nn.Module):
         self.point_dim = point_dim
         self.activation = activation
         # self.vector_embedding = False
-        fp_channels = [in_channels[-1], ] + fp_channels
+        fp_channels = [latent_channels[-1], ] + fp_channels
         self.fp_depth = len(fp_channels)
-        self.fp_path = [in_channels[-1], ] + fp_channels
+        self.fp_path = [latent_channels[-1], ] + fp_channels
         self.num_blocks = num_blocks
         if len(voxel_resolutions) > 0:
             voxel_resolutions = [voxel_resolutions[0], ] + voxel_resolutions
@@ -320,12 +329,12 @@ class Point2Decoder(nn.Module):
         self.dense_path = dense_channels
         self.final = nn.Linear(dense_channels[-1], point_dim)
         self.fp = None
-        assert len(in_channels) == len(fp_channels) + 1, 'The number of feature propagation layers is ambiguous .'
+        assert len(latent_channels) == len(fp_channels) + 1, 'The number of feature propagation layers is ambiguous .'
         assert len(self.voxel_resolutions) == 0 or len(self.voxel_resolutions) == self.fp_depth,\
             "Voxel resolutions should have a same size with feature-propagating channels."
 
-        self.unknow_feature_channels = in_channels[-2:-len(in_channels) - 1:-1]
-        self.known_feature_channels = [in_channels[-1],] + fp_channels[:-1]
+        self.unknow_feature_channels = latent_channels[-2:-len(latent_channels) - 1:-1]
+        self.known_feature_channels = [latent_channels[-1],] + fp_channels[:-1]
 
         if channel_attention is not None:
             if isinstance(channel_attention, str):
@@ -474,15 +483,11 @@ class PointNet2Encoder(Point2Encoder):
             pos_embedding_channel = projection_channel if pos_embedding else point_dim,
             BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
         self.msg = nn.ModuleList(msg_sequence)
-        # if final_concat:
-            
-        #     self.final_concat = SFCLayer(in_channels = self.msg_path, out_channel = fps_feature_channels[-1],
-        #     num_blocks = self.num_blocks, BuildingBlock = self.BuildingBlock)
 
 class PointNet2Decoder(Point2Decoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 ### provide by encoder
-                in_channels= [1024, 1024, 512, 256, 128], 
+                latent_channels = [1024, 1024, 512, 256, 128], 
                 time_channel = 0,
                 num_blocks = 2,
                 fp_channels = [512, 512, 256, 128], 
@@ -502,7 +507,7 @@ class PointNet2Decoder(Point2Decoder):
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
-                in_channels = in_channels,
+                latent_channels = latent_channels,
                 time_channel = time_channel,
                 num_blocks = num_blocks,
                 fp_channels = fp_channels, 

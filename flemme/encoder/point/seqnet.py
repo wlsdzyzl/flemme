@@ -1,8 +1,7 @@
 # point cloud encoder for 3D point cloud
 import torch
-import torch.nn.functional as F
 from torch import nn
-from flemme.block import get_building_block, SequentialT, MultipleBuildingBlocks, DenseBlock, get_ca, VoxelLayer
+from flemme.block import get_building_block, SequentialT, MultipleBuildingBlocks, get_ca, VoxelLayer
 from flemme.logger import get_logger
 import copy
 logger = get_logger("model.encoder.seqnet")
@@ -149,7 +148,7 @@ class SeqNetEncoder(SeqEncoder):
         
 
 class SeqDecoder(nn.Module):
-    def __init__(self, point_dim, in_channel,
+    def __init__(self, point_dim, latent_channel,
                  num_blocks,
                 seq_feature_channels, 
                 **kwargs):
@@ -160,7 +159,7 @@ class SeqDecoder(nn.Module):
         self.vector_embedding = False
         self.seq = None
         self.num_blocks = num_blocks
-        self.seq_path = [in_channel,] + seq_feature_channels
+        self.seq_path = [latent_channel,] + seq_feature_channels
         self.latent_proj = nn.Linear(self.seq_path[-1], point_dim)
 
     def __str__(self):
@@ -181,7 +180,7 @@ class SeqDecoder(nn.Module):
         return self.latent_proj(x)
     
 class SeqNetDecoder(SeqDecoder):
-    def __init__(self, point_dim=3, in_channel = 256, time_channel = 0, 
+    def __init__(self, point_dim=3, latent_channel = 256, time_channel = 0, 
                 time_injection = 'gate_bias',
                 num_blocks = 2,
                 building_block = 'dense', seq_feature_channels = [], 
@@ -192,7 +191,7 @@ class SeqNetDecoder(SeqDecoder):
                 condition_first = False,
                 **kwargs):
         super().__init__(point_dim=point_dim,
-                         in_channel = in_channel,
+                         latent_channel = latent_channel,
                          num_blocks=num_blocks,
                          seq_feature_channels=seq_feature_channels)
         if len(kwargs) > 0:

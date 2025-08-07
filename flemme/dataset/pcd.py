@@ -90,7 +90,7 @@ class PcdSegDataset(PcdDataset):
     def __getitem__(self, index):
         """Get the pcds"""
         pcd = load_pcd(self.pcd_path_list[index])
-        label = np.loadtxt(self.label_path_list[index])
+        label = np.loadtxt(self.label_path_list[index], dtype=int)
         if self.data_transform:
             n_state, t_state = get_random_state()
             pcd = self.data_transform(pcd)

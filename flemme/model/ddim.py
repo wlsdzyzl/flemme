@@ -1,8 +1,8 @@
 import numpy as np
 import torch
-from flemme.model.distribution import GaussianDistribution as Gaussian
 from flemme.model.ddpm import DiffusionProbabilistic as DDPM
 from flemme.logger import get_logger
+
 ### Diffusion Implifict has a different sampling strategy with DDPM
 ### However, the training steps are the same
 ### therefore, the model trained for DDPM can be directly used on DDIM
@@ -10,8 +10,8 @@ from flemme.logger import get_logger
 
 logger = get_logger('model.ddim')
 class DiffusionImplicit(DDPM):
-    def __init__(self, model_config):
-        super().__init__(model_config)
+    def __init__(self, model_config, create_encoder_func):
+        super().__init__(model_config, create_encoder_func)
 
         ### compute sample steps
         num_sample_steps = model_config.get('num_sample_steps', 100)

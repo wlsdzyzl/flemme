@@ -11,6 +11,7 @@ model:
     out_channel: 46
     point_num: 2048
     building_block: dense
+    projection_channel: 32
     # num_neighbors_k: 20
     # local_feature_channels: [64, 64, 128, 256, 512]
     num_neighbors_k: 32
@@ -20,7 +21,7 @@ model:
     dense_channels: [1024, 512, 256]
     activation: lrelu
     normalization: group
-    # pos_embedding: True 
+    pos_embedding: sin
     # knn_query: feature
   classification_losses: 
     - name: CE

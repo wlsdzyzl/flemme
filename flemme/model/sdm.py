@@ -3,18 +3,19 @@ import torch
 import torch.nn as nn
 from flemme.model.ldm import create_diff_model
 from flemme.logger import get_logger
+
 logger = get_logger('model.ddpmseg')
 
 
 class SupervisedDiffusion(nn.Module):
-    def __init__(self, model_config):
+    def __init__(self, model_config, create_encoder_func):
         super().__init__()
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         
         diff_config = model_config.pop('diffusion', None)
         assert diff_config is not None, 'LDM needs a diffusion model to generate latents.'            
         diff_config['loss_reduction'] = self.loss_reduction
-        self.diff_model, self.diff_model_name = create_diff_model(diff_config)
+        self.diff_model, self.diff_model_name = create_diff_model(diff_config, create_encoder_func)
         if not self.diff_model.is_conditional:
             logger.error('Diffusion in Supervised DDPM need to be conditional')
             exit(1)

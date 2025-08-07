@@ -1,6 +1,5 @@
 ### mamba-encoder: window and patch based vision SSM
 import torch
-import torch.nn.functional as F
 from torch import nn
 import math
 from flemme.block import PatchConstructionBlock, PatchRecoveryBlock,\
@@ -204,7 +203,7 @@ class VMambaEncoder(nn.Module):
     
 class VMambaDecoder(nn.Module):
     def __init__(self, image_size, image_channel = 3, 
-                patch_size = 2, in_channel = 64,
+                patch_size = 2, latent_channel = 256,
                 mlp_hidden_ratios=[4., ], dense_channels = [256], 
                 up_channels = [128, 64], final_channels = [64, 64], 
                 time_channel = 0,
@@ -246,7 +245,7 @@ class VMambaDecoder(nn.Module):
                                                 (self.u_depth + self.f_depth) * self.num_blocks)]
         self.mlp_hidden_ratios = mlp_hidden_ratios
         self.patch_size = patch_size
-        self.in_channel = in_channel
+        
         self.vector_embedding = isinstance(dense_channels, list) and len(dense_channels) > 0
 
         ### building block: mamba SSM block
@@ -276,7 +275,7 @@ class VMambaDecoder(nn.Module):
                                 condition_first = condition_first)
         ### use patch expansion block for up sampling
         ## fully connected layer
-        dense_channels = [in_channel, ] + dense_channels 
+        dense_channels = [latent_channel, ] + dense_channels 
         if not sum([im_size % (self.patch_size * (2** self.u_depth)) for im_size in self.image_size ]) == 0:
             logger.error('Please check your image size, patch size and downsample depth to make sure the image size can be divisible.')
             exit(1)

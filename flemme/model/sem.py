@@ -6,9 +6,9 @@ from flemme.loss import get_loss
 
 # segmentation model, don't has condition and time input
 class SegmentationModel(BaseModel):
-    def __init__(self, model_config):
+    def __init__(self, model_config, create_encoder_func):
 
-        super().__init__(model_config)
+        super().__init__(model_config, create_encoder_func)
 
         seg_loss_configs = model_config.get('segmentation_losses', [{'name':'Dice'}])
         if not type(seg_loss_configs) == list:
@@ -48,7 +48,7 @@ class SegmentationModel(BaseModel):
         return losses, res
     
 class HSegmentationModel(HBaseModel):
-    def __init__(self, model_config):
+    def __init__(self, model_config, create_encoder_func):
         super().__init__(model_config)
         seg_loss_configs = model_config.get('segmentation_losses', [{'name':'Dice'}])
         if not type(seg_loss_configs) == list:

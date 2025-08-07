@@ -6,7 +6,7 @@ from flemme.loss import get_loss
 
 # classification model, don't has condition and time input
 class ClassificationModel(OnlyEncoder):
-    def __init__(self, model_config):
+    def __init__(self, model_config, create_encoder_func):
         encoder_config = model_config.pop('encoder')
         self.class_num = encoder_config.get('out_channel', None)
         assert self.class_num is not None and self.class_num > 0, 'Invalid out channel.'
@@ -15,7 +15,7 @@ class ClassificationModel(OnlyEncoder):
         assert encoder_config['vector_embedding'], \
             'Classification model needs vector embeddings (Don\'t set vector_embedding as False).'
         model_config['encoder'] = encoder_config
-        super().__init__(model_config)
+        super().__init__(model_config, create_encoder_func)
         cls_loss_configs = model_config.get('classification_losses', [{'name':'CE'}])
         if not type(cls_loss_configs) == list:
             cls_loss_configs = [cls_loss_configs, ]

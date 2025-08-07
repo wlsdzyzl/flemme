@@ -6,7 +6,6 @@ from torch import fft
 import math
 from enum import Enum, auto
 from functools import partial
-
 from flemme.logger import get_logger
 
 logger = get_logger('block')

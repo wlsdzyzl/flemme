@@ -1,7 +1,6 @@
 #### ddpm of 2D image and 3D point cloud
 ### ldm (latent diffusion model): the diffusion process is performed on latent space.
 ### a pre-trained auto-encoder (usually, a variational auto-encoder) is needed. 
-
 from .ddpm import DiffusionProbabilistic as DDPM
 from .ddim import DiffusionImplicit as DDIM
 from .ae import AutoEncoder as AE
@@ -9,6 +8,7 @@ from .vae import VariationalAutoEncoder as VAE
 from .edm import EDM
 from flemme.trainer_utils import load_checkpoint, freeze, unfreeze
 from flemme.logger import get_logger
+
 import torch
 import torch.nn as nn
 logger = get_logger('model.ldm')
@@ -17,24 +17,24 @@ logger = get_logger('model.ldm')
 supported_ae_models = {'AE': AE, 'VAE': VAE}
 supported_diff_models = {'DDPM': DDPM, 'DDIM': DDIM, 'EDM': EDM}
 
-def create_ae_model(ae_config):
+def create_ae_model(ae_config, create_encoder_func):
     model_name = ae_config.pop('name', 'VAE')
     if not model_name in supported_ae_models:
         raise RuntimeError(f'Unsupported model class: {model_name}')
-    ae_model = supported_ae_models[model_name](ae_config)
+    ae_model = supported_ae_models[model_name](ae_config, create_encoder_func)
     return ae_model, model_name
 
-def create_diff_model(diff_config):
+def create_diff_model(diff_config, create_encoder_func):
     model_name = diff_config.pop('name', 'DDPM')
     if not model_name in supported_diff_models:
         raise RuntimeError(f'Unsupported model class: {model_name}')
-    diff_model = supported_diff_models[model_name](diff_config)
+    diff_model = supported_diff_models[model_name](diff_config, create_encoder_func)
     return diff_model, model_name
 
 
 class LatentDiffusion(nn.Module):
 
-    def __init__(self, model_config):
+    def __init__(self, model_config, create_encoder_func):
         super().__init__()
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
 
@@ -49,8 +49,8 @@ class LatentDiffusion(nn.Module):
         assert diff_config is not None, 'LDM needs a diffusion model to generate latents.'            
         ae_config['loss_reduction'] = self.loss_reduction
         diff_config['loss_reduction'] = self.loss_reduction
-        self.ae_model, self.ae_model_name = create_ae_model(ae_config)
-        self.diff_model, self.diff_model_name = create_diff_model(diff_config)
+        self.ae_model, self.ae_model_name = create_ae_model(ae_config, create_encoder_func)
+        self.diff_model, self.diff_model_name = create_diff_model(diff_config, create_encoder_func)
         
         if ae_path is not None:
             load_checkpoint(ae_path, self.ae_model)

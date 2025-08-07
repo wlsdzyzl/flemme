@@ -7,7 +7,6 @@ from flemme.model.embedding import get_embedding, add_embedding, concat_embeddin
 from flemme.block import CombineLayer, ResConvBlock, ConvBlock, \
     channel_recover, PositionEmbeddingBlock
 from flemme.utils import DataForm
-from flemme.encoder import create_encoder
 from flemme.config import module_config
 logger = get_logger('model.base')
 
@@ -16,7 +15,7 @@ class BaseModel(nn.Module):
     Base model for ae and vae. It follows a encoder-decoder structure, the output can be reconstruction or predicted mask.
     Loss is not specified.
     '''
-    def __init__(self, model_config):
+    def __init__(self, model_config, create_encoder_func):
         super().__init__()
         encoder_config = model_config.get('encoder', None)
         assert encoder_config is not None, 'There is no encoder configuration.'
@@ -79,7 +78,7 @@ class BaseModel(nn.Module):
             self.condition_for_decoder = True
 
             if self.combine_condition == 'cat':
-                encoder_config['decoder_in_channel'] += self.de_cemb.out_channel
+                encoder_config['latent_channel'] += self.de_cemb.out_channel
             elif self.combine_condition == 'injection':
                 encoder_config['decoder_condition_channel'] = self.de_cemb.out_channel
         
@@ -101,14 +100,14 @@ class BaseModel(nn.Module):
             else:
                 encoder_config['is_point2decoder'] = False
         
-        self.encoder, self.decoder = create_encoder(encoder_config=encoder_config, return_decoder=(decoder_config is None))
+        self.encoder, self.decoder = create_encoder_func(encoder_config=encoder_config, return_decoder=(decoder_config is None))
 
         ### create decoder
         if decoder_config is not None:
-            decoder_config['decoder_in_channel'] = self.encoder.out_channel
+            decoder_config['latent_channel'] = self.encoder.out_channel
             if hasattr(self.encoder, 'out_channels'):
-                decoder_config['decoder_in_channels'] = self.encoder.out_channels
-            self.decoder = create_encoder(encoder_config=decoder_config, return_encoder=False)[1]
+                decoder_config['latent_channels'] = self.encoder.out_channels
+            self.decoder = create_encoder_func(encoder_config=decoder_config, return_encoder=False)[1]
         
         if self.condition_for_encoder and self.combine_condition == 'add':
             assert self.in_channel == self.en_cemb.out_channel, \
@@ -214,10 +213,10 @@ class BaseModel(nn.Module):
     
 
 class HBaseModel(BaseModel):
-    def __init__(self, model_config):
+    def __init__(self, model_config, create_encoder_func):
         encoder_config = model_config['encoder']
         encoder_config['return_feature_list'] = True
-        super().__init__(model_config)
+        super().__init__(model_config, create_encoder_func)
         assert self.data_form == DataForm.IMG, "Currently, HSeM only support image data."
 
         self.inter_mode = model_config.get('interpolation_mode', 'nearest')
@@ -302,83 +301,3 @@ class HBaseModel(BaseModel):
         if return_z:
             return (x, h_x), z
         return x, h_x
-    
-##### old implementation, saved only for loading the old checkpoints
-# class HBaseModel(BaseModel):
-#     def __init__(self, model_config):
-#         encoder_config = model_config['encoder']
-#         encoder_config['return_feature_list'] = True
-#         activation = encoder_config.get('activation', 'relu')
-#         normalization = encoder_config.get('normalization', 'group')
-#         num_norm_groups = encoder_config.get('num_norm_groups', 8)
-#         super().__init__(model_config)
-#         assert self.data_form == DataForm.IMG, "Currently, HSeM only support image data."
-
-#         self.inter_mode = model_config.get('interpolation_mode', 'nearest')
-#         combine = model_config.get('combine', 'cat')
-#         ### additional layers beyond normal SeM
-#         self.combine_layer = CombineLayer(in_channels=[self.decoder.image_channel,] * (len(self.decoder.up_path) + 1),
-#                                             out_channel=self.decoder.image_channel, 
-#                                             target_size=self.decoder.image_size,
-#                                             mode = self.inter_mode,
-#                                             combine = combine)
-#         self.channel_recover = False
-#         if self.decoder_name in ['Swin', 'SwinU', 'VMamba', 'VMambaU']:
-#             self.channel_recover = True
-#         if not self.with_time_embedding:
-#             self.convs = nn.ModuleList([ResConvBlock(dim = self.encoder.dim, 
-#                                     in_channel=upc, 
-#                                     out_channel=upc, 
-#                                     activation=activation, 
-#                                     norm=normalization,
-#                                     num_norm_groups=num_norm_groups) for upc in self.decoder.up_path])
-#             self.final_convs = nn.ModuleList([ConvBlock(dim = self.encoder.dim, 
-#                                     in_channel=upc, 
-#                                     out_channel=self.decoder.image_channel, 
-#                                     activation=None, 
-#                                     norm=None) for upc in self.decoder.up_path])
-#         else:
-#             self.convs = nn.ModuleList([ResConvTBlock(dim = self.encoder.dim, 
-#                                     in_channel=upc, 
-#                                     out_channel=upc, 
-#                                     time_channel=self.time_channel,
-#                                     activation=activation, 
-#                                     norm=normalization,
-#                                     num_norm_groups=num_norm_groups) for upc in self.decoder.up_path])
-#             self.final_convs = nn.ModuleList([ConvTBlock(dim = self.encoder.dim, 
-#                                     in_channel=upc, 
-#                                     out_channel=self.decoder.image_channel, 
-#                                     time_channel=self.time_channel,
-#                                     activation=None, 
-#                                     norm=None) for upc in self.decoder.up_path])
-        
-        
-#     def __str__(self):
-#         _str = '********************* BaseModel ({}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.encoder.__str__(), self.decoder.__str__())
-#         return _str
-#     def forward(self, x, t = None, c = None):
-#         if t is not None:
-#             if self.with_time_embedding:
-#                 t = self.t_embed(t)
-#             else:
-#                 logger.warning("There is no time embedding for this model, the input time step will be ignored.")
-
-#         if not self.with_time_embedding:
-#             z = self.encode(x, c = c)
-#         else:
-#             z = self.encode(x, t = t, c = c)
-#         en_feature = z
-#         if type(en_feature) == tuple:
-#             en_feature = en_feature[0]
-#         if not self.with_time_embedding:
-#             x, de_features = self.decode(z, c = c)
-#         else:
-#             x, de_features = self.decode(z, t = t, c = c)
-#         features = [en_feature,] + de_features
-#         h_x = []
-#         for i in range(len(features)):
-#             if self.channel_recover:
-#                 features[i] = channel_recover(features[i])
-#             h_x.append(self.final_convs[i]( self.convs[i] ( features[i], t = t), t = t))
-#         x = self.combine_layer(h_x + [x,])
-#         return x, h_x

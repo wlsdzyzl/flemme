@@ -1,5 +1,4 @@
 # point cloud encoder for 3D point cloud
-import torch.nn.functional as F
 from torch import nn
 from flemme.block import get_building_block, SequentialT, MultipleBuildingBlocks, DenseBlock
 from flemme.logger import get_logger
@@ -61,7 +60,7 @@ class FCNEncoder(nn.Module):
 
 # a very simple decoder
 class FCNDecoder(nn.Module):
-    def __init__(self, vec_dim=3, in_channel = 256, time_channel = 0, 
+    def __init__(self, vec_dim=3, latent_channel = 256, time_channel = 0, 
                 time_injection = 'gate_bias',
                 num_blocks = 2,
                 building_block = 'dense', seq_feature_channels = [], 

@@ -1,7 +1,6 @@
 # point cloud encoder for 3D point cloud
-import torch.nn.functional as F
 from torch import nn
-from flemme.block import get_building_block, SequentialT, MultipleBuildingBlocks, DenseBlock
+from flemme.block import get_building_block, SequentialT, MultipleBuildingBlocks
 from flemme.logger import get_logger
 from .seqnet import SeqEncoder, SeqDecoder
 import copy
@@ -68,7 +67,7 @@ class SeqTransEncoder(SeqEncoder):
 
 # a very simple decoder
 class SeqTransDecoder(SeqDecoder):
-    def __init__(self, point_dim=3, in_channel = 256, time_channel = 0, 
+    def __init__(self, point_dim=3, latent_channel = 256, time_channel = 0, 
                 time_injection = 'gate_bias',
                 num_blocks = 2,
                 building_block = 'pct_sa', seq_feature_channels = [], 
@@ -82,7 +81,7 @@ class SeqTransDecoder(SeqDecoder):
                 condition_first = False,
                 **kwargs):
         super().__init__(point_dim=point_dim,
-                         in_channel = in_channel,
+                         latent_channel = latent_channel,
                          num_blocks=num_blocks,
                          seq_feature_channels=seq_feature_channels)
         if len(kwargs) > 0:

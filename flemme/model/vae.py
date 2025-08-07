@@ -1,18 +1,18 @@
 # variational autoencoder for 2D image and 3D point cloud
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
 
 from .ae import AutoEncoder
 from flemme.loss import get_loss
 from flemme.model.distribution import GaussianDistribution as Gaussian
 from flemme.logger import get_logger
-from flemme.utils import DataForm
 from flemme.block import channel_recover, channel_transfer
+
 logger = get_logger('model.vae')
 class VariationalAutoEncoder(AutoEncoder):
-    def __init__(self, model_config):
-        super().__init__(model_config)
+    def __init__(self, model_config, create_encoder_func):
+        super().__init__(model_config, create_encoder_func)
         if self.with_time_embedding:
             raise NotImplementedError("Time embedding is not implemented for VAE model.")
         assert not self.decoder_name in ['UNet', 'ViTU', 'SwinU', 'MambaU'], \

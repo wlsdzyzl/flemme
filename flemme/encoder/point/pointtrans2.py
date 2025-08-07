@@ -1,5 +1,4 @@
 import torch
-import torch.nn.functional as F
 from torch import nn
 from flemme.block import get_building_block, FeaturePropogatingLayer as FPLayer,\
     SamplingAndGroupingLayer as MSGLayer, MultipleBuildingBlocks
@@ -115,7 +114,7 @@ class PointTrans2Encoder(Point2Encoder):
 class PointTrans2Decoder(Point2Decoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 ### provide by encoder
-                in_channels= [1024, 1024, 512, 256, 128], 
+                latent_channels = [1024, 1024, 512, 256, 128], 
                 time_channel = 0,
                 building_block = 'pct_sa', 
                 num_blocks = 2,
@@ -138,7 +137,7 @@ class PointTrans2Decoder(Point2Decoder):
                 **kwargs):
         super().__init__(point_dim=point_dim, 
                 point_num = point_num,
-                in_channels = in_channels,
+                latent_channels = latent_channels,
                 time_channel = time_channel,
                 num_blocks = num_blocks,
                 fp_channels = fp_channels, 

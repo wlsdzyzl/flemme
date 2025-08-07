@@ -1,7 +1,6 @@
 import math
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, InnerProductBlock
 from flemme.logger import get_logger
@@ -309,7 +308,7 @@ class TransConvEncoder(GraphEncoder):
 
 class GraphDecoder(nn.Module):
     def __init__(self, pos_dim=3, node_dim=0, node_num = 2048, 
-                in_channel = 256, time_channel = 0, 
+                latent_channel = 256, time_channel = 0, 
                 dense_channels = [], 
                 normalization = 'group', num_norm_groups = 8, 
                 activation = 'lrelu', dropout = 0., 
@@ -330,7 +329,7 @@ class GraphDecoder(nn.Module):
         self.node_num = node_num
         self.activation = activation
         self.nodewise = nodewise
-        dense_channels = [in_channel,] + dense_channels 
+        dense_channels = [latent_channel,] + dense_channels 
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
                                         time_channel = time_channel,
                                         norm = normalization, num_norm_groups=num_norm_groups, 

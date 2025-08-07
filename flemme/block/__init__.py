@@ -8,7 +8,6 @@ if module_config['point-cloud']:
     from flemme.block.pcd import *
 if module_config['graph']:
     from flemme.block.graph import *
-
 from flemme.logger import get_logger
 logger = get_logger('flemme.block')
 

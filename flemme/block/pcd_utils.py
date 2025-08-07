@@ -376,7 +376,7 @@ class QueryAndGroup(nn.Module):
             else:
                 new_features = grouped_features
         else:
-            assert self.use_xyz, "Cannot have not features and not use xyz as a feature!"
+            assert self.use_xyz, "Point position has to be used as a feature when feature is none!"
             new_features = grouped_xyz_emb
 
         return new_features
