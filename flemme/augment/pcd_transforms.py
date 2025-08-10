@@ -8,7 +8,7 @@ from flemme.utils import label_to_onehot, normalize
 from functools import partial
 from .hilbert_sort import HilbertSort3D
 import fpsample
-from .img_transforms import Relabel
+from .img_transforms import Relabel, ToInt
 #### transfoms for point cloud
 ## modified from diffusion-point-cloud
 class ToTensor(object):

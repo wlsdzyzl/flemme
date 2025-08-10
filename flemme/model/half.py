@@ -13,7 +13,7 @@ class OnlyEncoder(nn.Module):
     Base model for ae and vae. It follows a encoder-decoder structure, the output can be reconstruction or predicted mask.
     Loss is not specified.
     '''
-    def __init__(self, model_config, create_encoder_func):
+    def __init__(self, model_config, create_encoder_fn):
         super().__init__()
         encoder_config = model_config.get('encoder', None)
 
@@ -40,7 +40,7 @@ class OnlyEncoder(nn.Module):
                 assert self.in_channel == self.en_cemb.out_channel, \
                     "condition embedding of encoder and input data should have the same shape for addition."
 
-        self.encoder = create_encoder_func(encoder_config=encoder_config, return_decoder=False)[0]
+        self.encoder = create_encoder_fn(encoder_config=encoder_config, return_decoder=False)[0]
 
         self.is_generative = False
         self.is_conditional = hasattr(self, 'en_cemb')
@@ -101,7 +101,7 @@ class OnlyDecoder(nn.Module):
     Base model for ae and vae. It follows a encoder-decoder structure, the output can be reconstruction or predicted mask.
     Loss is not specified.
     '''
-    def __init__(self, model_config, create_encoder_func):
+    def __init__(self, model_config, create_encoder_fn):
         super().__init__()
         decoder_config = model_config.get('encoder', None)
         decoder_config = decoder_config or model_config.get('decoder', None)
@@ -130,7 +130,7 @@ class OnlyDecoder(nn.Module):
                 assert self.in_channel == self.de_cemb.out_channel, \
                     "condition embedding of decoder and the output of encoder should have the same shape for addition."
         ### create decoder
-        self.decoder = create_encoder_func(encoder_config=decoder_config, return_encoder=False)[1]
+        self.decoder = create_encoder_fn(encoder_config=decoder_config, return_encoder=False)[1]
         self.is_generative = False
         self.is_conditional = hasattr(self, 'de_cemb')
         self.is_supervised = False

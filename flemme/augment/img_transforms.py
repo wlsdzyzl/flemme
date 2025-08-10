@@ -6,7 +6,7 @@ from functools import partial
 from scipy.ndimage import map_coordinates, gaussian_filter
 import numpy as np
 import torch
-from flemme.utils import label_to_onehot
+from flemme.utils import label_to_onehot, to_int
 from scipy.ndimage import distance_transform_edt as eucl_distance
 
 
@@ -60,6 +60,11 @@ class InverseColor:
         pass
     def __call__(self, m):
         return 1.0 - m
+class ToInt:
+    def __init__(self):
+        pass
+    def __call__(self, m):
+        return to_int(m)
 class Relabel:
     """
     Relabel labels into a consecutive numbers, e.g.
@@ -71,6 +76,7 @@ class Relabel:
         self.map = map
         self.offset = offset
     def __call__(self, m):
+        m = to_int(m)
         if self.offset is not None:
             m = m + self.offset
         elif len(self.map) > 0:

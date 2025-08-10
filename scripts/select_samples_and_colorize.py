@@ -4,7 +4,7 @@ import os
 from glob import glob
 from flemme.logger import get_logger
 from flemme.utils import rkdirs, get_boundingbox, save_img
-from flemme.trainer_utils import colorize_img_by_label, save_data, get_load_function, expand_to_square_img
+from flemme.trainer.trainer_utils import colorize_img_by_label, save_data, get_load_function, expand_to_square_img
 from flemme.metrics import get_metrics
 import numpy as np
 from tqdm import tqdm

@@ -8,11 +8,12 @@ model:
     in_channel: 1
     ## the value can be list or int
     image_size: 32
-    patch_size: 1
+    patch_size: 2
     # usample_function: conv
     # dsample_function: conv
     down_channels: [16, 32]
     middle_channels: [64, 64]
+    shape_scaling: [2, 2]
     # up_channels: [16, 8]
     building_block: single
     # dense_channels: [128]
@@ -52,8 +53,6 @@ lr_scheduler:
   name: LinearLR
   start_factor: 1.0
   end_factor: 0.01
-sampler:
-  rand_seed: 2024
 max_epoch: 50
 write_after_iters: 50
 save_after_epochs: 5

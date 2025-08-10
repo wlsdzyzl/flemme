@@ -1,5 +1,5 @@
 from flemme.model import create_model
-from flemme.trainer_utils import *
+from flemme.trainer.trainer_utils import *
 from flemme.logger import get_logger
 import time
 

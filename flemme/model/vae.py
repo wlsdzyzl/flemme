@@ -9,8 +9,8 @@ from flemme.block import channel_recover, channel_transfer
 
 logger = get_logger('model.vae')
 class VariationalAutoEncoder(AutoEncoder):
-    def __init__(self, model_config, create_encoder_func):
-        super().__init__(model_config, create_encoder_func)
+    def __init__(self, model_config, create_encoder_fn):
+        super().__init__(model_config, create_encoder_fn)
         if self.with_time_embedding:
             raise NotImplementedError("Time embedding is not implemented for VAE model.")
         assert not self.decoder_name in ['UNet', 'ViTU', 'SwinU', 'MambaU'], \

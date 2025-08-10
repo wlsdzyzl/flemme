@@ -9,7 +9,7 @@ model:
     in_channel: 1
     ## the value can be list or int
     image_size: 32
-    patch_size: 1
+    patch_size: 2
     # down_channels: [16, 32]
     middle_channels: [32, 64]
     # up_channels: [16, 8]
@@ -21,7 +21,6 @@ model:
     # - name: MSE
     - name: SSIM
       image_dim: 2
-      channel: 1
   distribution_loss:
     name: KL
     weight: 1
@@ -46,7 +45,7 @@ loader:
 
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/Swin_VAE
 # resume: true
-sampler: null
+# sampler: null
 ### parameter for optimizer
 optimizer:
   name: Adam

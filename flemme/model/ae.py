@@ -6,8 +6,8 @@ import torch.nn.functional as F
 
 logger = get_logger('model.ae')
 class AutoEncoder(BaseModel):
-    def __init__(self, model_config, create_encoder_func):
-        super().__init__(model_config, create_encoder_func)
+    def __init__(self, model_config, create_encoder_fn):
+        super().__init__(model_config, create_encoder_fn)
         # assert self.data_form == DataForm.IMG and self.encoder.image_channel == self.decoder.image_channel or \
         #     (self.data_form == DataForm.PCD or self.data_form == DataForm.VEC) and self.encoder.point_dim == self.decoder.point_dim,\
         #     "For auto-encoder, the number of input image channels (point dim) and output image channels (point dim) should be the same."
@@ -52,8 +52,8 @@ class AutoEncoder(BaseModel):
 
 
 class HAutoEncoder(HBaseModel):
-    def __init__(self, model_config, create_encoder_func):
-        super().__init__(model_config, create_encoder_func)
+    def __init__(self, model_config, create_encoder_fn):
+        super().__init__(model_config, create_encoder_fn)
         # assert self.data_form == DataForm.IMG and self.encoder.image_channel == self.decoder.image_channel or \
         #     (self.data_form == DataForm.PCD or self.data_form == DataForm.VEC) and self.encoder.point_dim == self.decoder.point_dim,\
         #     "For auto-encoder, the number of input image channels (point dim) and output image channels (point dim) should be the same."

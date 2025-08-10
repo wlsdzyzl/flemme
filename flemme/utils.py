@@ -25,6 +25,16 @@ class DataForm(Enum):
     IMG = auto()
     PCD = auto()
     GRAPH = auto()
+
+def to_int(m):
+    if torch.is_tensor(m):
+        m = m.long()
+    elif isinstance(m, np.ndarray):
+        m = m.astype(int)
+    else:
+        m = int(m)
+    return m
+
 def rreplace(s, old, new, count = -1):
     return new.join(s.rsplit(old, count))
 
@@ -429,6 +439,86 @@ def crop_boundingbox(data = None, margin = (0, 0, 0), background = 0, follows = 
         return cropped_data, cropped_follows, (start_idx, end_idx)
     
     return cropped_follows, (start_idx, end_idx)
+
+
+def save_checkpoint(ckp_dir, model, optimizer = None, 
+                    scheduler = None, 
+                    epoch = -1, best_loss = 1e10,
+                    best_score = -1e10, is_best_loss = False, 
+                    is_best_score = False):
+    
+    path = "{}/ckp_last.pth".format(ckp_dir)
+    mkdirs(ckp_dir)
+    state_dict = {}
+    state_dict['trained_model'] = model.state_dict()
+    if optimizer is not None:
+        state_dict['optimizer'] = optimizer.state_dict()
+    if scheduler is not None:
+        state_dict['scheduler'] = scheduler.state_dict()
+    if epoch > 0:
+        state_dict['epoch'] = epoch
+        state_dict['best_loss'] = best_loss
+        state_dict['best_score'] = best_score
+
+    torch.save(state_dict, path)
+    if is_best_loss:
+        shutil.copyfile(path, "{}/ckp_best_loss.pth".format(ckp_dir))
+    if is_best_score:
+        shutil.copyfile(path, "{}/ckp_best_score.pth".format(ckp_dir))
+    
+def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None, 
+    ignore_mismatched_keys = [], specified_model_componets = None):
+    logger.info('load model from {}'.format(ckp_path))
+    state_dict = torch.load(ckp_path, map_location='cpu', weights_only=False)
+    if 'trained_model' in state_dict:
+        trained_model_state_dict = state_dict.pop('trained_model')
+
+        ### to load old weights with different names
+        # keys = trained_model_state_dict.keys()
+        # fc_keys = [ k for k in keys if 'fc' in k]
+        # dense_keys = [fk.replace('fc', 'dense') for fk in fc_keys]
+        # logger.info(f'We will replace {fc_keys} with {dense_keys}')
+        # for fk, dk in zip(fc_keys, dense_keys):
+        #     trained_model_state_dict[dk] = trained_model_state_dict.pop(fk)
+
+        if len(ignore_mismatched_keys) > 0:
+            logger.info(f'ignore keys while loading model: {ignore_mismatched_keys}')
+            model_state_dict = model.state_dict()
+            for k in trained_model_state_dict:
+                ignored = sum([ imk in k for imk in ignore_mismatched_keys]) > 0
+                if ignored:
+                    trained_model_state_dict[k] = model_state_dict[k]
+        if specified_model_componets is None:
+            model.load_state_dict(trained_model_state_dict)
+        else:
+            if type(specified_model_componets) == str:
+                specified_model_componets = [specified_model_componets, ]
+            assert type(specified_model_componets) == list or type(specified_model_componets) == tuple, \
+                'specified_model_components should be a string, list or tuple.'
+            for smc in specified_model_componets:
+                assert hasattr(model, smc), f"{smc} is not an attribute of the model."
+                specifed_keys = list(trained_model_state_dict.keys())
+                specifed_keys = [k for k in specifed_keys if k.startswith(smc)]
+                specifed_dict = { k[len(smc)+1:]: trained_model_state_dict[k] for k in specifed_keys}
+                assert len(specifed_dict) > 0, f"{smc} is not in the loaded model dict."
+                logger.info(f'loading "{smc}" from model dict.')
+                getattr(model, smc).load_state_dict(specifed_dict)
+        if optimizer is not None:
+            optimizer.load_state_dict(state_dict.pop('optimizer'))
+        if scheduler is not None:
+            scheduler.load_state_dict(state_dict.pop('scheduler'))    
+        return state_dict
+    else:
+        model.load_state_dict(state_dict)
+
+def freeze(model):
+    for param in model.parameters():
+        param.requires_grad = False
+def unfreeze(model):
+    for param in model.parameters():
+        param.requires_grad = True
+
+
 
 if module_config['point-cloud'] or module_config['graph']:
     from plyfile import PlyData, PlyElement

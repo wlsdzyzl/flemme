@@ -24,10 +24,7 @@ loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold1
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold2
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold3
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold4
+    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold5
   batch_size: 32
   num_workers: 8
   shuffle: false
@@ -46,7 +43,7 @@ model_path: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointNet/PointNet_CLS/ckp
 # eval_batch_num: 8
 pickle_results: true
 pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled
-load_pickle_results: true
+# load_pickle_results: true
 evaluation_metrics:
   cls:
     - name: ACC

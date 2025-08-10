@@ -14,13 +14,13 @@ logger = get_logger('model.edm')
 
 class EDM(nn.Module):
 
-    def __init__(self, model_config, create_encoder_func):
+    def __init__(self, model_config, create_encoder_fn):
         super().__init__()
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         eps_config = model_config.get('eps_model')
         eps_config['loss_reduction'] = self.loss_reduction
         self.eps_model, self.eps_model_name = \
-            _create_eps_model(eps_config, create_encoder_func)
+            _create_eps_model(eps_config, create_encoder_fn)
         self.num_steps = model_config.get('num_steps', 20)
 
         self.sigma_min = model_config.get('sigma_min', 0.002)

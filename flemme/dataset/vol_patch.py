@@ -58,6 +58,7 @@ class PatchImgSegDataset(ImgSegDataset):
         patch_count = 0
         self.end_indices = []
         self.datasets = []
+        logger.info(f"Slice builder config: {slice_builder}")
         for did in range(len(self.img_path_list)):
             raw, mask = self.load_data(did)
             tmp_dataset = PatchSingleImgSegDataset(

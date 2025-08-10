@@ -152,7 +152,6 @@ class FilterSliceBuilder(SliceBuilder):
 
 
 def get_slice_builder(raw: np.ndarray, label: np.ndarray, config: dict) -> SliceBuilder:
-    logger.info(f"Slice builder config: {config}")
     builder_name = config.get('name', 'SliceBuilder')
     SliceBuilderClass = SliceBuilder
     if builder_name == 'FilterSliceBuilder':

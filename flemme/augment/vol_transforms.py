@@ -8,7 +8,7 @@ from scipy.ndimage import rotate, map_coordinates, gaussian_filter, binary_openi
 from skimage.filters import gaussian
 from flemme.utils import label_to_onehot
 from functools import partial
-from .img_transforms import DistMap, Relabel
+from .img_transforms import DistMap, Relabel, ToInt
 eps = 1e-8
 
 class RandomFlip:

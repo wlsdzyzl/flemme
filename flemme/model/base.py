@@ -1,6 +1,7 @@
 # auto-encoder for 2D image and 3D point cloud
 import torch
 import torch.nn as nn
+import math
 from flemme.utils import DataForm
 from flemme.logger import get_logger
 from flemme.model.embedding import get_embedding, add_embedding, concat_embedding
@@ -15,7 +16,7 @@ class BaseModel(nn.Module):
     Base model for ae and vae. It follows a encoder-decoder structure, the output can be reconstruction or predicted mask.
     Loss is not specified.
     '''
-    def __init__(self, model_config, create_encoder_func):
+    def __init__(self, model_config, create_encoder_fn):
         super().__init__()
         encoder_config = model_config.get('encoder', None)
         assert encoder_config is not None, 'There is no encoder configuration.'
@@ -100,14 +101,14 @@ class BaseModel(nn.Module):
             else:
                 encoder_config['is_point2decoder'] = False
         
-        self.encoder, self.decoder = create_encoder_func(encoder_config=encoder_config, return_decoder=(decoder_config is None))
+        self.encoder, self.decoder = create_encoder_fn(encoder_config=encoder_config, return_decoder=(decoder_config is None))
 
         ### create decoder
         if decoder_config is not None:
             decoder_config['latent_channel'] = self.encoder.out_channel
             if hasattr(self.encoder, 'out_channels'):
                 decoder_config['latent_channels'] = self.encoder.out_channels
-            self.decoder = create_encoder_func(encoder_config=decoder_config, return_encoder=False)[1]
+            self.decoder = create_encoder_fn(encoder_config=decoder_config, return_encoder=False)[1]
         
         if self.condition_for_encoder and self.combine_condition == 'add':
             assert self.in_channel == self.en_cemb.out_channel, \
@@ -185,11 +186,13 @@ class BaseModel(nn.Module):
         return res
     def get_latent_shape(self):
         if self.data_form == DataForm.IMG and not self.encoder.vector_embedding:
+            if hasattr(self.encoder, 'shape_scaling'):
+                img_size = [int(im_size // (self.encoder.patch_size * math.prod(self.encoder.shape_scaling))) for im_size in self.encoder.image_size ]
+            else:
+                img_size = [int(im_size // (self.encoder.patch_size * (2** self.encoder.d_depth))) for im_size in self.encoder.image_size]
             if self.feature_channel_dim == -1:
-                return [int(im_size / (2** self.encoder.d_depth)) for im_size in self.encoder.image_size ] + \
-                    [self.encoder.out_channel, ]
-            return [self.encoder.out_channel, ] + \
-                        [int(im_size / (2** self.encoder.d_depth)) for im_size in self.encoder.image_size ]
+                return img_size + [self.encoder.out_channel, ]
+            return [self.encoder.out_channel, ] + img_size
         if self.data_form == DataForm.PCD and not self.encoder.vector_embedding:
                 return [self.encoder.point_num, self.encoder.out_channel,]        
         ### latent embedding is a vector
@@ -216,10 +219,10 @@ class BaseModel(nn.Module):
     
 
 class HBaseModel(BaseModel):
-    def __init__(self, model_config, create_encoder_func):
+    def __init__(self, model_config, create_encoder_fn):
         encoder_config = model_config['encoder']
         encoder_config['return_feature_list'] = True
-        super().__init__(model_config, create_encoder_func)
+        super().__init__(model_config, create_encoder_fn)
         assert self.data_form == DataForm.IMG, "Currently, HSeM only support image data."
 
         self.inter_mode = model_config.get('interpolation_mode', 'nearest')

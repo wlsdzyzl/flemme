@@ -2,7 +2,6 @@
 from flemme.config import module_config
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from flemme.logger import get_logger
 from .ssim import create_window, create_window_3D, _ssim, _ssim_3D
 
@@ -32,7 +31,9 @@ class TorchLoss(nn.Module):
 
 class SSIMLoss(torch.nn.Module):
     def __init__(self, image_dim = 2, image_channel = 1, 
-                 window_size = 11, reduction = 'mean', sigma = 1.5, **kwargs):
+                 window_size = 11, reduction = 'mean', 
+                 sigma = 1.5, data_range = 1.0, 
+                 normalization = True):
         super().__init__()
         self.channel = image_channel
         self.dim = image_dim
@@ -40,17 +41,25 @@ class SSIMLoss(torch.nn.Module):
         if self.dim == 3:
             self.window = create_window_3D(window_size, self.channel, sigma = sigma)
         self.reduction = reduction
+        self.data_range = data_range
+        if normalization:
+            self.normalization = nn.Sigmoid()
+        else:
+            self.normalization = nn.Identity()
     def forward(self, x, y, mask = 1.0, sample_weight = 1.0):
-        x, y = F.sigmoid(x), F.sigmoid(y)
+        ## make sure that x and y are larger than 0.
+        x, y = self.normalization(x), self.normalization(y)
         x, y = x * mask, y * mask
         assert x.shape[1] == self.channel and y.shape[1] == self.channel, \
                 'Channel size mis-matched for SSIM loss.'
         assert (x.ndim - 2) == self.dim, 'Image dimension mis-matched for SSIM loss'
+        assert min(x.min(), y.min()) > 0, \
+                'Please make sure that the input images are non-negative (set `normalization` as True), otherwise the calculation of ssim may be meaningless.'
         window = self.window.to(x.device)
         if self.dim == 2:
-            res = 1.0 - _ssim(x, y, window)
+            res = 1.0 - _ssim(x, y, window, data_range=self.data_range)
         else:
-            res = 1.0 - _ssim_3D(x, y, window)
+            res = 1.0 - _ssim_3D(x, y, window, data_range=self.data_range)
         res = res.mean(dim = tuple(range(1, res.ndim)))
         res = res * sample_weight
         if self.reduction == 'none':    

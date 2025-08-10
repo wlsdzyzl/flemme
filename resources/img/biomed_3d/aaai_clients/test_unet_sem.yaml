@@ -82,7 +82,7 @@ evaluation_metrics:
     - name: mIoU
 
 pickle_results: true
-# pickle_path: /data/guoqingzhang/flemme-pickled/mri
+pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled/mri
 load_pickle_results: true
 
 tsne_visualization: 

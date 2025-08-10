@@ -1,7 +1,7 @@
 import importlib
 from flemme.utils import *
 from torch import optim
-from .metrics import get_metrics
+from flemme.metrics import get_metrics
 from matplotlib import pyplot as plt
 from flemme.color_table import get_color_table
 from sklearn.manifold import TSNE
@@ -272,142 +272,50 @@ def create_scheduler(lr_config, optimizer):
     # add optimizer to the config
     lr_config['optimizer'] = optimizer
     return clazz(**lr_config)
-### get the TSNE embeddings
-#### wait to be implemented: save optimizer.
-def save_checkpoint(ckp_dir, model, optimizer = None, 
-                    scheduler = None, 
-                    epoch = -1, best_loss = 1e10,
-                    best_score = -1e10, is_best_loss = False, 
-                    is_best_score = False):
-    
-    path = "{}/ckp_last.pth".format(ckp_dir)
-    mkdirs(ckp_dir)
-    state_dict = {}
-    state_dict['trained_model'] = model.state_dict()
-    if optimizer is not None:
-        state_dict['optimizer'] = optimizer.state_dict()
-    if scheduler is not None:
-        state_dict['scheduler'] = scheduler.state_dict()
-    if epoch > 0:
-        state_dict['epoch'] = epoch
-        state_dict['best_loss'] = best_loss
-        state_dict['best_score'] = best_score
 
-    torch.save(state_dict, path)
-    if is_best_loss:
-        shutil.copyfile(path, "{}/ckp_best_loss.pth".format(ckp_dir))
-    if is_best_score:
-        shutil.copyfile(path, "{}/ckp_best_score.pth".format(ckp_dir))
-    
-def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None, 
-    ignore_mismatched_keys = [], specified_model_componets = None):
-    logger.info('load model from {}'.format(ckp_path))
-    state_dict = torch.load(ckp_path, map_location='cpu', weights_only=False)
-    if 'trained_model' in state_dict:
-        trained_model_state_dict = state_dict.pop('trained_model')
-
-        ### to load old weights with different names
-        # keys = trained_model_state_dict.keys()
-        # fc_keys = [ k for k in keys if 'fc' in k]
-        # dense_keys = [fk.replace('fc', 'dense') for fk in fc_keys]
-        # logger.info(f'We will replace {fc_keys} with {dense_keys}')
-        # for fk, dk in zip(fc_keys, dense_keys):
-        #     trained_model_state_dict[dk] = trained_model_state_dict.pop(fk)
-
-        if len(ignore_mismatched_keys) > 0:
-            logger.info(f'ignore keys while loading model: {ignore_mismatched_keys}')
-            model_state_dict = model.state_dict()
-            for k in trained_model_state_dict:
-                ignored = sum([ imk in k for imk in ignore_mismatched_keys]) > 0
-                if ignored:
-                    trained_model_state_dict[k] = model_state_dict[k]
-        if specified_model_componets is None:
-            model.load_state_dict(trained_model_state_dict)
-        else:
-            if type(specified_model_componets) == str:
-                specified_model_componets = [specified_model_componets, ]
-            assert type(specified_model_componets) == list or type(specified_model_componets) == tuple, \
-                'specified_model_components should be a string, list or tuple.'
-            for smc in specified_model_componets:
-                assert hasattr(model, smc), f"{smc} is not an attribute of the model."
-                specifed_keys = list(trained_model_state_dict.keys())
-                specifed_keys = [k for k in specifed_keys if k.startswith(smc)]
-                specifed_dict = { k[len(smc)+1:]: trained_model_state_dict[k] for k in specifed_keys}
-                assert len(specifed_dict) > 0, f"{smc} is not in the loaded model dict."
-                logger.info(f'loading "{smc}" from model dict.')
-                getattr(model, smc).load_state_dict(specifed_dict)
-        if optimizer is not None:
-            optimizer.load_state_dict(state_dict.pop('optimizer'))
-        if scheduler is not None:
-            scheduler.load_state_dict(state_dict.pop('scheduler'))    
-        return state_dict
-    else:
-        model.load_state_dict(state_dict)
-
-
-def freeze(model):
-    for param in model.parameters():
-        param.requires_grad = False
-def unfreeze(model):
-    for param in model.parameters():
-        param.requires_grad = True
-
-def process_results(results, x, y, c, res, data_form, path = None,  
+def process_results(results, res, data_form, path = None,  
         slice_indices = None,
         is_supervised = False, 
         is_conditional = False, 
         additional_keys = [],
-        pickle_results = False, pickle_path = "pickled"):
+        pickle_results = False, pickle_path = "pickled",
+        mode = 'train'):
     if not data_form == DataForm.GRAPH:
         res_dict = {
-            'input': x.cpu().detach().numpy(),
+            'input': res['input'].cpu().detach().numpy(),
         }
-        if c is not None: 
-            res_dict['condition'] = c.cpu().detach().numpy()
-        if y is not None:
-            if is_supervised:
-                res_dict['target'] = y.cpu().detach().numpy()
-            else:
-                res_dict['condition'] = y.cpu().detach().numpy()
-
-        # if c is not None and is_conditional and is_supervised:
-        #     res_dict['condition'] = c.cpu().detach().numpy()
-        # if y is not None:
-        #     if is_supervised:
-        #         res_dict['target'] = y.cpu().detach().numpy()
-        #     elif is_conditional:
-        #         res_dict['condition'] = y.cpu().detach().numpy()
-        #    ## y is not used.
-
-        if path is not None:
-            res_dict['path'] = path
-        if slice_indices is not None:
-            res_dict['slice_indices'] = slice_indices
-        if res:
-            if 'cluster_logits' in res:
-                res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
-            if 'cls_logits' in res:
-                res['cls'] = logits_to_onehot_label(res['cls_logits'], data_form)
-                res_dict['cls_logits'] = res['cls_logits'].cpu().detach().numpy()
-            if 'seg_logits' in res:
-                res['seg'] = logits_to_onehot_label(res['seg_logits'], data_form)
-                res_dict['seg_logits'] = res['seg_logits'].cpu().detach().numpy()
-            if 'latent' in res:
-                res_dict['latent'] = res['latent'].cpu().detach().numpy()
-            if 'recon' in res:
-                res_dict['recon'] = res['recon'].cpu().detach().numpy()
-            if 'seg' in res:
-                res_dict['seg'] = res['seg'].cpu().detach().numpy()
-            if 'cluster' in res:
-                res_dict['cluster'] = res['cluster'].cpu().detach().numpy()
-            if 'cls' in res:
-                res_dict['cls'] = res['cls'].cpu().detach().numpy()
-            if 'cluster_centers' in res:
-                res_dict['cluster_centers'] = res['cluster_centers'].cpu().detach().numpy()
-            for k in additional_keys:
-                res_dict[k] = res[k].cpu().detach().numpy()
+        if 'condition' in res: 
+            res_dict['condition'] = res['condition'].cpu().detach().numpy()
+        if 'target' in res:
+            res_dict['target'] = res['target'].cpu().detach().numpy()
+        if 'path' in res:
+            res_dict['path'] = res['path']
+        if 'slice_indices' in res:
+            res_dict['slice_indices'] = res['slice_indices']
+        if 'cluster_logits' in res:
+            res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
+        if 'cls_logits' in res:
+            res['cls'] = logits_to_onehot_label(res['cls_logits'], data_form)
+            res_dict['cls_logits'] = res['cls_logits'].cpu().detach().numpy()
+        if 'seg_logits' in res:
+            res['seg'] = logits_to_onehot_label(res['seg_logits'], data_form)
+            res_dict['seg_logits'] = res['seg_logits'].cpu().detach().numpy()
+        if 'latent' in res:
+            res_dict['latent'] = res['latent'].cpu().detach().numpy()
+        if 'recon' in res:
+            res_dict['recon'] = res['recon'].cpu().detach().numpy()
+        if 'seg' in res:
+            res_dict['seg'] = res['seg'].cpu().detach().numpy()
+        if 'cluster' in res:
+            res_dict['cluster'] = res['cluster'].cpu().detach().numpy()
+        if 'cls' in res:
+            res_dict['cls'] = res['cls'].cpu().detach().numpy()
+        if 'cluster_centers' in res:
+            res_dict['cluster_centers'] = res['cluster_centers'].cpu().detach().numpy()
+        for k in additional_keys:
+            res_dict[k] = res[k].cpu().detach().numpy()
         if pickle_results:
-            filename = os.path.join(pickle_path, f'tmp_batch_{len(results)}.pkl')
+            filename = os.path.join(pickle_path, f'{mode}_batch_{len(results)}.pkl')
             with open(filename, 'wb') as file:
                 joblib.dump(res_dict, file)
             results.append(filename)
@@ -433,7 +341,7 @@ def extract_results(results, key):
     return np.concatenate(compacted_res)
 
 
-def merge_patches_in_results(results, pickle_results = False, pickle_path = 'pickled'):
+def merge_patches_in_results(results, pickle_results = False, pickle_path = 'flemme-pickled'):
     ### merge patches to whole volumes
     ### only perform in test phase
     merged_path = None
@@ -469,7 +377,7 @@ def merge_patches_in_results(results, pickle_results = False, pickle_path = 'pic
                 'seg_logits': (tmp_seg_logits / weight_label)[None],
                 'path': merged_path}
         if pickle_results:
-            filename = os.path.join(pickle_path, f'tmp_merged_{len(new_results)}.pkl')
+            filename = os.path.join(pickle_path, f'test_merged_{len(new_results)}.pkl')
             with open(filename, 'wb') as file:
                 joblib.dump(new_res_dict, file)
             new_results.append(filename)

@@ -10,8 +10,8 @@ from flemme.logger import get_logger
 
 logger = get_logger('model.ddim')
 class DiffusionImplicit(DDPM):
-    def __init__(self, model_config, create_encoder_func):
-        super().__init__(model_config, create_encoder_func)
+    def __init__(self, model_config, create_encoder_fn):
+        super().__init__(model_config, create_encoder_fn)
 
         ### compute sample steps
         num_sample_steps = model_config.get('num_sample_steps', 100)
