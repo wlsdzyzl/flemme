@@ -35,6 +35,20 @@ def to_int(m):
         m = int(m)
     return m
 
+def move_to_front(l, elmnt = None, func = None):
+    index = None
+    for i, e in enumerate(l):
+        found = func(e) if func is not None else e == elmnt
+        if found:
+            index = i
+            break
+    if index is not None:
+        e = l.pop(index)
+        l.insert(0, e)
+        return True
+    ### doesn't contain element
+    return False
+
 def rreplace(s, old, new, count = -1):
     return new.join(s.rsplit(old, count))
 

@@ -85,9 +85,6 @@ class ImageTensorboardFormatter:
     image) to a series of images that can be displayed in tensorboard. 
     """
 
-    def __init__(self):
-        pass
-
     def __call__(self, name, batch):
         """
         Transform a batch to a series of tuples of the form (tag, img), where `tag` corresponds to the image tag
@@ -136,9 +133,6 @@ class PcdTensorboardFormatter:
     point cloud) to a series of point clouds that can be displayed in tensorboard. 
     """
 
-    def __init__(self):
-        pass
-
     def __call__(self, name, batch):
 
         return self.process_batch(name, batch)
@@ -164,9 +158,6 @@ class Vec2PCDTensorboardFormatter:
     """
     Tensorboard formatters converts a given batch of points to point cloud
     """
-
-    def __init__(self):
-        pass
     def __call__(self, name, batch):
         return self.process_batch(name, batch)
     ### we shouldn't abondon the channel information

@@ -6,11 +6,12 @@ import numbers
 from itertools import repeat
 from flemme.utils import label_to_onehot, normalize
 from functools import partial
-from .hilbert_sort import HilbertSort3D
 import fpsample
 from .img_transforms import Relabel, ToInt
 #### transfoms for point cloud
 ## modified from diffusion-point-cloud
+
+### can be used by label
 class ToTensor(object):
     r"""Numpy to tensor"""
 
@@ -22,16 +23,40 @@ class ToTensor(object):
             return torch.tensor(data).long()
         return torch.tensor(data).float()
 
-
-class Normalize(object):
-    r"""Centers and normalizes node positions to the interval :math:`(-1, 1)`.
+class ShufflePoints(object):
+    r"""Shuffle order of points in point cloud
     """
-
-    def __init__(self, method = 'minmax'):
-        self.method = method
-
+    def __init__(self):
+        ...
     def __call__(self, data):
-        return normalize(data, channel_dim = -1, method = self.method)
+        rand_idx = np.arange(len(data))
+        np.random.shuffle(rand_idx)
+        return data[rand_idx]
+
+class ToOneHot:
+    """
+    To one hot label
+    """
+    def __init__(self, num_classes):
+        self.to_onehot = partial(label_to_onehot, 
+            num_classes = num_classes, 
+            channel_dim = -1)
+    def __call__(self, m):
+        if not type(m) == int:
+            assert m.ndim == 1 or m.ndim == 2, "Not a per-point label or class label"
+            if m.ndim == 2:
+                assert m.shape[-1] == 1, \
+                    "Label is a multi channel point cloud. Check if it's already a one hot embedding."
+                m = m[..., 0]
+        return self.to_onehot(m)
+
+# class ToInt:
+#     def __call__(self, m):
+#         return to_int(m)
+
+# class Relabel(IMGRelabel):
+#     def __call__(self, m):
+#         return super().__call__(m)
 
 class FixedPoints(object):
     r"""Samples a fixed number of :obj:`num` points and features from a point
@@ -55,6 +80,9 @@ class FixedPoints(object):
         else:
             assert method == 'random', f'Unsupported sample strategy: {method}'
     def __call__(self, data):
+        key = None
+        if type(data) == tuple:
+            data, key = data
         point_num = len(data)
         if point_num < self.num or self.fpsampler is None:
             if self.replace:
@@ -65,9 +93,24 @@ class FixedPoints(object):
                     for _ in range(math.ceil(self.num / point_num))
                 ], dim=0)[:self.num]
         else:
-            choice = self.fpsampler(data)
-        data = data[choice]
-        return data
+            assert (data.ndim == 2 and data.shape[-1] == 3)\
+                or (key is not None and key.ndim == 2 and key.shape[-1] == 3),\
+                "Cannot perform the furthest point sampling because the input is not a 3D point cloud."
+            if key is not None:
+                choice = self.fpsampler(key)
+            else:
+                choice = self.fpsampler(data)
+        return data[choice]
+
+class Normalize(object):
+    r"""Centers and normalizes node positions to the interval :math:`(-1, 1)`.
+    """
+
+    def __init__(self, method = 'minmax'):
+        self.method = method
+
+    def __call__(self, data):
+        return normalize(data, channel_dim = -1, method = self.method)
 
 class LinearTransformation(object):
     r"""Transforms node positions with a square transformation matrix computed
@@ -91,8 +134,7 @@ class LinearTransformation(object):
         return data
 
 class Rotate(object):
-    r"""Rotates node positions around a specific axis by a randomly sampled
-    factor within a given interval.
+    r"""Rotates node positions around a specific axis.
     Args:
         degrees (tuple or float): rotation degree
         axis (int, optional): The rotation axis. (default: :obj:`0`)
@@ -156,7 +198,6 @@ class AddNoise(object):
 
 ## std is random
 class AddRandomNoise(object):
-
     def __init__(self, std_range=[0, 0.10]):
         self.std_range = std_range
 
@@ -224,44 +265,3 @@ class RandomTranslate(object):
 
         return data
 
-
-
-class ShufflePoints(object):
-    r"""Shuffle order of points in point cloud
-    """
-    def __init__(self):
-        ...
-    def __call__(self, data):
-        rand_idx = np.arange(len(data))
-        np.random.shuffle(rand_idx)
-        return data[rand_idx]
-
-class ReorderByAxis(object):
-    def __init__(self, axis=0):
-        self.axis = axis
-    def __call__(self, data):
-        index = np.argsort(data[:, self.axis])
-        return data[index]
-
-class ReorderByHilbert(object):
-    def __init__(self, bins = 16, radius = 1.0, origin = (0,0,0)):
-        self.hilbert = HilbertSort3D(bins = bins, radius = radius, origin = origin)
-    def __call__(self, data):
-        return self.hilbert.sort(data)
-
-class ToOneHot:
-    """
-    To one hot label
-    """
-    def __init__(self, num_classes):
-        self.to_onehot = partial(label_to_onehot, 
-            num_classes = num_classes, 
-            channel_dim = -1)
-    def __call__(self, m):
-        if not type(m) == int:
-            assert m.ndim == 1 or m.ndim == 2, "Not a per-point label or class label"
-            if m.ndim == 2:
-                assert m.shape[-1] == 1, \
-                    "Label is a multi channel point cloud. Check if it's already a one hot embedding."
-                m = m[..., 0]
-        return self.to_onehot(m)

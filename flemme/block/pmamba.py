@@ -1,10 +1,13 @@
 
 from .common import *
+import numpy as np
 from mamba_ssm import Mamba, Mamba2
 from mamba_ssm.ops.selective_scan_interface import selective_scan_fn
 from mamba_ssm.ops.triton.ssd_combined import mamba_chunk_scan_combined
 from einops import rearrange, repeat
 from .pcd_utils import gather_features
+from .hilbert_sort import HilbertSort3D
+from joblib import Parallel, delayed
 
 def zsort(xyz):
     z = xyz[:, :, 2]
@@ -19,6 +22,12 @@ def centersort(xyz):
     m = torch.mean(xyz, dim = 1, keepdim = True)
     dist_to_m = torch.norm(xyz - m, dim = -1)
     return torch.argsort(dist_to_m, dim = -1)
+
+def batch_hilbertsort(xyz, hilbertsort):
+    results = Parallel(n_jobs=-1)(delayed(hilbertsort)(p) for p in xyz.detach().cpu().numpy())
+    results = np.array([r[1] for r in results])
+    sorted_ids = torch.tensor(results, device = xyz.device).long()
+    return sorted_ids
 def nonsort(xyz):
     return torch.arange(xyz.shape[1]).unsqueeze(0).expand(xyz.shape[0], -1)
 ### to recover the original tensor
@@ -29,20 +38,27 @@ def get_scanners(scanners):
     res = []
     if scanners is None:
       return res
-    if type(scanners) == str:
+    if type(scanners) == str or type(scanners) == dict:
       scanners = [scanners,]
     assert type(scanners) == list or type(scanners) == tuple, \
-        'scan strategies should be a str, list or tuple.'
+        'scan strategies should be a str, dict, list or tuple.'
     for scanner in scanners:
-        if scanner == 'z_order':
+        scanner_name = scanner
+        if type(scanner) == dict:
+            scanner_name = scanner.pop('name')
+        if scanner_name == 'z_order':
             res.append(zsort)
-        elif scanner == 'y_order':
+        elif scanner_name == 'y_order':
             res.append(ysort)
-        elif scanner == 'x_order':
+        elif scanner_name == 'x_order':
             res.append(xsort)
-        elif scanner == 'center_dist':
+        elif scanner_name == 'center_dist':
             res.append(centersort)
-        elif scanner == 'nonsort':
+        elif scanner_name == 'hilbert':
+            h_config = {} if type(scanner) == str else scanner
+            h_sort = partial(batch_hilbertsort, hilbertsort = HilbertSort3D(**h_config))
+            res.append(h_sort)
+        elif scanner_name == 'nonsort':
             res.append(nonsort)
         else:
             logger.error(f'Unsupported scan strategy for point cloud: {scanner}.')

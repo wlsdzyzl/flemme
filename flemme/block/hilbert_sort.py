@@ -1,4 +1,5 @@
 import numpy as np
+### currently are not used.
 ## adopted from https://github.com/rz4/HilbertSort/blob/master/src/hilbertsort.py
 class HilbertSort3D(object):
 
@@ -51,7 +52,7 @@ class HilbertSort3D(object):
 
             return np.array(hilbert_curve).astype('int')
 
-    def sort(self, data):
+    def __call__(self, data):
         '''
         Method bins points according to parameters and sorts by traversing binning
         matrix using hilbert space-filling curve.
@@ -66,24 +67,34 @@ class HilbertSort3D(object):
 
         # Bin points
         binned = [[[[] for k in range(self.bins)] for j in range(self.bins)] for i in range(self.bins)]
+        # Bin pids
+        pid_binned = [[[[] for k in range(self.bins)] for j in range(self.bins)] for i in range(self.bins)]
         bin_interval = ((self.radius*2) / self.bins)
         offset = self.radius/bin_interval
         
         bin_index = np.clip((data / bin_interval) + offset, 0, self.bins-1)
-        for idx, d in zip(bin_index.astype(int), data):
+        for pid, (idx, d) in enumerate(zip(bin_index.astype(int), data)):
             binned[idx[0]][idx[1]][idx[2]].append(d)
+            pid_binned[idx[0]][idx[1]][idx[2]].append(pid)
 
         # Traverse and Assemble
         sorted_data = []
+        sorted_ids = []
         for _ in self.curve:
             x = binned[_[0]][_[1]][_[2]]
-            if len(x) > 0: sorted_data.append(np.array(x))
+            ids = pid_binned[_[0]][_[1]][_[2]]
+            if len(x) > 0: 
+                sorted_data.append(np.array(x))
+                sorted_ids.append(np.array(ids))
         sorted_data = np.concatenate(sorted_data, axis=0)
+        sorted_ids = np.concatenate(sorted_ids, axis=0)
         sorted_data = sorted_data + self.origin
-        return sorted_data
+        return sorted_data, sorted_ids
 
 if __name__=='__main__':
     from flemme.utils import normalize
     h = HilbertSort3D(bins=32, radius=1)
     x = np.random.randn(10, 3)
     x = normalize(x, channel_dim=-1)
+    sorted_x, sorted_ids = h(x)
+    print(sorted_x - x[sorted_ids])

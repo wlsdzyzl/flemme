@@ -91,12 +91,15 @@ class PcdSegDataset(PcdDataset):
         """Get the pcds"""
         pcd = load_pcd(self.pcd_path_list[index])
         label = np.loadtxt(self.label_path_list[index])
+        assert len(pcd) == len(label), 'mismatched number of points and labels.'
         if self.data_transform:
             n_state, t_state = get_random_state()
-            pcd = self.data_transform(pcd)
+            if self.label_transform.fixed_points:
+                label = self.label_transform((label, pcd))
+            else:
+                label = self.label_transform(label)
             set_random_state(n_state, t_state)
-            label = self.label_transform(label)
-            # save_pcd(pcd_path+'.transformed.ply', pcd.numpy())
+            pcd = self.data_transform(pcd)
         return pcd, label, self.pcd_path_list[index]
 
 

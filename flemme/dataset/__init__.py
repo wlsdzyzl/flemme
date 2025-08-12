@@ -4,8 +4,8 @@ from .vol_patch import PatchImgSegDataset, MultiModalityPatchImgSegDataset
 from torch.utils.data import DataLoader, ConcatDataset
 from torch.utils.data._utils.collate import default_collate
 from flemme.utils import DataForm
-from torchvision.transforms import Compose
-from flemme.augment import get_transforms, select_label_transforms, check_random_transforms
+from flemme.augment import get_transforms, select_label_transforms, \
+    check_random_transforms, check_consistent_transforms
 from flemme.logger import get_logger
 from .label_dict import get_cls_label
 
@@ -120,7 +120,6 @@ def create_loader(loader_config):
 
     trans_config_list = loader_config.get('data_transforms', [])
     data_transforms = get_transforms(trans_config_list, data_form, img_dim=img_dim)
-    data_transforms = Compose(data_transforms)
     dataset_config['data_transform'] = data_transforms
 
 
@@ -142,9 +141,8 @@ def create_loader(loader_config):
 
         ### check random operations are in the same order.
         check_random_transforms(trans_config_list, label_trans_config_list)
-
+        check_consistent_transforms(trans_config_list, label_trans_config_list, data_form)
         label_transforms = get_transforms(label_trans_config_list, data_form, img_dim=img_dim)
-        label_transforms = Compose(label_transforms)
         dataset_config['label_transform'] = label_transforms
 
     ### None means it has the same suffix with data
@@ -165,14 +163,12 @@ def create_loader(loader_config):
         check_random_transforms(trans_config_list, target_trans_config_list)
 
         target_transforms = get_transforms(target_trans_config_list, data_form, img_dim=img_dim)
-        target_transforms = Compose(target_transforms)
         dataset_config['target_transform'] = target_transforms
 
     ### to process class label
     class_label_trans_config_list = loader_config.get('class_label_transforms', None)
     if class_label_trans_config_list is not None:
         class_label_transforms = get_transforms(class_label_trans_config_list, data_form, img_dim=img_dim)
-        class_label_transforms = Compose(class_label_transforms)
         dataset_config['class_label_transform'] = class_label_transforms
     
 
