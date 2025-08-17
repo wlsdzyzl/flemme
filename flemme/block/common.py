@@ -210,16 +210,10 @@ class DropPath(nn.Module):
 class SequentialT(nn.Sequential):
     def __init__(self, *args):
         super().__init__(*args)
-    def forward(self, *inputs): 
+    def forward(self, x, *args, **kwargs): 
         for module in self._modules.values():
-            if type(inputs) == tuple:
-                res = module(*inputs)
-                inputs = (res, ) + inputs[1:]
-            else:
-                inputs = module(inputs)
-        if type(inputs) == tuple:
-            return inputs[0]
-        return inputs
+            x = module(x, *args, **kwargs)
+        return x
     
 ## use pooling to achieve down-sampling
 ## alternatively, we can use convolution to achieve down-samping
@@ -269,8 +263,8 @@ class MultipleBuildingBlocks(nn.Module):
                                               out_channel = channels[i+1],
                                               **kwargs))
         self.building_blocks = SequentialT(*building_blocks)
-    def forward(self, x, *args):
-        x = self.building_blocks(x, *args)
+    def forward(self, x, *args, **kwargs):
+        x = self.building_blocks(x, *args, **kwargs)
         return x
         
 class DownSamplingBlock(nn.Module):

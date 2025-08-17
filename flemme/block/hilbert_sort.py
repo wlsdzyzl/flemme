@@ -1,4 +1,5 @@
 import numpy as np
+from .common import logger
 ### currently are not used.
 ## adopted from https://github.com/rz4/HilbertSort/blob/master/src/hilbertsort.py
 class HilbertSort3D(object):
@@ -12,7 +13,7 @@ class HilbertSort3D(object):
         order = np.log2(bins)
         if order%1.0 > 0.0: raise ValueError("HilbertSort: Bins should be a power of 2.")
         self.curve = self._hilbert_3d(int(order))
-
+        logger.info(f"Construct a Hilbert Sorter with {self.bins} bins.")
     def _hilbert_3d(self, order):
             '''
             Method generates 3D hilbert curve of desired order.

@@ -7,7 +7,7 @@ from scipy.ndimage import binary_erosion, binary_dilation, label
 from skimage.morphology import skeletonize as skeletonize
 from scipy.spatial import cKDTree
 from flemme.logger import get_logger
-logger = get_logger('scripts::pmap2xyzr')
+logger = get_logger('scripts.pmap2xyzr')
 def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xyzr_file = None, normalized = True, prob_threshold = None, 
         label_value = None, cc_axis = None):
     if (inputfile[-3:] == 'npy'):

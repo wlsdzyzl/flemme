@@ -5,7 +5,7 @@ import shutil
 from glob import glob
 from flemme.logger import get_logger
 from flemme.utils import rkdirs
-logger = get_logger('scripts::extract_files')
+logger = get_logger('scripts.extract_files')
 def main(argv):
     source_dir = None
     template_dir = None

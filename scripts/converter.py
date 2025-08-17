@@ -3,7 +3,7 @@ import sys, getopt
 import os
 import glob
 from flemme.logger import get_logger
-logger = get_logger('scripts::converter')
+logger = get_logger('scripts.converter')
 def main(argv):
     inputfile = ''
     outputfile = ''
