@@ -23,8 +23,8 @@ def centersort(xyz):
     dist_to_m = torch.norm(xyz - m, dim = -1)
     return torch.argsort(dist_to_m, dim = -1)
 
-def batch_hilbertsort(xyz, hilbertsort):
-    results = Parallel(n_jobs=-1)(delayed(hilbertsort)(p) for p in xyz.detach().cpu().numpy())
+def batch_hilbertsort(xyz, hilbertsort, n_jobs = -1):
+    results = Parallel(n_jobs=n_jobs)(delayed(hilbertsort)(p) for p in xyz.detach().cpu().numpy())
     results = np.array([r[1] for r in results])
     sorted_ids = torch.tensor(results, device = xyz.device).long()
     return sorted_ids
@@ -40,11 +40,12 @@ def get_scanners(scanners):
       return res
     if type(scanners) == str or type(scanners) == dict:
       scanners = [scanners,]
-    assert type(scanners) == list or type(scanners) == tuple, \
-        'scan strategies should be a str, dict, list or tuple.'
+    assert type(scanners) == list, \
+        'scan strategies should be a str, dict or list.'
     for scanner in scanners:
         scanner_name = scanner
         if type(scanner) == dict:
+            scanner = scanner.copy()
             scanner_name = scanner.pop('name')
         if scanner_name == 'z_order':
             res.append(zsort)
@@ -56,7 +57,9 @@ def get_scanners(scanners):
             res.append(centersort)
         elif scanner_name == 'hilbert':
             h_config = {} if type(scanner) == str else scanner
-            h_sort = partial(batch_hilbertsort, hilbertsort = HilbertSort3D(**h_config))
+            n_jobs = h_config.pop('n_jobs', -1)
+            h_sort = partial(batch_hilbertsort, n_jobs = n_jobs,
+                 hilbertsort = HilbertSort3D(**h_config))
             res.append(h_sort)
         elif scanner_name == 'nonsort':
             res.append(nonsort)

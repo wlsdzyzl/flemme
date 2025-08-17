@@ -76,7 +76,8 @@ val_loader:
     - name: ToOneHot
       num_classes: 46
     - name: ToTensor
-pretrained: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointNet/PointNet_SEG/ckp_last.pth
+# pretrained: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointNet/PointNet_SEG/ckp_last.pth
+resume: true
 check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointNet/PointNet_SEG
 ### parameter for optimizer
 optimizer:

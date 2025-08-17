@@ -6,7 +6,7 @@ from flemme.utils import normalize_img, save_img, rkdirs
 from flemme.logger import get_logger
 from glob import glob
 import sys, getopt
-logger = get_logger('scripts::h5_to_png')
+logger = get_logger('scripts.h5_to_png')
 def f(h5_files, keys, output_dirs):
     center = None
     scaling = None

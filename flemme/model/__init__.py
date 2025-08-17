@@ -45,12 +45,16 @@ supported_models = {
     #### model with only decoder
     'OnlyDecoder': OnlyDecoder
 }
-def create_model(model_config, create_encoder_fn = create_encoder):
+def create_model(model_config, 
+    supported_models = supported_models, 
+    create_encoder_fn = create_encoder):
     tmpl_path = model_config.pop('template_path', None)
     if tmpl_path is not None:
         logger.info('creating model from template ...')
         model_config = load_config(tmpl_path).get('model')
-        return create_model(model_config, create_encoder_fn)
+        return create_model(model_config, 
+                        supported_models, 
+                        create_encoder_fn)
     
     logger.info('creating model from specific configuration ...')
     
@@ -61,4 +65,4 @@ def create_model(model_config, create_encoder_fn = create_encoder):
     else:
         logger.error(f'Unsupported model class: {model_name}')
         exit(1)
-    return model_class(model_config, create_encoder_fn)
+    return model_class(model_config, create_encoder_fn = create_encoder_fn)

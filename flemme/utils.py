@@ -34,7 +34,11 @@ def to_int(m):
     else:
         m = int(m)
     return m
-
+def contains_one_of(s, sl):
+    for sub in sl:
+        if sub in s:
+            return True
+    return False
 def move_to_front(l, elmnt = None, func = None):
     index = None
     for i, e in enumerate(l):

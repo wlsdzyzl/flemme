@@ -1,432 +1,353 @@
-2024-07-23 23:17:19,933 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:17:20,182 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:17:29,615 [MainThread] INFO unittest - model info:
-********************* SeM (UNet) *********************
+2025-08-12 18:55:10,536 [MainThread] INFO utils - Using 'cuda:0' device
+2025-08-12 18:55:10,536 [MainThread] INFO unittest.test_time_and_space - training for 500 iters
+2025-08-12 18:55:10,536 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:55:10,536 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:55:11,571 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (UNet - UNet) *********************
 ------- Encoder -------
-Down-sampling and convolution layers: 1->32->64->128
+Projection layer: 1->32
+Down-sampling convolution layers: 32->64->128
 Middle convolution layers: 128->256->256
 ------- Decoder -------
-Up-sampling and convolution layers: 256->128->64
-Final convolution layer: 64->1
+Up-sampling convolution layers: 256->128->64
+Final convolution layers: 64->1
 
-2024-07-23 23:17:29,615 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:17:29,615 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64])
-2024-07-23 23:17:29,615 [MainThread] INFO unittest - Total number of model parameters: 3884193
-2024-07-23 23:17:29,615 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.0585859375GB
-2024-07-23 23:17:29,615 [MainThread] INFO unittest - Time of training for 500 iterations: 8.696036338806152s
-2024-07-23 23:17:29,615 [MainThread] INFO unittest - Time of inference for 500 iterations: 0.7362751960754395s
-2024-07-23 23:17:29,615 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:17:29,616 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:17:29,688 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:18:00,471 [MainThread] INFO unittest - model info:
-********************* SeM (SwinU) *********************
+2025-08-12 18:55:11,571 [MainThread] INFO unittest.test_time_and_space - Number of layers: 14
+2025-08-12 18:55:11,571 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 4064257
+2025-08-12 18:55:11,571 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 64, 64])
+2025-08-12 18:55:15,459 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.29465625GB
+2025-08-12 18:55:15,459 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 3.2589590549468994s
+2025-08-12 18:55:15,459 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 0.6289191246032715s
+2025-08-12 18:55:15,459 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:55:15,462 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:55:15,463 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:55:15,496 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (ViTU - ViTU) *********************
 ------- Encoder -------
-Patch merging and swin transformer layers: 1->32->64->128
+Projection layer: 1->32
+Patch merging and vision transformer layers: 32->64->128
+Middle vit tranformer layers: 128->256->256
+------- Decoder -------
+Patch expansion and vision transformer layers: 256->128->64
+Final vision transformer layers: 64->1
+
+2025-08-12 18:55:15,496 [MainThread] INFO unittest.test_time_and_space - Number of layers: 14
+2025-08-12 18:55:15,497 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3599179
+2025-08-12 18:55:15,497 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 64, 64])
+2025-08-12 18:55:27,244 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.3710859375GB
+2025-08-12 18:55:27,244 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 9.235479593276978s
+2025-08-12 18:55:27,244 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 2.51153302192688s
+2025-08-12 18:55:27,244 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:55:27,249 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:55:27,249 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:55:27,298 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (SwinU - SwinU) *********************
+------- Encoder -------
+Projection layer: 1->32
+Patch merging and swin transformer layers: 32->64->128
 Middle swin tranformer layers: 128->256->256
 ------- Decoder -------
 Patch expansion and swin transformer layers: 256->128->64
 Final swin transformer layers: 64->1
 
-2024-07-23 23:18:00,471 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:18:00,472 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64])
-2024-07-23 23:18:00,472 [MainThread] INFO unittest - Total number of model parameters: 4383570
-2024-07-23 23:18:00,472 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.29099609375GB
-2024-07-23 23:18:00,472 [MainThread] INFO unittest - Time of training for 500 iterations: 26.764591932296753s
-2024-07-23 23:18:00,472 [MainThread] INFO unittest - Time of inference for 500 iterations: 4.018249988555908s
-2024-07-23 23:18:00,472 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:18:00,474 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:18:00,544 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:18:33,228 [MainThread] INFO unittest - model info:
-********************* SeM (VMambaU) *********************
+2025-08-12 18:55:27,298 [MainThread] INFO unittest.test_time_and_space - Number of layers: 14
+2025-08-12 18:55:27,299 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3607279
+2025-08-12 18:55:27,299 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 64, 64])
+2025-08-12 18:55:40,523 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.365234375GB
+2025-08-12 18:55:40,523 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 10.08713150024414s
+2025-08-12 18:55:40,523 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 3.1370904445648193s
+2025-08-12 18:55:40,523 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:55:40,528 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:55:40,528 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:55:40,572 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (VMambaU - VMambaU) *********************
 ------- Encoder -------
-Patch merging and mamba SSM layers: 1->32->64->128
+Projection layer: 1->32
+Patch merging and mamba SSM layers: 32->64->128
 Middle mamba SSM layers: 128->256->256
 ------- Decoder -------
 Patch expansion and mamba SSM layers: 256->128->64
 Final mamba SSM layers: 64->1
 
-2024-07-23 23:18:33,228 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:18:33,228 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64])
-2024-07-23 23:18:33,228 [MainThread] INFO unittest - Total number of model parameters: 5536289
-2024-07-23 23:18:33,228 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.341796875GB
-2024-07-23 23:18:33,228 [MainThread] INFO unittest - Time of training for 500 iterations: 28.130235195159912s
-2024-07-23 23:18:33,228 [MainThread] INFO unittest - Time of inference for 500 iterations: 4.553524971008301s
-2024-07-23 23:18:33,228 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:18:33,231 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:18:33,295 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:18:48,704 [MainThread] INFO unittest - model info:
-********************* SeM (UNet) *********************
+2025-08-12 18:55:40,572 [MainThread] INFO unittest.test_time_and_space - Number of layers: 14
+2025-08-12 18:55:40,573 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 4544257
+2025-08-12 18:55:40,573 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 64, 64])
+2025-08-12 18:55:55,275 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.3984375GB
+2025-08-12 18:55:55,276 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 11.020454168319702s
+2025-08-12 18:55:55,276 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 3.6819353103637695s
+2025-08-12 18:55:55,276 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:55:55,281 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:55:55,281 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:55:55,325 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (UNet - UNet) *********************
 ------- Encoder -------
-Down-sampling and convolution layers: 1->32->64->128
+Projection layer: 1->32
+Down-sampling convolution layers: 32->64->128
 Middle convolution layers: 128->256->256
 ------- Decoder -------
-Up-sampling and convolution layers: 256->128->64
-Final convolution layer: 64->1
+Up-sampling convolution layers: 256->128->64
+Final convolution layers: 64->1
 
-2024-07-23 23:18:48,704 [MainThread] INFO unittest - Number of layers: 32
-2024-07-23 23:18:48,704 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64])
-2024-07-23 23:18:48,704 [MainThread] INFO unittest - Total number of model parameters: 6986145
-2024-07-23 23:18:48,704 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.1581640625GB
-2024-07-23 23:18:48,704 [MainThread] INFO unittest - Time of training for 500 iterations: 14.170401811599731s
-2024-07-23 23:18:48,704 [MainThread] INFO unittest - Time of inference for 500 iterations: 1.2384874820709229s
-2024-07-23 23:18:48,704 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:18:48,708 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:18:48,831 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:19:29,857 [MainThread] INFO unittest - model info:
-********************* SeM (SwinU) *********************
+2025-08-12 18:55:55,325 [MainThread] INFO unittest.test_time_and_space - Number of layers: 28
+2025-08-12 18:55:55,326 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 6003649
+2025-08-12 18:55:55,326 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 64, 64])
+2025-08-12 18:55:59,821 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.349609375GB
+2025-08-12 18:55:59,821 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 3.439424753189087s
+2025-08-12 18:55:59,821 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 1.0555872917175293s
+2025-08-12 18:55:59,821 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:55:59,825 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:55:59,825 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:55:59,880 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (ViTU - ViTU) *********************
 ------- Encoder -------
-Patch merging and swin transformer layers: 1->32->64->128
+Projection layer: 1->32
+Patch merging and vision transformer layers: 32->64->128
+Middle vit tranformer layers: 128->256->256
+------- Decoder -------
+Patch expansion and vision transformer layers: 256->128->64
+Final vision transformer layers: 64->1
+
+2025-08-12 18:55:59,880 [MainThread] INFO unittest.test_time_and_space - Number of layers: 28
+2025-08-12 18:55:59,881 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 6189397
+2025-08-12 18:55:59,881 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 64, 64])
+2025-08-12 18:56:20,180 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.56833984375GB
+2025-08-12 18:56:20,180 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 15.493890762329102s
+2025-08-12 18:56:20,180 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 4.805359125137329s
+2025-08-12 18:56:20,180 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:56:20,189 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:56:20,189 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:56:20,274 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (SwinU - SwinU) *********************
+------- Encoder -------
+Projection layer: 1->32
+Patch merging and swin transformer layers: 32->64->128
 Middle swin tranformer layers: 128->256->256
 ------- Decoder -------
 Patch expansion and swin transformer layers: 256->128->64
 Final swin transformer layers: 64->1
 
-2024-07-23 23:19:29,857 [MainThread] INFO unittest - Number of layers: 32
-2024-07-23 23:19:29,857 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64])
-2024-07-23 23:19:29,858 [MainThread] INFO unittest - Total number of model parameters: 8534470
-2024-07-23 23:19:29,858 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.4081640625GB
-2024-07-23 23:19:29,858 [MainThread] INFO unittest - Time of training for 500 iterations: 33.52853560447693s
-2024-07-23 23:19:29,858 [MainThread] INFO unittest - Time of inference for 500 iterations: 7.496923923492432s
-2024-07-23 23:19:29,858 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:19:29,862 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:19:29,982 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:20:13,785 [MainThread] INFO unittest - model info:
-********************* SeM (VMambaU) *********************
+2025-08-12 18:56:20,274 [MainThread] INFO unittest.test_time_and_space - Number of layers: 28
+2025-08-12 18:56:20,275 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 6205597
+2025-08-12 18:56:20,275 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 64, 64])
+2025-08-12 18:56:45,540 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.43359375GB
+2025-08-12 18:56:45,540 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 19.187381744384766s
+2025-08-12 18:56:45,540 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 6.078256607055664s
+2025-08-12 18:56:45,540 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:56:45,546 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:56:45,546 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:56:45,628 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (VMambaU - VMambaU) *********************
 ------- Encoder -------
-Patch merging and mamba SSM layers: 1->32->64->128
+Projection layer: 1->32
+Patch merging and mamba SSM layers: 32->64->128
 Middle mamba SSM layers: 128->256->256
 ------- Decoder -------
 Patch expansion and mamba SSM layers: 256->128->64
 Final mamba SSM layers: 64->1
 
-2024-07-23 23:20:13,786 [MainThread] INFO unittest - Number of layers: 32
-2024-07-23 23:20:13,786 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64])
-2024-07-23 23:20:13,787 [MainThread] INFO unittest - Total number of model parameters: 10850593
-2024-07-23 23:20:13,787 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.50390625GB
-2024-07-23 23:20:13,787 [MainThread] INFO unittest - Time of training for 500 iterations: 35.024372577667236s
-2024-07-23 23:20:13,787 [MainThread] INFO unittest - Time of inference for 500 iterations: 8.77894902229309s
-2024-07-23 23:20:13,787 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:20:13,793 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:20:13,829 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:20:23,328 [MainThread] INFO unittest - model info:
-********************* SeM (UNet) *********************
+2025-08-12 18:56:45,628 [MainThread] INFO unittest.test_time_and_space - Number of layers: 28
+2025-08-12 18:56:45,629 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 7874497
+2025-08-12 18:56:45,629 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 64, 64])
+2025-08-12 18:57:13,829 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.509765625GB
+2025-08-12 18:57:13,829 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 21.17319369316101s
+2025-08-12 18:57:13,830 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 7.027450323104858s
+2025-08-12 18:57:13,830 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:57:13,837 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:57:13,837 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:57:13,867 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (UNet - UNet) *********************
 ------- Encoder -------
-Down-sampling and convolution layers: 1->32->64->128
+Projection layer: 1->32
+Down-sampling convolution layers: 32->64->128
 Middle convolution layers: 128->256->256
 ------- Decoder -------
-Up-sampling and convolution layers: 256->128->64
-Final convolution layer: 64->1
+Up-sampling convolution layers: 256->128->64
+Final convolution layers: 64->1
 
-2024-07-23 23:20:23,328 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:20:23,328 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128])
-2024-07-23 23:20:23,328 [MainThread] INFO unittest - Total number of model parameters: 3884193
-2024-07-23 23:20:23,328 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.220703125GB
-2024-07-23 23:20:23,329 [MainThread] INFO unittest - Time of training for 500 iterations: 8.754013299942017s
-2024-07-23 23:20:23,329 [MainThread] INFO unittest - Time of inference for 500 iterations: 0.7450194358825684s
-2024-07-23 23:20:23,329 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:20:23,333 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:20:23,400 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:20:55,496 [MainThread] INFO unittest - model info:
-********************* SeM (SwinU) *********************
+2025-08-12 18:57:13,867 [MainThread] INFO unittest.test_time_and_space - Number of layers: 14
+2025-08-12 18:57:13,867 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 4064257
+2025-08-12 18:57:13,867 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 128, 128])
+2025-08-12 18:57:16,885 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.416015625GB
+2025-08-12 18:57:16,885 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 2.369103193283081s
+2025-08-12 18:57:16,885 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 0.6484973430633545s
+2025-08-12 18:57:16,885 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:57:16,891 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:57:16,891 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:57:16,923 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (ViTU - ViTU) *********************
 ------- Encoder -------
-Patch merging and swin transformer layers: 1->32->64->128
+Projection layer: 1->32
+Patch merging and vision transformer layers: 32->64->128
+Middle vit tranformer layers: 128->256->256
+------- Decoder -------
+Patch expansion and vision transformer layers: 256->128->64
+Final vision transformer layers: 64->1
+
+2025-08-12 18:57:16,923 [MainThread] INFO unittest.test_time_and_space - Number of layers: 14
+2025-08-12 18:57:16,924 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3599179
+2025-08-12 18:57:16,924 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 128, 128])
+2025-08-12 18:58:04,351 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 3.23826953125GB
+2025-08-12 18:58:04,351 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 35.759366035461426s
+2025-08-12 18:58:04,351 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 11.667524337768555s
+2025-08-12 18:58:04,351 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:58:04,477 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:58:04,477 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:58:04,529 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (SwinU - SwinU) *********************
+------- Encoder -------
+Projection layer: 1->32
+Patch merging and swin transformer layers: 32->64->128
 Middle swin tranformer layers: 128->256->256
 ------- Decoder -------
 Patch expansion and swin transformer layers: 256->128->64
 Final swin transformer layers: 64->1
 
-2024-07-23 23:20:55,496 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:20:55,496 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128])
-2024-07-23 23:20:55,497 [MainThread] INFO unittest - Total number of model parameters: 4383570
-2024-07-23 23:20:55,497 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.54490234375GB
-2024-07-23 23:20:55,497 [MainThread] INFO unittest - Time of training for 500 iterations: 27.951265335083008s
-2024-07-23 23:20:55,497 [MainThread] INFO unittest - Time of inference for 500 iterations: 4.144665479660034s
-2024-07-23 23:20:55,497 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:20:55,500 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:20:55,563 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:21:27,725 [MainThread] INFO unittest - model info:
-********************* SeM (VMambaU) *********************
+2025-08-12 18:58:04,529 [MainThread] INFO unittest.test_time_and_space - Number of layers: 14
+2025-08-12 18:58:04,530 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3607279
+2025-08-12 18:58:04,530 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 128, 128])
+2025-08-12 18:58:18,644 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.49609375GB
+2025-08-12 18:58:18,644 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 10.742519855499268s
+2025-08-12 18:58:18,644 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 3.371063470840454s
+2025-08-12 18:58:18,644 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:58:18,651 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:58:18,652 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:58:18,696 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (VMambaU - VMambaU) *********************
 ------- Encoder -------
-Patch merging and mamba SSM layers: 1->32->64->128
+Projection layer: 1->32
+Patch merging and mamba SSM layers: 32->64->128
 Middle mamba SSM layers: 128->256->256
 ------- Decoder -------
 Patch expansion and mamba SSM layers: 256->128->64
 Final mamba SSM layers: 64->1
 
-2024-07-23 23:21:27,725 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:21:27,725 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128])
-2024-07-23 23:21:27,726 [MainThread] INFO unittest - Total number of model parameters: 5536289
-2024-07-23 23:21:27,726 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.734375GB
-2024-07-23 23:21:27,726 [MainThread] INFO unittest - Time of training for 500 iterations: 27.62761092185974s
-2024-07-23 23:21:27,726 [MainThread] INFO unittest - Time of inference for 500 iterations: 4.533682107925415s
-2024-07-23 23:21:27,726 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:21:27,731 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:21:27,866 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:21:43,634 [MainThread] INFO unittest - model info:
-********************* SeM (UNet) *********************
+2025-08-12 18:58:18,696 [MainThread] INFO unittest.test_time_and_space - Number of layers: 14
+2025-08-12 18:58:18,696 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 4544257
+2025-08-12 18:58:18,697 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 128, 128])
+2025-08-12 18:58:33,901 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.689453125GB
+2025-08-12 18:58:33,902 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 11.374971151351929s
+2025-08-12 18:58:33,902 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 3.8298439979553223s
+2025-08-12 18:58:33,902 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:58:33,914 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:58:33,915 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:58:33,959 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (UNet - UNet) *********************
 ------- Encoder -------
-Down-sampling and convolution layers: 1->32->64->128
+Projection layer: 1->32
+Down-sampling convolution layers: 32->64->128
 Middle convolution layers: 128->256->256
 ------- Decoder -------
-Up-sampling and convolution layers: 256->128->64
-Final convolution layer: 64->1
+Up-sampling convolution layers: 256->128->64
+Final convolution layers: 64->1
 
-2024-07-23 23:21:43,634 [MainThread] INFO unittest - Number of layers: 32
-2024-07-23 23:21:43,634 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128])
-2024-07-23 23:21:43,635 [MainThread] INFO unittest - Total number of model parameters: 6986145
-2024-07-23 23:21:43,635 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.2011328125GB
-2024-07-23 23:21:43,635 [MainThread] INFO unittest - Time of training for 500 iterations: 14.526774406433105s
-2024-07-23 23:21:43,635 [MainThread] INFO unittest - Time of inference for 500 iterations: 1.2410006523132324s
-2024-07-23 23:21:43,635 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:21:43,637 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:21:43,762 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:22:25,416 [MainThread] INFO unittest - model info:
-********************* SeM (SwinU) *********************
+2025-08-12 18:58:33,959 [MainThread] INFO unittest.test_time_and_space - Number of layers: 28
+2025-08-12 18:58:33,959 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 6003649
+2025-08-12 18:58:33,959 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 128, 128])
+2025-08-12 18:58:38,618 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.3515625GB
+2025-08-12 18:58:38,618 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 3.5260655879974365s
+2025-08-12 18:58:38,618 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 1.1328303813934326s
+2025-08-12 18:58:38,618 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 18:58:38,623 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 18:58:38,623 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 18:58:38,681 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (ViTU - ViTU) *********************
 ------- Encoder -------
-Patch merging and swin transformer layers: 1->32->64->128
+Projection layer: 1->32
+Patch merging and vision transformer layers: 32->64->128
+Middle vit tranformer layers: 128->256->256
+------- Decoder -------
+Patch expansion and vision transformer layers: 256->128->64
+Final vision transformer layers: 64->1
+
+2025-08-12 18:58:38,681 [MainThread] INFO unittest.test_time_and_space - Number of layers: 28
+2025-08-12 18:58:38,682 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 6189397
+2025-08-12 18:58:38,683 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 128, 128])
+2025-08-12 19:00:11,775 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 4.8183359375GB
+2025-08-12 19:00:11,775 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 70.2678120136261s
+2025-08-12 19:00:11,775 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 22.824702262878418s
+2025-08-12 19:00:11,775 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 19:00:11,957 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 19:00:11,957 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 19:00:12,046 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (SwinU - SwinU) *********************
+------- Encoder -------
+Projection layer: 1->32
+Patch merging and swin transformer layers: 32->64->128
 Middle swin tranformer layers: 128->256->256
 ------- Decoder -------
 Patch expansion and swin transformer layers: 256->128->64
 Final swin transformer layers: 64->1
 
-2024-07-23 23:22:25,416 [MainThread] INFO unittest - Number of layers: 32
-2024-07-23 23:22:25,416 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128])
-2024-07-23 23:22:25,418 [MainThread] INFO unittest - Total number of model parameters: 8534470
-2024-07-23 23:22:25,418 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.8554296875GB
-2024-07-23 23:22:25,418 [MainThread] INFO unittest - Time of training for 500 iterations: 33.916743755340576s
-2024-07-23 23:22:25,418 [MainThread] INFO unittest - Time of inference for 500 iterations: 7.737694501876831s
-2024-07-23 23:22:25,418 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:22:25,424 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:22:25,542 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:23:09,726 [MainThread] INFO unittest - model info:
-********************* SeM (VMambaU) *********************
+2025-08-12 19:00:12,046 [MainThread] INFO unittest.test_time_and_space - Number of layers: 28
+2025-08-12 19:00:12,047 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 6205597
+2025-08-12 19:00:12,047 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 128, 128])
+2025-08-12 19:00:38,405 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.73828125GB
+2025-08-12 19:00:38,405 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 19.977590084075928s
+2025-08-12 19:00:38,405 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 6.38085150718689s
+2025-08-12 19:00:38,405 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2025-08-12 19:00:38,419 [MainThread] INFO model.create_model - creating model from specific configuration ...
+2025-08-12 19:00:38,419 [MainThread] INFO encoder.create_encoder - Model is constructed for images.
+2025-08-12 19:00:38,498 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (VMambaU - VMambaU) *********************
 ------- Encoder -------
-Patch merging and mamba SSM layers: 1->32->64->128
+Projection layer: 1->32
+Patch merging and mamba SSM layers: 32->64->128
 Middle mamba SSM layers: 128->256->256
 ------- Decoder -------
 Patch expansion and mamba SSM layers: 256->128->64
 Final mamba SSM layers: 64->1
 
-2024-07-23 23:23:09,726 [MainThread] INFO unittest - Number of layers: 32
-2024-07-23 23:23:09,726 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128])
-2024-07-23 23:23:09,727 [MainThread] INFO unittest - Total number of model parameters: 10850593
-2024-07-23 23:23:09,727 [MainThread] INFO unittest - Average allocated memory for each iteration: 1.244140625GB
-2024-07-23 23:23:09,727 [MainThread] INFO unittest - Time of training for 500 iterations: 35.382479667663574s
-2024-07-23 23:23:09,727 [MainThread] INFO unittest - Time of inference for 500 iterations: 8.801383972167969s
-2024-07-23 23:23:09,727 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:23:09,735 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:23:09,849 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:23:20,471 [MainThread] INFO unittest - model info:
-********************* SeM (UNet) *********************
-------- Encoder -------
-Down-sampling and convolution layers: 1->32->64->128
-Middle convolution layers: 128->256->256
-------- Decoder -------
-Up-sampling and convolution layers: 256->128->64
-Final convolution layer: 64->1
+2025-08-12 19:00:38,498 [MainThread] INFO unittest.test_time_and_space - Number of layers: 28
+2025-08-12 19:00:38,499 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 7874497
+2025-08-12 19:00:38,499 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 1, 128, 128])
+2025-08-12 19:01:07,576 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 1.078125GB
+2025-08-12 19:01:07,576 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 21.76535439491272s
+2025-08-12 19:01:07,576 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 7.311823129653931s
+2025-08-12 19:01:07,576 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
 
-2024-07-23 23:23:20,471 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:23:20,471 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64, 64])
-2024-07-23 23:23:20,472 [MainThread] INFO unittest - Total number of model parameters: 12625569
-2024-07-23 23:23:20,472 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.623046875GB
-2024-07-23 23:23:20,472 [MainThread] INFO unittest - Time of training for 500 iterations: 9.169506549835205s
-2024-07-23 23:23:20,472 [MainThread] INFO unittest - Time of inference for 500 iterations: 1.4520995616912842s
-2024-07-23 23:23:20,472 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:23:20,501 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:23:20,749 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:24:21,711 [MainThread] INFO unittest - model info:
-********************* SeM (SwinU) *********************
-------- Encoder -------
-Patch merging and swin transformer layers: 1->32->64->128
-Middle swin tranformer layers: 128->256->256
-------- Decoder -------
-Patch expansion and swin transformer layers: 256->128->64
-Final swin transformer layers: 64->1
 
-2024-07-23 23:24:21,711 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:24:21,711 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64, 64])
-2024-07-23 23:24:21,712 [MainThread] INFO unittest - Total number of model parameters: 4759242
-2024-07-23 23:24:21,712 [MainThread] INFO unittest - Average allocated memory for each iteration: 4.970671875GB
-2024-07-23 23:24:21,712 [MainThread] INFO unittest - Time of training for 500 iterations: 45.41895604133606s
-2024-07-23 23:24:21,712 [MainThread] INFO unittest - Time of inference for 500 iterations: 15.54252815246582s
-2024-07-23 23:24:21,712 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:24:21,810 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:24:21,929 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:25:39,767 [MainThread] INFO unittest - model info:
-********************* SeM (VMambaU) *********************
-------- Encoder -------
-Patch merging and mamba SSM layers: 1->32->64->128
-Middle mamba SSM layers: 128->256->256
-------- Decoder -------
-Patch expansion and mamba SSM layers: 256->128->64
-Final mamba SSM layers: 64->1
-
-2024-07-23 23:25:39,767 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:25:39,767 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64, 64])
-2024-07-23 23:25:39,768 [MainThread] INFO unittest - Total number of model parameters: 5861921
-2024-07-23 23:25:39,768 [MainThread] INFO unittest - Average allocated memory for each iteration: 4.3515625GB
-2024-07-23 23:25:39,768 [MainThread] INFO unittest - Time of training for 500 iterations: 60.28239130973816s
-2024-07-23 23:25:39,768 [MainThread] INFO unittest - Time of inference for 500 iterations: 17.554951190948486s
-2024-07-23 23:25:39,768 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:25:39,839 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:25:40,050 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:25:57,464 [MainThread] INFO unittest - model info:
-********************* SeM (UNet) *********************
-------- Encoder -------
-Down-sampling and convolution layers: 1->32->64->128
-Middle convolution layers: 128->256->256
-------- Decoder -------
-Up-sampling and convolution layers: 256->128->64
-Final convolution layer: 64->1
-
-2024-07-23 23:25:57,464 [MainThread] INFO unittest - Number of layers: 32
-2024-07-23 23:25:57,464 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64, 64])
-2024-07-23 23:25:57,465 [MainThread] INFO unittest - Total number of model parameters: 21920673
-2024-07-23 23:25:57,465 [MainThread] INFO unittest - Average allocated memory for each iteration: 0.76953125GB
-2024-07-23 23:25:57,465 [MainThread] INFO unittest - Time of training for 500 iterations: 14.944145917892456s
-2024-07-23 23:25:57,465 [MainThread] INFO unittest - Time of inference for 500 iterations: 2.469982385635376s
-2024-07-23 23:25:57,465 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:25:57,492 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:25:58,050 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:27:55,999 [MainThread] INFO unittest - model info:
-********************* SeM (SwinU) *********************
-------- Encoder -------
-Patch merging and swin transformer layers: 1->32->64->128
-Middle swin tranformer layers: 128->256->256
-------- Decoder -------
-Patch expansion and swin transformer layers: 256->128->64
-Final swin transformer layers: 64->1
-
-2024-07-23 23:27:55,999 [MainThread] INFO unittest - Number of layers: 32
-2024-07-23 23:27:55,999 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64, 64])
-2024-07-23 23:27:56,000 [MainThread] INFO unittest - Total number of model parameters: 9023542
-2024-07-23 23:27:56,000 [MainThread] INFO unittest - Average allocated memory for each iteration: 8.32416015625GB
-2024-07-23 23:27:56,000 [MainThread] INFO unittest - Time of training for 500 iterations: 87.49079728126526s
-2024-07-23 23:27:56,000 [MainThread] INFO unittest - Time of inference for 500 iterations: 30.45774483680725s
-2024-07-23 23:27:56,000 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:27:56,102 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:27:56,318 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:30:18,845 [MainThread] INFO unittest - model info:
-********************* SeM (VMambaU) *********************
-------- Encoder -------
-Patch merging and mamba SSM layers: 1->32->64->128
-Middle mamba SSM layers: 128->256->256
-------- Decoder -------
-Patch expansion and mamba SSM layers: 256->128->64
-Final mamba SSM layers: 64->1
-
-2024-07-23 23:30:18,846 [MainThread] INFO unittest - Number of layers: 32
-2024-07-23 23:30:18,846 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 64, 64, 64])
-2024-07-23 23:30:18,847 [MainThread] INFO unittest - Total number of model parameters: 11240737
-2024-07-23 23:30:18,847 [MainThread] INFO unittest - Average allocated memory for each iteration: 7.10546875GB
-2024-07-23 23:30:18,847 [MainThread] INFO unittest - Time of training for 500 iterations: 110.0871331691742s
-2024-07-23 23:30:18,847 [MainThread] INFO unittest - Time of inference for 500 iterations: 32.440073013305664s
-2024-07-23 23:30:18,847 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:30:18,926 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:30:19,097 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:30:59,177 [MainThread] INFO unittest - model info:
-********************* SeM (UNet) *********************
-------- Encoder -------
-Down-sampling and convolution layers: 1->32->64->128
-Middle convolution layers: 128->256->256
-------- Decoder -------
-Up-sampling and convolution layers: 256->128->64
-Final convolution layer: 64->1
-
-2024-07-23 23:30:59,177 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:30:59,177 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128, 128])
-2024-07-23 23:30:59,177 [MainThread] INFO unittest - Total number of model parameters: 12625569
-2024-07-23 23:30:59,177 [MainThread] INFO unittest - Average allocated memory for each iteration: 2.953125GB
-2024-07-23 23:30:59,177 [MainThread] INFO unittest - Time of training for 500 iterations: 30.773064851760864s
-2024-07-23 23:30:59,177 [MainThread] INFO unittest - Time of inference for 500 iterations: 9.306889057159424s
-2024-07-23 23:30:59,177 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:30:59,381 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:31:00,574 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:38:33,160 [MainThread] INFO unittest - model info:
-********************* SeM (SwinU) *********************
-------- Encoder -------
-Patch merging and swin transformer layers: 1->32->64->128
-Middle swin tranformer layers: 128->256->256
-------- Decoder -------
-Patch expansion and swin transformer layers: 256->128->64
-Final swin transformer layers: 64->1
-
-2024-07-23 23:38:33,160 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:38:33,160 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128, 128])
-2024-07-23 23:38:33,161 [MainThread] INFO unittest - Total number of model parameters: 4759242
-2024-07-23 23:38:33,161 [MainThread] INFO unittest - Average allocated memory for each iteration: 38.5351484375GB
-2024-07-23 23:38:33,161 [MainThread] INFO unittest - Time of training for 500 iterations: 332.4203317165375s
-2024-07-23 23:38:33,161 [MainThread] INFO unittest - Time of inference for 500 iterations: 120.16538715362549s
-2024-07-23 23:38:33,161 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:38:33,803 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:38:33,963 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:49:29,400 [MainThread] INFO unittest - model info:
-********************* SeM (VMambaU) *********************
-------- Encoder -------
-Patch merging and mamba SSM layers: 1->32->64->128
-Middle mamba SSM layers: 128->256->256
-------- Decoder -------
-Patch expansion and mamba SSM layers: 256->128->64
-Final mamba SSM layers: 64->1
-
-2024-07-23 23:49:29,400 [MainThread] INFO unittest - Number of layers: 16
-2024-07-23 23:49:29,400 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128, 128])
-2024-07-23 23:49:29,401 [MainThread] INFO unittest - Total number of model parameters: 5861921
-2024-07-23 23:49:29,401 [MainThread] INFO unittest - Average allocated memory for each iteration: 34.205078125GB
-2024-07-23 23:49:29,401 [MainThread] INFO unittest - Time of training for 500 iterations: 505.9674508571625s
-2024-07-23 23:49:29,401 [MainThread] INFO unittest - Time of inference for 500 iterations: 149.4699192047119s
-2024-07-23 23:49:29,401 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:49:29,891 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:49:30,149 [MainThread] INFO unittest - training for 500 iters
-2024-07-23 23:50:39,229 [MainThread] INFO unittest - model info:
-********************* SeM (UNet) *********************
-------- Encoder -------
-Down-sampling and convolution layers: 1->32->64->128
-Middle convolution layers: 128->256->256
-------- Decoder -------
-Up-sampling and convolution layers: 256->128->64
-Final convolution layer: 64->1
-
-2024-07-23 23:50:39,229 [MainThread] INFO unittest - Number of layers: 32
-2024-07-23 23:50:39,229 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128, 128])
-2024-07-23 23:50:39,229 [MainThread] INFO unittest - Total number of model parameters: 21920673
-2024-07-23 23:50:39,229 [MainThread] INFO unittest - Average allocated memory for each iteration: 4.244140625GB
-2024-07-23 23:50:39,229 [MainThread] INFO unittest - Time of training for 500 iterations: 53.26113986968994s
-2024-07-23 23:50:39,229 [MainThread] INFO unittest - Time of inference for 500 iterations: 15.818488121032715s
-2024-07-23 23:50:39,229 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-23 23:50:39,408 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-23 23:50:41,726 [MainThread] INFO unittest - training for 500 iters
-2024-07-24 00:05:02,054 [MainThread] INFO unittest - model info:
-********************* SeM (SwinU) *********************
-------- Encoder -------
-Patch merging and swin transformer layers: 1->32->64->128
-Middle swin tranformer layers: 128->256->256
-------- Decoder -------
-Patch expansion and swin transformer layers: 256->128->64
-Final swin transformer layers: 64->1
-
-2024-07-24 00:05:02,054 [MainThread] INFO unittest - Number of layers: 32
-2024-07-24 00:05:02,054 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128, 128])
-2024-07-24 00:05:02,055 [MainThread] INFO unittest - Total number of model parameters: 9023542
-2024-07-24 00:05:02,055 [MainThread] INFO unittest - Average allocated memory for each iteration: 65.414046875GB
-2024-07-24 00:05:02,055 [MainThread] INFO unittest - Time of training for 500 iterations: 629.6799139976501s
-2024-07-24 00:05:02,055 [MainThread] INFO unittest - Time of inference for 500 iterations: 230.64762997627258s
-2024-07-24 00:05:02,055 [MainThread] INFO unittest - ------------------------Finish----------------------------------------
-2024-07-24 00:05:02,789 [MainThread] INFO model.create_model - creating model from specific configuration ...
-2024-07-24 00:05:03,079 [MainThread] INFO unittest - training for 500 iters
-2024-07-24 00:24:55,242 [MainThread] INFO unittest - model info:
-********************* SeM (VMambaU) *********************
-------- Encoder -------
-Patch merging and mamba SSM layers: 1->32->64->128
-Middle mamba SSM layers: 128->256->256
-------- Decoder -------
-Patch expansion and mamba SSM layers: 256->128->64
-Final mamba SSM layers: 64->1
-
-2024-07-24 00:24:55,242 [MainThread] INFO unittest - Number of layers: 32
-2024-07-24 00:24:55,242 [MainThread] INFO unittest - Input shape: torch.Size([2, 1, 128, 128, 128])
-2024-07-24 00:24:55,244 [MainThread] INFO unittest - Total number of model parameters: 11240737
-2024-07-24 00:24:55,244 [MainThread] INFO unittest - Average allocated memory for each iteration: 55.732421875GB
-2024-07-24 00:24:55,244 [MainThread] INFO unittest - Time of training for 500 iterations: 920.4119951725006s
-2024-07-24 00:24:55,244 [MainThread] INFO unittest - Time of inference for 500 iterations: 271.7509036064148s
-2024-07-24 00:24:55,244 [MainThread] INFO unittest - ------------------------Finish----------------------------------------

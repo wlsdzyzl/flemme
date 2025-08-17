@@ -5,7 +5,7 @@ from .trainer_utils import *
 from flemme.logger import get_logger
 
 
-logger = get_logger('eval_flemme')
+logger = get_logger('trainer.eval')
 
 def eval_run(t):
     ### split x, y, path in later implementation.

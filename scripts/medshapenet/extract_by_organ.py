@@ -1,7 +1,7 @@
 from flemme.utils import mkdirs
 from flemme.logger import get_logger
 import os
-logger = get_logger('scripts::extract_by_organ')
+logger = get_logger('scripts.extract_by_organ')
 ## 'bladder'
 organ_list = ['gallbladder', 'bladder', 'brain', 'heart', 'liver', 'pancreas', 'skull', 
               'spleen', 'colon', 'stomach', 'duodenum', 'uterus', 'trachea', 

@@ -7,7 +7,7 @@ from flemme.loss import ChamferLoss, DensityAwareChamferLoss as DCDLoss, EMDLoss
 from torch import optim
 from flemme.logger import get_logger
 import time
-logger = get_logger('unittest::test_pcd_loss')
+logger = get_logger('unittest.test_pcd_loss')
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 

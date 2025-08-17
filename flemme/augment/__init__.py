@@ -1,7 +1,7 @@
 from flemme.config import module_config
 from . import img_transforms
 from . import vol_transforms
-from flemme.utils import DataForm, get_class, move_to_front
+from flemme.utils import DataForm, get_class, move_to_front, contains_one_of
 from flemme.logger import get_logger
 from torchvision.transforms import Compose
 
@@ -78,9 +78,9 @@ def check_consistent_transforms(data_trans_config_list, label_trans_config_list,
         selector = seg_label_transform_table['graph']
 
     data_consistent_transform_list = [ t['name']  for t in data_trans_config_list 
-        if sum([s in t['name'].lower() for s in selector])]
+        if contains_one_of(t['name'].lower(), selector)]
     label_consistent_transform_list = [ t['name']  for t in label_trans_config_list 
-        if sum([s in t['name'].lower() for s in selector])]
+        if contains_one_of(t['name'].lower(), selector)]
         
     if data_consistent_transform_list != label_consistent_transform_list:
         logger.error('Transforms that change the shape or order of data should be consistent.')
@@ -97,11 +97,10 @@ def select_label_transforms(trans_config_list, data_form):
     elif data_form == DataForm.GRAPH:
         selector = seg_label_transform_table['graph']
     for t in trans_config_list:
-        for s in selector:
-            if s in t['name'].lower():
-                ### for 3D image, the name is elastic deform instead of elastic transform (torch)
-                if t['name'] == 'ElasticDeform':
-                    t['spline_order'] = 0
-                label_config_list.append(t)
-                break
+        if contains_one_of(t['name'].lower(), selector):
+            ### for 3D image, the name is elastic deform instead of elastic transform (torch)
+            if t['name'] == 'ElasticDeform':
+                t['spline_order'] = 0
+            label_config_list.append(t)
+            break
     return label_config_list

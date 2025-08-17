@@ -4,7 +4,7 @@ import numpy as np
 import os
 from glob import glob
 from flemme.logger import get_logger
-logger = get_logger('scripts::crop_by')
+logger = get_logger('scripts.crop_by')
 def f(wait_to_crop, output_files, margin, 
     background, crop_by = None, boundingbox = None):
     data_array, origin, spacing = load_itk(wait_to_crop[0], True)

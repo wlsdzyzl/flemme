@@ -9,7 +9,7 @@ from flemme.metrics import get_metrics
 import numpy as np
 from tqdm import tqdm
 
-logger = get_logger('scripts::select_samples_and_colorize')
+logger = get_logger('scripts.select_samples_and_colorize')
 ## tmp file
 #### python select_samples.py --result_path path/to/results/seg/CVC-ClinicDB --sub_dirs ResNet,ResNet_HSeg,UNet,UNet_HSeg,UNet_Atten,UNet_Atten_HSeg,SwinU,SwinU_HSeg,MambaU,MambaU_HSeg --suffix .png --target_path path/to/results/seg/CVC-ClinicDB/target --target_suffix _tar.png --conditions '0<1,2>3,4>5,6>7,8>9' --eval Dice
 def main(argv):

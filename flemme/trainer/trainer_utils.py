@@ -12,7 +12,7 @@ import shutil
 import joblib
 from tqdm import tqdm
 
-logger = get_logger('trainer_utils')
+logger = get_logger('trainer.utils')
 
 def colorize_by_label(labels):
     if torch.is_tensor(labels): 

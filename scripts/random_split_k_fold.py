@@ -6,7 +6,7 @@ import math
 from glob import glob
 from flemme.logger import get_logger
 from flemme.utils import rkdirs
-logger = get_logger('scripts::random_split_k_fold')
+logger = get_logger('scripts.random_split_k_fold')
 ## tmp file
 def main(argv):
     dataset_path = None

@@ -8,7 +8,7 @@ from glob import glob
 ## if we want to train pcd or image, 
 ## make sure that the image size from data loader and image size from the model parameters are identical
 device = "cuda" if torch.cuda.is_available() else "cpu"
-logger = get_logger('test_flemme')
+logger = get_logger('trainer.test')
 def test_run(model, t):
     ### split x, y, path in later implementation.
     x, y, c, slice_indices, path = process_input(t)
@@ -75,11 +75,12 @@ def test(test_config,
         elif is_conditional:
             logger.info('Conditional model, label may be used as condition.')
         model_path = test_config.get('model_path', None)
-        assert model_path is not None, "Model path is not specified."
-
-        ignore_mismatched_keys = test_config.get('ignore_mismatched_keys', [])
-        ## load check point
-        load_checkpoint(model_path, model, ignore_mismatched_keys = ignore_mismatched_keys)
+        if model_path is None:
+            logger.info('You are testing a model that has never been trained before.')
+        else:
+            ignore_mismatched_keys = test_config.get('ignore_mismatched_keys', [])
+            ## load check point
+            load_checkpoint(model_path, model, ignore_mismatched_keys = ignore_mismatched_keys)
 
         model = model.to(device)
         ## turn to evaluation
@@ -115,7 +116,6 @@ def test(test_config,
             for res in custom_save_results:
                 custom_res_names.append(res.get('name'))
                 custom_res_dirs.append(res.get('dir'))
-
             pickle_results = test_config.get('pickle_results', False)
             pickle_path = test_config.get('pickle_path', 'flemme-pickled')
             load_pickle_results = test_config.get('load_pickle_results', False)
@@ -288,8 +288,6 @@ def test(test_config,
                         sample_idx += 1
 
             for res_name, res_dir in zip(custom_res_names, custom_res_dirs):
-                res_name = res.get('name')
-                res_dir = res.get('dir', None)
                 if res_dir is not None:
                     logger.info(f'Saving {res_name} results to {res_dir} ...')
                     mkdirs(res_dir)

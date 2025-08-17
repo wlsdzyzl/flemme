@@ -4,7 +4,7 @@ from flemme.utils import load_ply, load_img, save_img
 from flemme.color_table import color_table
 import os
 from flemme.logger import get_logger
-logger = get_logger('scripts::render_pcd')
+logger = get_logger('scripts.render_pcd')
 def standardize_bbox(pcl, points_per_object, pcl_color = None):
     if points_per_object > 0:
         pt_indices = np.random.choice(pcl.shape[0], points_per_object, replace=False)

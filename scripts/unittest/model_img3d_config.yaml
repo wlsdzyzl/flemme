@@ -1,233 +1,4 @@
 models:
-  #### 64 * 64
-  - name: SeM
-    # encoder config
-    encoder:
-      name: UNet
-      image_size: [64, 64]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: single
-      normalization: batch
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-  - name: SeM
-    # encoder config
-    encoder:
-      name: SwinU
-      image_size: [64, 64]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: swin
-    normalization: layer
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-  - name: SeM
-    # encoder config
-    encoder:
-      name: VMambaU
-      image_size: [64, 64]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: vmamba
-    normalization: layer
-      scan_mode: single
-      flip_scan: false
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-
-  - name: SeM
-    # encoder config
-    encoder:
-      name: UNet
-      image_size: [64, 64]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: single
-      normalization: batch
-      num_blocks: 4
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-  - name: SeM
-    # encoder config
-    encoder:
-      name: SwinU
-      image_size: [64, 64]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: swin
-    normalization: layer
-      num_blocks: 4
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-  ##### 128 * 128
-  - name: SeM
-    # encoder config
-    encoder:
-      name: VMambaU
-      image_size: [64, 64]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: vmamba
-    normalization: layer
-      scan_mode: single
-      flip_scan: false
-      num_blocks: 4
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-
-
-  - name: SeM
-    # encoder config
-    encoder:
-      name: UNet
-      image_size: [128, 128]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: single
-      normalization: batch
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-  - name: SeM
-    # encoder config
-    encoder:
-      name: SwinU
-      image_size: [128, 128]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: swin
-    normalization: layer
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-  ##### 128 * 128
-  - name: SeM
-    # encoder config
-    encoder:
-      name: VMambaU
-      image_size: [128, 128]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: vmamba
-    normalization: layer
-      scan_mode: single
-      flip_scan: false
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-
-  - name: SeM
-    # encoder config
-    encoder:
-      name: UNet
-      image_size: [128, 128]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: single
-      normalization: batch
-      num_blocks: 4
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-  - name: SeM
-    # encoder config
-    encoder:
-      name: SwinU
-      image_size: [128, 128]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      num_blocks: 4
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: swin
-    normalization: layer
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-  ##### 128 * 128
-  - name: SeM
-    # encoder config
-    encoder:
-      name: VMambaU
-      image_size: [128, 128]
-      in_channel: 1
-      out_channel: 1
-      patch_channel: 32
-      patch_size: 2
-      num_blocks: 4
-      down_channels: [64, 128]
-      middle_channels: [256, 256]
-      building_block: vmamba
-    normalization: layer
-      scan_mode: single
-      flip_scan: false
-    ### loss function
-    segmentation_losses: 
-      - name: Dice
-      - name: BCEL
-
-
-
   - name: SeM
     # encoder config
     encoder:
@@ -248,6 +19,23 @@ models:
   - name: SeM
     # encoder config
     encoder:
+      name: ViTU
+      image_size: [64, 64, 64]
+      in_channel: 1
+      out_channel: 1
+      patch_channel: 32
+      patch_size: 2
+      down_channels: [64, 128]
+      middle_channels: [256, 256]
+      building_block: vit
+      normalization: layer
+    ### loss function
+    segmentation_losses: 
+      - name: Dice
+      - name: BCEL
+  - name: SeM
+    # encoder config
+    encoder:
       name: SwinU
       image_size: [64, 64, 64]
       in_channel: 1
@@ -257,7 +45,7 @@ models:
       down_channels: [64, 128]
       middle_channels: [256, 256]
       building_block: swin
-    normalization: layer
+      normalization: layer
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -275,7 +63,7 @@ models:
       down_channels: [64, 128]
       middle_channels: [256, 256]
       building_block: vmamba
-    normalization: layer
+      normalization: layer
       scan_mode: single
       flip_scan: false
     ### loss function
@@ -305,6 +93,20 @@ models:
   - name: SeM
     # encoder config
     encoder:
+      name: ViTU
+      image_size: [64, 64, 64]
+      in_channel: 1
+      out_channel: 1
+      patch_channel: 32
+      patch_size: 2
+      down_channels: [64, 128]
+      middle_channels: [256, 256]
+      building_block: vit
+      normalization: layer
+      num_blocks: 4
+  - name: SeM
+    # encoder config
+    encoder:
       name: SwinU
       image_size: [64, 64, 64]
       in_channel: 1
@@ -314,7 +116,7 @@ models:
       down_channels: [64, 128]
       middle_channels: [256, 256]
       building_block: swin
-    normalization: layer
+      normalization: layer
       num_blocks: 4
     ### loss function
     segmentation_losses: 
@@ -333,7 +135,7 @@ models:
       down_channels: [64, 128]
       middle_channels: [256, 256]
       building_block: vmamba
-    normalization: layer
+      normalization: layer
       scan_mode: single
       flip_scan: false
       num_blocks: 4
@@ -363,6 +165,19 @@ models:
   - name: SeM
     # encoder config
     encoder:
+      name: ViTU
+      image_size: [128, 128, 128]
+      in_channel: 1
+      out_channel: 1
+      patch_channel: 32
+      patch_size: 2
+      down_channels: [64, 128]
+      middle_channels: [256, 256]
+      building_block: vit
+      normalization: layer
+  - name: SeM
+    # encoder config
+    encoder:
       name: SwinU
       image_size: [128, 128, 128]
       in_channel: 1
@@ -372,7 +187,7 @@ models:
       down_channels: [64, 128]
       middle_channels: [256, 256]
       building_block: swin
-    normalization: layer
+      normalization: layer
     ### loss function
     segmentation_losses: 
       - name: Dice
@@ -389,7 +204,7 @@ models:
       down_channels: [64, 128]
       middle_channels: [256, 256]
       building_block: vmamba
-    normalization: layer
+      normalization: layer
       scan_mode: single
       flip_scan: false
     ### loss function
@@ -419,6 +234,24 @@ models:
   - name: SeM
     # encoder config
     encoder:
+      name: ViTU
+      image_size: [128, 128, 128]
+      in_channel: 1
+      out_channel: 1
+      patch_channel: 32
+      patch_size: 2
+      down_channels: [64, 128]
+      middle_channels: [256, 256]
+      building_block: vit
+      normalization: layer
+      num_blocks: 4
+    ### loss function
+    segmentation_losses: 
+      - name: Dice
+      - name: BCEL
+  - name: SeM
+    # encoder config
+    encoder:
       name: SwinU
       image_size: [128, 128, 128]
       in_channel: 1
@@ -428,7 +261,7 @@ models:
       down_channels: [64, 128]
       middle_channels: [256, 256]
       building_block: swin
-    normalization: layer
+      normalization: layer
       num_blocks: 4
     ### loss function
     segmentation_losses: 
@@ -446,7 +279,7 @@ models:
       down_channels: [64, 128]
       middle_channels: [256, 256]
       building_block: vmamba
-    normalization: layer
+      normalization: layer
       scan_mode: single
       flip_scan: false
       num_blocks: 4

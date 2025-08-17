@@ -5,7 +5,7 @@ from flemme.logger import get_logger
 from datetime import datetime
 from tqdm import tqdm
 
-logger = get_logger('train_flemme')
+logger = get_logger('trainer.train')
 ## if we want to train pcd or image, 
 ## make sure that the image size from data loader and image size from the model parameters are identical
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -239,7 +239,7 @@ def train(train_config,
             losses, res = run_fn(model, t)
             #### to numpy for evaluation
             if evaluators is not None and len(results) < eval_batch_num:
-                res = run_fn(model, t, only_forward = True)
+                if res is None: res = run_fn(model, t, only_forward = True)
                 process_results(results=results, 
                                     res = res, 
                                     data_form = model.data_form, 
@@ -319,7 +319,7 @@ def train(train_config,
                     for vt in tqdm(val_data_loader, desc='validating'):
                         vlosses, vres = run_fn(model, vt)
                         if evaluators is not None and len(vresults) < eval_batch_num:
-                            vres = run_fn(model, vt, only_forward = True)
+                            if vres is None: vres = run_fn(model, vt, only_forward = True)
                             process_results(results=vresults, 
                                                 res = vres, 
                                                 data_form = model.data_form,
