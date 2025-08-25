@@ -218,7 +218,7 @@ class Point2Encoder(nn.Module):
         sample_id_list = []
         for lid, msg in enumerate(self.msg):
             vfeatures = features
-            xyz, xyz_embed, features, sample_ids = msg(xyz, xyz_embed, features = features, t = t)
+            xyz, xyz_embed, features, sample_ids = msg(xyz, xyz_embed, features = features, t = t, c = c)
             if hasattr(self, 'lrm'):
                 if hasattr(self, 'scanners') and len(self.scanners) > 0: 
                     sorted_index_list = self.scan(xyz)

@@ -71,6 +71,10 @@ def train(train_config,
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
 
+    detect_anomaly = train_config.get('detect_anomaly', False)
+    if detect_anomaly:
+        torch.autograd.set_detect_anomaly(True)
+
     loader_config = train_config.get('loader', None)
     assert loader_config is not None, "Data loader is not speficied"
     if not 'mode' in loader_config:
@@ -170,7 +174,7 @@ def train(train_config,
     iter_id = 0     
     best_loss = 1e10   
     best_score = -1e10
-    torch.autograd.set_detect_anomaly(True)
+
     start_epoch = 1
     ## load model from check points
     pretrained = train_config.get('pretrained', None)
@@ -251,6 +255,8 @@ def train(train_config,
             loss = sum(losses)
             optimizer.zero_grad()
             loss.backward()
+            if detect_anomaly:
+                check_nan_grad(model)
             if clip_grad:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad)
             if epoch <= warmup_epochs:

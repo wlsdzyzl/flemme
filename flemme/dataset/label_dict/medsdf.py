@@ -15,6 +15,6 @@ medsdf_cls_label = {'bladder': 1,
 }
 
 
-medpoints_label_cls = dict((v,k) for k,v in medpoints_cls_label.items())
+medsdf_label_cls = dict((v,k) for k,v in medsdf_cls_label.items())
 
 

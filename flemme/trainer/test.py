@@ -38,7 +38,8 @@ def test(test_config,
         create_model_fn,
         create_loader_fn,
         create_sampler_fn,
-        run_fn):
+        run_fn,
+        save_data_fn):
     with torch.no_grad():
         mode = test_config.get('mode', 'test')
         assert mode == 'test', "Wrong configuration for testing!"
@@ -229,13 +230,13 @@ def test(test_config,
                             output_path = os.path.join(output_dir, filename)
                         else:
                             output_path = os.path.join(recon_dir, filename)
-                        save_data(recon, data_form=model.data_form, output_path=output_path)
+                        save_data_fn(recon, data_form=model.data_form, output_path=output_path)
                         if save_target:
                             target = res_dict['target'][idx]
-                            save_data(target, data_form=model.data_form, output_path=output_path+'_tar')
+                            save_data_fn(target, data_form=model.data_form, output_path=output_path+'_tar')
                         if save_input:
                             input_x = res_dict['input'][idx]
-                            save_data(input_x, data_form=model.data_form, output_path=output_path+'_input')
+                            save_data_fn(input_x, data_form=model.data_form, output_path=output_path+'_input')
                         sample_idx += 1
             ### save segmentation
             seg_dir = test_config.get('seg_dir', None)
@@ -256,13 +257,13 @@ def test(test_config,
                         ### transfer onehot to normal label for non-binary segmentation
                         seg = onehot_to_label(seg, channel_dim=channel_dim, keepdim=True) if seg.shape[channel_dim] > 1 else seg
                         tar = onehot_to_label(tar, channel_dim=channel_dim, keepdim=True) if tar.shape[channel_dim] > 1 else tar
-                        save_data(seg.astype(int), data_form=model.data_form, output_path=output_path, segmentation = True)
+                        save_data_fn(seg.astype(int), data_form=model.data_form, output_path=output_path, segmentation = True)
                         ### save input
                         if save_input:
-                            save_data(data, data_form=model.data_form, output_path=output_path+'_input')
+                            save_data_fn(data, data_form=model.data_form, output_path=output_path+'_input')
                         ##### save target
                         if save_target:
-                            save_data(tar.astype(int), data_form=model.data_form, output_path=output_path + '_tar', segmentation = True)
+                            save_data_fn(tar.astype(int), data_form=model.data_form, output_path=output_path + '_tar', segmentation = True)
                         
                         ### save colorized results
                         if save_colorized:
@@ -270,21 +271,21 @@ def test(test_config,
                             if model.data_form == DataForm.PCD:
                                 color = colorize_by_label(seg[..., 0])
                                 cdata = (data, color)
-                                save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized')
+                                save_data_fn(cdata, data_form=model.data_form, output_path=output_path + '_colorized')
                                 ### save colorized target
                                 if save_target:
                                     color = colorize_by_label(tar[..., 0])
                                     cdata = (data, color)
-                                    save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
+                                    save_data_fn(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
                             #### save colorized img
                             if model.data_form == DataForm.IMG:                
                                 cdata, raw_img = colorize_img_by_label(seg, data, gt = tar)
-                                save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized')
+                                save_data_fn(cdata, data_form=model.data_form, output_path=output_path + '_colorized')
                                 if save_target:
                                     cdata, _ = colorize_img_by_label(tar, data, gt = tar)
-                                    save_data(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
+                                    save_data_fn(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
                                 if save_input:
-                                    save_data(raw_img, data_form=model.data_form, output_path=output_path + '_input')
+                                    save_data_fn(raw_img, data_form=model.data_form, output_path=output_path + '_input')
                         sample_idx += 1
 
             for res_name, res_dir in zip(custom_res_names, custom_res_dirs):
@@ -301,14 +302,14 @@ def test(test_config,
                             else:
                                 filename = 'sample_{:03d}'.format(sample_idx)
                             output_path = os.path.join(res_dir, filename)
-                            save_data(res_data, data_form=model.data_form, output_path=output_path)
+                            save_data_fn(res_data, data_form=model.data_form, output_path=output_path)
                             sample_idx += 1
                         if save_target and len(results['target']) > 0:
                             target = results['target'][idx]
-                            save_data(target, data_form=model.data_form, output_path=output_path+'_tar')
+                            save_data_fn(target, data_form=model.data_form, output_path=output_path+'_tar')
                         if save_input and len(results['input']) > 0:
                             input_x = results['input'][idx]
-                            save_data(input_x, data_form=model.data_form, output_path=output_path+'_input')
+                            save_data_fn(input_x, data_form=model.data_form, output_path=output_path+'_input')
         else:
             logger.warning('loader_config is None, reconstruction, segmentation, conditional generation and interpolation will be ignored.')
             cond = None
@@ -327,7 +328,7 @@ def test(test_config,
             sampler = None
             sampler_config = eval_gen_config.get('sampler', {'name':'NormalSampler'})
             if sampler_config:
-                sampler = create_loader_fn(model=model, sampler_config = sampler_config)
+                sampler = create_sampler_fn(model=model, sampler_config = sampler_config)
             else:
                 logger.error("Sampler is not specified for generation.")
                 exit(1)
@@ -361,7 +362,7 @@ def test(test_config,
                         for iid, _x_bar in enumerate(x_bar):
                             x_bar_np = _x_bar.cpu().detach().numpy()
                             output_path = os.path.join(gen_dir, 'gen_inter_group{:02d}_{:02d}'.format(gid, iid))
-                            save_data(x_bar_np, model.data_form, output_path)
+                            save_data_fn(x_bar_np, model.data_form, output_path)
                         if model.data_form == DataForm.IMG and model.encoder.dim == 2:
                             x_bar = F.interpolate(x_bar, size=(32, 32))
                             save_path = os.path.join(gen_dir, 'gen_inter_group{:02d}.png'.format(gid))
@@ -381,7 +382,7 @@ def test(test_config,
                     for iid, _x_bar in enumerate(x_bar):
                         x_bar_np = _x_bar.cpu().detach().numpy()
                         output_path = os.path.join(gen_dir, 'gen_rand_{:02d}'.format(iid))
-                        save_data(x_bar_np, model.data_form, output_path)
+                        save_data_fn(x_bar_np, model.data_form, output_path)
                     if model.data_form == DataForm.IMG and \
                             len(model.get_input_shape()) == 3:
                         x_bar = F.interpolate(x_bar, size=(32, 32))

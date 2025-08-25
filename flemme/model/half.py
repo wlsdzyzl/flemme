@@ -54,7 +54,7 @@ class OnlyEncoder(nn.Module):
     def __str__(self):
         _str = '********************* OnlyEncoder ({}) *********************\n------- Encoder -------\n{}'.format(self.encoder_name, self.encoder.__str__())
         return _str
-    def encode(self, x, c = None):
+    def parse_condition(self, x, c):
         if self.is_conditional:
             if c is not None:
                 c = self.en_cemb(c)
@@ -70,8 +70,10 @@ class OnlyEncoder(nn.Module):
         else:
             logger.debug('Model\'s encoder cannot compute condition embedding. Input condition will be ignored.')
             c = None
-        res = self.encoder(x, c = c)
-        return res
+        return x, c
+    def encode(self, x, c = None):
+        x, c = self.parse_condition(x, c)
+        return self.encoder(x, c = c)
 
     def forward(self, x, c = None):
         return self.encode(x, c = c)
@@ -143,7 +145,7 @@ class OnlyDecoder(nn.Module):
         _str = '********************* OnlyDecoder ({}) *********************\n------- Decoder -------\n{}'.format(self.decoder_name, self.decoder.__str__())
         return _str
     ### usually t-embedding should be the same for encoder and decoder
-    def decode(self, z, c = None):
+    def parse_condition(self, z, c):
         if self.is_conditional:
             if c is not None:
                 c = self.de_cemb(c)
@@ -159,6 +161,9 @@ class OnlyDecoder(nn.Module):
         else:
             logger.debug('Model\'s decoder cannot compute condition embedding. Input condition will be ignored.')
             c = None
+        return z, c
+    def decode(self, z, c = None):
+        z, c = self.parse_condition(z, c)
         return self.decoder(z, c = c)
 
     def forward(self, z, c = None):

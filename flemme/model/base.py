@@ -128,7 +128,7 @@ class BaseModel(nn.Module):
     def __str__(self):
         _str = '********************* BaseModel ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
-    def encode(self, x, t = None, c = None):
+    def parse_encoder_condition(self, x, c):
         if self.condition_for_encoder:
             if c is not None:
                 c = self.en_cemb(c)
@@ -144,10 +144,8 @@ class BaseModel(nn.Module):
         else:
             logger.debug('Model\'s encoder cannot compute condition embedding. Input condition will be ignored.')
             c = None
-        res = self.encoder(x, t = t, c = c)
-        return res
-    ### usually t-embedding should be the same for encoder and decoder
-    def decode(self, z, t = None, c = None):
+        return x, c
+    def parse_decoder_condition(self, z, c):
         if self.condition_for_decoder:
             if c is not None:
                 c = self.de_cemb(c)
@@ -166,21 +164,37 @@ class BaseModel(nn.Module):
         else:
             logger.debug('Model\'s decoder cannot compute condition embedding. Input condition will be ignored.')
             c = None
-        return self.decoder(z, t = t, c = c)
-
-    def forward(self, x, t = None, c = None, return_z = False):
+        return z, c
+    
+    def parse_timestep(self, t):
         if t is not None:
             if self.with_time_embedding:
                 t = self.t_embed(t)
             else:
                 logger.warning("There is no time embedding for this model, the input time step will be ignored.")
                 t = None
-        if self.with_time_embedding:
-            z = self.encode(x, t = t, c = c)
-            res = self.decode(z, t = t, c = c)
-        else:
-            z = self.encode(x, c = c)
-            res = self.decode(z, c = c)
+        return t
+        
+    def encode(self, x, c = None, **kwargs):
+        x, c = self.parse_encoder_condition(x, c)
+        if c is not None:
+            kwargs = kwargs | {'c': c}
+        return self.encoder(x, **kwargs)
+    
+    def decode(self, z, c = None, **kwargs):
+        z, c = self.parse_decoder_condition(z, c)
+        if c is not None:
+            kwargs = kwargs | {'c': c}
+        return self.decoder(z, **kwargs)
+
+    def forward(self, x, t = None, c = None, return_z = False):
+        ### t-embedding should be the same for encoder and decoder
+        t = self.parse_timestep(t)
+        kwargs = {}
+        if t is not None:
+            kwargs = kwargs | {'t': t}
+        z = self.encode(x, c = c, **kwargs)
+        res = self.decode(z, c = c, **kwargs)
         if return_z:
             return res, z
         return res
@@ -223,7 +237,7 @@ class HBaseModel(BaseModel):
         encoder_config = model_config['encoder']
         encoder_config['return_feature_list'] = True
         super().__init__(model_config, create_encoder_fn)
-        assert self.data_form == DataForm.IMG, "Currently, HSeM only support image data."
+        assert self.data_form == DataForm.IMG, "Currently, HBase only support image data."
 
         self.inter_mode = model_config.get('interpolation_mode', 'nearest')
         combine = model_config.get('combine', 'cat')
@@ -276,25 +290,15 @@ class HBaseModel(BaseModel):
         _str = '********************* HBaseModel ({} - {}) *********************\n------- Encoder -------\n{}------- Decoder -------\n{}'.format(self.encoder_name, self.decoder_name, self.encoder.__str__(), self.decoder.__str__())
         return _str
     def forward(self, x, t = None, c = None, return_z = False):
+        t = self.parse_timestep(t)
+        kwargs = {}
         if t is not None:
-            if self.with_time_embedding:
-                t = self.t_embed(t)
-            else:
-                logger.warning("There is no time embedding for this model, the input time step will be ignored.")
-                t = None
-        if self.with_time_embedding:
-            z = self.encode(x, t = t, c = c)
-        else:
-            z = self.encode(x, c = c)
+            kwargs = kwargs | {'t': t}
+        z = self.encode(x, c = c, **kwargs)
         en_feature = z
         if type(en_feature) == tuple:
             en_feature = en_feature[0]
-        #### t is None
-        ## de_features is None
-        if self.with_time_embedding:
-            x, de_features = self.decode(z, t = t, c = c)
-        else:
-            x, de_features = self.decode(z, c = c)
+        x, de_features = self.decode(z, c = c, **kwargs)
         features = [en_feature,] + de_features
         h_x = []
         for i in range(len(features)):

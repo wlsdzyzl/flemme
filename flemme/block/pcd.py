@@ -220,14 +220,15 @@ class GroupSeqModelingLayer(nn.Module):
         self.bb = BuildingBlock(in_channel = in_channel,
                                 out_channel = out_channel) 
     ## input: grouped points (B, N, K, C)
-    def forward(self, x, t, c):
+    def forward(self, x, t = None, c = None):
         B, N, K, _ = x.shape
         # B * N * K * 2D -> (B * N) * K * 2D
         x = x.reshape(B * N, K, -1)
         # B * D -> B * N * D
         if t is not None:
-            t = t.unsqueeze(1).expand(-1, N, -1)
-            t = t.reshape(B * N, -1)
+            t = t.repeat_interleave(N, dim = 0)
+        if c is not None:
+            c = c.repeat_interleave(N, dim = 0)
         x = self.bb(x, t = t, c = c)
         # (B * N) * K * D -> B * N * K * D
         x = x.reshape(B, N, K, -1)

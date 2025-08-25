@@ -63,6 +63,6 @@ def create_model(model_config,
     if model_name in supported_models:
         model_class = supported_models[model_name]
     else:
-        logger.error(f'Unsupported model class: {model_name}')
+        logger.error(f'Unsupported model class: {model_name}, should be one of {supported_models.keys()}')
         exit(1)
     return model_class(model_config, create_encoder_fn = create_encoder_fn)

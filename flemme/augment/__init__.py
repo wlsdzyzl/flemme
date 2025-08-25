@@ -96,11 +96,11 @@ def select_label_transforms(trans_config_list, data_form):
         selector = seg_label_transform_table['pcd']
     elif data_form == DataForm.GRAPH:
         selector = seg_label_transform_table['graph']
+    
     for t in trans_config_list:
         if contains_one_of(t['name'].lower(), selector):
             ### for 3D image, the name is elastic deform instead of elastic transform (torch)
             if t['name'] == 'ElasticDeform':
                 t['spline_order'] = 0
             label_config_list.append(t)
-            break
     return label_config_list
