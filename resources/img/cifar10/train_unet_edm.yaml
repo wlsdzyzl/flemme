@@ -31,6 +31,7 @@ model:
         type: categories
         out_channel: 128
         num_classes: 10
+        apply_onehot: True
   classifier_free_guidance:
     condition_dropout: 0.2
     guidance_weight: 2.0

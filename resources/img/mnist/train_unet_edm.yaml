@@ -22,17 +22,19 @@ model:
       normalization: group
       num_norm_groups: 16
       dropout: 0.1
-    # condition_embedding:
-    #   combine_condition: add
-    #   merge_timestep_and_condition: true
-    #   encoder:
-    #     name: OneHot
-    #     type: categories
-    #     out_channel: 128
-    #     num_classes: 10
-  # classifier_free_guidance:
-  #   condition_dropout: 0.2
-  #   guidance_weight: 2.0
+    condition_embedding:
+      combine_condition: injection
+      condition_injection: add_to_time
+      encoder:
+        name: OneHot
+        type: categories
+        out_channel: 128
+        num_classes: 10
+        apply_onehot: True
+      decoder: same_as_encoder
+  classifier_free_guidance:
+    condition_dropout: 0.2
+    guidance_weight: 2.0
   ## 2D ddpm
   eps_loss:
     name: MSE

@@ -26,13 +26,15 @@ model:
       dropout: 0.1
       ## the value can be list or int
     condition_embedding:
-      combine_condition: add
-      merge_timestep_and_condition: true
+      combine_condition: injection
+      condition_injection: add_to_time
       encoder:
         name: OneHot
         type: categories
         out_channel: 128
         num_classes: 10
+        apply_onehot: True
+      decoder: same_as_encoder
   classifier_free_guidance:
     condition_dropout: 0.2
     guidance_weight: 2.0

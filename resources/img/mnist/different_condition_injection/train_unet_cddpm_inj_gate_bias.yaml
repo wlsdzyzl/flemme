@@ -34,6 +34,7 @@ model:
         type: categories
         out_channel: 128
         num_classes: 10
+        apply_onehot: True
       decoder: same_as_encoder
       ## allow an asummetrical architecture
       # decoder_dense_channels: [128 256]

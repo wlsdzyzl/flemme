@@ -37,6 +37,7 @@ model:
         type: categories
         out_channel: 128
         num_classes: 10
+        apply_onehot: True
       decoder: same_as_encoder
   # classifier_free_guidance:
   #   condition_dropout: 0.2

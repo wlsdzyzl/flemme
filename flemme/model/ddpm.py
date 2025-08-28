@@ -279,8 +279,7 @@ class DiffusionProbabilistic(nn.Module):
         # Sample $x_t$ for $q(x_t|x_0)$
         xt, eps = self.add_noise(x0, t)
         # Get $\textcolor{lightgreen}{\epsilon_\theta}(\sqrt{\bar\alpha_t} x_0 + \sqrt{1-\bar\alpha_t}\epsilon, t)$
-        if not self.eps_model.is_conditional or \
-            self.classifier_free and torch.rand(1).item() < self.condition_dropout:
+        if self.classifier_free and torch.rand(1).item() < self.condition_dropout:
             c = None
         model_out = self.eps_model(xt, t = t, c = c) 
         # hierarchical base model

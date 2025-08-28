@@ -40,6 +40,18 @@ class EDM(nn.Module):
         self.is_supervised = False
         self.data_form = self.eps_model.data_form
 
+        ### classifier-free guided ddpm
+        classifier_free_config = model_config.get('classifier_free_guidance', None)
+        self.classifier_free = classifier_free_config is not None
+        if self.classifier_free:
+            self.condition_dropout = classifier_free_config.get('condition_dropout', 0.1)
+            self.guidance_weight = classifier_free_config.get('guidance_weight', 1.0)
+            logger.info('Using classifier-free guidance with {} condition dropout and weight = {}'.format(self.condition_dropout, self.guidance_weight))
+            
+            if self.eps_model.combine_condition == 'cat':
+                logger.error('Diffusion model with classifier-free guidance doesn\'t support concatination of conditions.')
+                exit(1)
+
         # self.eps_model, self.eps_model_name = \
         #     self.__create_eps_model(eps_config)
         eps_loss_config = model_config.get('eps_loss', {'name':'MSE'})
@@ -92,7 +104,7 @@ class EDM(nn.Module):
         # Main sampling loop.
         x_next = latents.to(torch.float64) * t_steps[0]
         if return_processing:
-            processing = [x_next.float32()]
+            processing = [x_next.float()]
         for i, (t_cur, t_next) in enumerate(zip(t_steps[:-1], t_steps[1:])): # 0, ..., N-1
             x_cur = x_next
 
@@ -109,29 +121,31 @@ class EDM(nn.Module):
 
             # Apply 2nd order correction.
             if i < num_steps - 1:
-                denoised = self.denoise(x_next, t_next, c).to(torch.float64)
+                denoised = self.denoise(x_next, t_next, c, sampling = True).to(torch.float64)
                 d_prime = (x_next - denoised) / t_next
                 x_next = x_hat + (t_next - t_hat) * (0.5 * d_cur + 0.5 * d_prime)
             if return_processing:
-                processing.append(x_next.float32())
+                processing.append(x_next.float())
         if return_processing:
             return processing
-        return x_next
+        return x_next.float()
 
-    def denoise(self, x, sigma, cond):
-                
-        x = x.to(torch.float32)
-        sigma = sigma.to(torch.float32).reshape(self.sigma_shape)
-        dtype = torch.float32
-
+    def denoise(self, x, sigma, cond, sampling = False):   
+        x = x.float()
+        sigma = sigma.float().reshape(self.sigma_shape)
+        if sigma.shape[0] == 1:
+            sigma = sigma.expand((x.shape[0], ) + (-1, ) * (x.ndim - 1))
+        
         c_skip = self.sigma_data ** 2 / (sigma ** 2 + self.sigma_data ** 2)
         c_out = sigma * self.sigma_data / (sigma ** 2 + self.sigma_data ** 2).sqrt()
         c_in = 1 / (self.sigma_data ** 2 + sigma ** 2).sqrt()
         c_noise = sigma.log() / 4
-
-        F_x = self.eps_model((c_in * x).to(dtype), t = c_noise.flatten(), c = cond)
-        assert F_x.dtype == dtype
-        D_x = c_skip * x + c_out * F_x.to(torch.float32)
+        F_x = self.eps_model(c_in * x, t = c_noise.flatten(), c = cond)
+        if sampling and self.classifier_free:
+            F_x_cf = self.eps_model(c_in * x, t = c_noise.flatten())
+            F_x = (1.0 + self.guidance_weight) * F_x \
+                - self.guidance_weight * F_x_cf  
+        D_x = c_skip * x + c_out * F_x
         return D_x
 
     def round_sigma(self, sigma):
@@ -193,5 +207,7 @@ class EDM(nn.Module):
         weight = (sigma ** 2 + self.sigma_data ** 2) / (sigma * self.sigma_data) ** 2
         n = torch.randn_like(x) * sigma.reshape(self.sigma_shape)
         ### sigma is time step, c is condition
+        if self.classifier_free and torch.rand(1).item() < self.condition_dropout:
+            c = None
         D_yn = self.denoise(x + n, sigma, c)
         return {'recon_dpm': D_yn, 'weight_dpm': weight}
