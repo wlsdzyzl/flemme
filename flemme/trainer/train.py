@@ -233,9 +233,8 @@ def train(train_config,
     ## pickled result during traning should never be used later
     if pickle_results:
         mkdirs(pickle_path)
-
+    start_time = datetime.now()
     for epoch in range(start_epoch, max_epoch+1):
-        start_time = datetime.now()
         ### training process
         model.train()
         results = []
@@ -305,7 +304,7 @@ def train(train_config,
 
         ### training epoch finished
         logger.info('epoch {:03d}/{:03d}, training loss: {}'.format(epoch, max_epoch, loss.item()))
-        remaining_time = (datetime.now() - start_time) * (max_epoch - epoch)
+        remaining_time = (datetime.now() - start_time) * (max_epoch - epoch) / (epoch + 1 - start_epoch)
         logger.info(f'The training is expected to be completed in {str(remaining_time)}.')
 
         if epoch > warmup_epochs and lr_scheduler is not None:

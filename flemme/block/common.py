@@ -1,6 +1,6 @@
 # some building blocks
 import torch
-import torch.nn.functional as F
+from torch.nn import functional as F, init
 from torch import nn
 from torch import fft
 import math
@@ -423,7 +423,18 @@ class GateBiasBlock(nn.Module):
         bias = expand_as(self.hyper_bias(t), x, channel_dim = self.channel_dim)
         x = x * (1 + gate) + bias
         return x
-    
+## similar to learnable parameters in LayerNorm
+class ScaleShiftBlock(nn.Module):
+    def __init__(self, feature_shape):
+        super().__init__()
+        self.scale = nn.Parameter(
+            torch.ones(feature_shape)
+        )
+        self.shift = nn.Parameter(
+            torch.zeros(feature_shape)
+        )
+    def forward(self, x):
+        return x * self.scale + self.shift
 ## transfer class label to one-hot vector which is encoded through FC block.
 class OneHotEmbeddingBlock(nn.Module):
     def __init__(self, num_classes, out_channel, activation, apply_onehot = True):

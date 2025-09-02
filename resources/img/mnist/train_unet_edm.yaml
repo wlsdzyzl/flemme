@@ -24,7 +24,7 @@ model:
       dropout: 0.1
     condition_embedding:
       combine_condition: injection
-      condition_injection: add_to_time
+      condition_injection: gate_bias
       encoder:
         name: OneHot
         type: categories
@@ -54,7 +54,7 @@ loader:
     - name: Normalize
       mean: [0.5]
       std: [0.5]
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/EDM
+check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/CEDM
 sampler:
   rand_seed: 2024
 ### parameter for optimizer
