@@ -68,6 +68,7 @@ def test(test_config,
             torch.backends.cudnn.benchmark = False
             
         #### create model
+        model_name = model_config.get('name')
         model = create_model_fn(model_config)
         is_conditional = model.is_conditional
         is_supervised = model.is_supervised
@@ -79,10 +80,28 @@ def test(test_config,
         if model_path is None:
             logger.info('You are testing a model that has never been trained before.')
         else:
-            ignore_mismatched_keys = test_config.get('ignore_mismatched_keys', [])
-            ## load check point
-            load_checkpoint(model_path, model, ignore_mismatched_keys = ignore_mismatched_keys)
-
+            ignore_mismatched_keys = test_config.get('ignore_mismatched_keys', None)
+            if type(model_path) == str:
+                if os.path.isfile(model_path):
+                    load_checkpoint(model_path, model, 
+                                    ignore_mismatched_keys = ignore_mismatched_keys)
+                else:
+                    logger.warning('Trained model doesn\'t exist. You are testing a model that has never been trained before.')
+            else:
+                assert type(model_path) == dict, \
+                    "model_path should be a model path (str) or pathes of sub-models (dict)."
+                assert ignore_mismatched_keys is None or type(ignore_mismatched_keys) == dict, \
+                    "ignore_mismatched_keys should be a dict when model_path is a dict."
+                load_part = False
+                for key in model_path.keys():
+                    hasattr(model, key), \
+                        "Unknown submodel {} for model {}".format(key, model_name)
+                    if os.path.isfile(model_path[key]):
+                        load_checkpoint(model_path[key], getattr(model, key), 
+                                        ignore_mismatched_keys=ignore_mismatched_keys.get(key, None) if ignore_mismatched_keys else None)
+                        load_part = True
+                if not load_part:
+                    logger.warning('Trained model doesn\'t exist. You are testing a model that has never been trained before.')
         model = model.to(device)
         ## turn to evaluation
         model.eval()
@@ -220,11 +239,7 @@ def test(test_config,
                             filename = 'sample_{:03d}'.format(sample_idx)
                         class_name = None
                         if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
-                            if is_supervised:
-                                class_name = origin_path.split('/')[-3]
-                            else:
-                                class_name = origin_path.split('/')[-2]
-                        if class_name:
+                            class_name = origin_path.split('/')[-2]
                             output_dir = os.path.join(recon_dir, class_name)
                             mkdirs(output_dir)
                             output_path = os.path.join(output_dir, filename)
@@ -252,7 +267,15 @@ def test(test_config,
                             filename = os.path.basename(origin_path).split('.')[0]
                         else:
                             filename = 'sample_{:03d}'.format(sample_idx)
-                        output_path = os.path.join(seg_dir, filename)
+
+                        class_name = None
+                        if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
+                            class_name = origin_path.split('/')[-2]
+                            output_dir = os.path.join(seg_dir, class_name)
+                            mkdirs(output_dir)
+                            output_path = os.path.join(output_dir, filename)
+                        else:
+                            output_path = os.path.join(seg_dir, filename)
                         
                         ### transfer onehot to normal label for non-binary segmentation
                         seg = onehot_to_label(seg, channel_dim=channel_dim, keepdim=True) if seg.shape[channel_dim] > 1 else seg
@@ -301,7 +324,15 @@ def test(test_config,
                                 filename = os.path.basename(origin_path).split('.')[0]
                             else:
                                 filename = 'sample_{:03d}'.format(sample_idx)
-                            output_path = os.path.join(res_dir, filename)
+
+                            class_name = None
+                            if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
+                                class_name = origin_path.split('/')[-2]
+                                output_dir = os.path.join(res_dir, class_name)
+                                mkdirs(output_dir)
+                                output_path = os.path.join(output_dir, filename)
+                            else:
+                                output_path = os.path.join(res_dir, filename)
                             save_data_fn(res_data, data_form=model.data_form, output_path=output_path)
                             sample_idx += 1
                         if save_target and len(results['target']) > 0:

@@ -20,7 +20,8 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
         mask_array = (mask_array == label_value)
 
     
-    mask_array = binary_erosion(binary_dilation(mask_array, iterations=4), iterations=4)
+    mask_array = binary_dilation(mask_array, iterations=4)
+    mask_array = binary_erosion(mask_array, iterations=4)
     vol_coor = get_coordinates(mask_array.shape)
     # normalize to [-1, 1]
     if normalized:
@@ -83,6 +84,7 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
 
         for i, l in enumerate(idx):
             _mask_array = (label_array == l)
+            _mask_array = binary_dilation(_mask_array, iterations=2)
             save_points(_mask_array, suffix = f'_{i}')
         
 

@@ -168,6 +168,14 @@ You can download *MedPointS* from this [link](https://pan.baidu.com/s/1OKiglb6Ft
 
 Alternatively, you can use load the dataset from Hugging Face: [MedPoints-cls](https://huggingface.co/datasets/wlsdzyzl/MedPointS-cls) , [MedPoints-cpl](https://huggingface.co/datasets/wlsdzyzl/MedPointS-cpl), and [MedPoints-seg](https://huggingface.co/datasets/wlsdzyzl/MedPointS-seg) for classification, completion, and segmentation tasks. 
 
+### ATTENTION!!!
+
+If you want to load completion dataset from MedPoints through the current version of `Flemme`, please make sure the dataset samples are stored as `/dataset_path/subfold/class_name/data_sample1.ply`. You can use `script/reorganize_cpl_cls_datasets.py` to reorganize the directory structure. The following command will transfer `/dataset_path/class_name/subfold/data_sample1.ply` to `/dataset_path/subfold/class_name/data_sample1.ply`.
+
+```bash
+python reorganize_cls_datasets.py --dataset_path /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold5
+```
+
 ## Play with Flemme
 #### Toy Example for Diffusion model
 Configuration file: `resources/toy_ddpm.yaml`

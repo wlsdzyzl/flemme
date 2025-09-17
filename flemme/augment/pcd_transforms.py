@@ -78,7 +78,7 @@ class FixedPoints(object):
         elif method == 'qfps':
             self.fpsampler = partial(fpsample.bucket_fps_kdline_sampling, n_samples = self.num, h = kdtree_height)
         else:
-            assert method == 'random', f'Unsupported sample strategy: {method}'
+            assert method == 'random', f'Unsupported sample strategy: {method}, should be one of ["random", "fps", "qfps"].'
     def __call__(self, data):
         key = None
         if type(data) == tuple:

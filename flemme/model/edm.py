@@ -7,20 +7,22 @@ import torch.nn.functional as F
 from flemme.model.base import HBaseModel as HBase
 from flemme.loss import get_loss
 from flemme.logger import get_logger
-from flemme.model.ddpm import _create_eps_model
+from flemme.model.ddpm import supported_eps_models
 
 logger = get_logger('model.edm')
 
 
 class EDM(nn.Module):
 
-    def __init__(self, model_config, create_encoder_fn):
+    def __init__(self, model_config, create_model_fn):
         super().__init__()
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         eps_config = model_config.get('eps_model')
         eps_config['loss_reduction'] = self.loss_reduction
-        self.eps_model, self.eps_model_name = \
-            _create_eps_model(eps_config, create_encoder_fn)
+        if not eps_config.get('name', 'Base') in supported_eps_models:
+            logger.error(f'Unsupported model class for diffusion eps model: {model_config.get("name", "Base")}, should be one of {supported_eps_models}')
+            exit(1)
+        self.eps_model = create_model_fn(eps_config)
         self.num_steps = model_config.get('num_steps', 20)
 
         self.sigma_min = model_config.get('sigma_min', 0.002)
@@ -51,9 +53,6 @@ class EDM(nn.Module):
             if self.eps_model.combine_condition == 'cat':
                 logger.error('Diffusion model with classifier-free guidance doesn\'t support concatination of conditions.')
                 exit(1)
-
-        # self.eps_model, self.eps_model_name = \
-        #     self.__create_eps_model(eps_config)
         eps_loss_config = model_config.get('eps_loss', {'name':'MSE'})
         eps_loss_config['reduction'] = self.loss_reduction
         self.eps_loss_name = eps_loss_config.get('name')

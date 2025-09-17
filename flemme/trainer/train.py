@@ -87,6 +87,7 @@ def train(train_config,
     writer = SummaryWriter(log_dir = os.path.join(ckp_dir, 'logs'))
     custom_write_results = train_config.get('custom_write_results', [])
     #### create model
+    model_name = model_config.get('name')
     model = create_model_fn(model_config)
 
     logger.info("model info:\n{}".format(model))
@@ -150,7 +151,6 @@ def train(train_config,
     if eval_batch_num < 0:
         eval_batch_num = float('inf')
     write_sample_num = train_config.get('write_sample_num', 16)
-    ignore_mismatched_keys = train_config.get('ignore_mismatched_keys', [])
     clip_grad = train_config.get('clip_grad', None)
     ## if scheduler is OneCycleLR, set as True
     ## otherwise, scheduler is called after a training epoch
@@ -179,29 +179,50 @@ def train(train_config,
     ## load model from check points
     pretrained = train_config.get('pretrained', None)
     resume = train_config.get('resume', False)
-
     if pretrained and resume:
         logger.error('Only one of pretrained and resume can be specified.')
         exit(1)
-
-    if pretrained:
+    elif pretrained is None and not resume:
+        logger.info('Model will be trained from scratch.')
+    elif pretrained:
         logger.info(f'Using pre-trained model: {pretrained}')
         pretrained_components = train_config.get('pretrained_components', None)
-        if os.path.isfile(pretrained):
-            load_checkpoint(pretrained, model, 
-                            ignore_mismatched_keys = ignore_mismatched_keys, 
-                            specified_model_componets = pretrained_components)
+        ignore_mismatched_keys = train_config.get('ignore_mismatched_keys', None)
+        if type(pretrained) == str:
+            if os.path.isfile(pretrained):
+                load_checkpoint(pretrained, model, 
+                                ignore_mismatched_keys = ignore_mismatched_keys, 
+                                specified_model_components = pretrained_components)
+            else:
+                logger.warning('Pretrained model doesn\'t exist. Model will be trained from scratch.')
         else:
-            logger.warning('Pretrained model doesn\'t exist. Model will be trained from scratch.')
-    if resume:
+            assert type(pretrained) == dict, \
+                "pretrained should be a model path (str) or pathes of sub-models (dict)."
+            assert pretrained_components is None or type(pretrained_components) == dict, \
+                "pretrained_components should be a dict when pretrained is a dict."
+            assert ignore_mismatched_keys is None or type(ignore_mismatched_keys) == dict, \
+                "ignore_mismatched_keys should be a dict when pretrained is a dict."
+            load_part = False
+            for key in pretrained.keys():
+                hasattr(model, key), \
+                    "Unknown submodel {} for model {}".format(key, model_name)
+                if os.path.isfile(pretrained[key]):
+                    load_checkpoint(pretrained[key], getattr(model, key), 
+                                    ignore_mismatched_keys=ignore_mismatched_keys.get(key, None) if ignore_mismatched_keys else None,
+                                    specified_model_components=pretrained_components.get(key, None) if pretrained_components else None)
+                    load_part = True
+            if not load_part:
+                logger.warning('Pretrained model doesn\'t exist. Model will be trained from scratch.')
+    else:
+        ## resume
         if isinstance(resume, str):
             resume_pth = resume
         else:
             resume_pth = os.path.join(ckp_dir, "ckp_last.pth")
         if os.path.isfile(resume_pth):
             logger.info(f'Resume from old pth: {resume_pth}')
-            state = load_checkpoint(resume_pth, model, optimizer=optimizer, scheduler=lr_scheduler, 
-                                ignore_mismatched_keys = ignore_mismatched_keys)
+            state = load_checkpoint(resume_pth, model, 
+                optimizer=optimizer, scheduler=lr_scheduler)
             if state is not None:
                 best_loss = state['best_loss']
                 logger.info(f'previous best loss: {best_loss}')

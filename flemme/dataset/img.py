@@ -352,7 +352,7 @@ class ImgSegWithClassLabelDataset(Dataset):
         class_dirs = list(cls_label.keys())
 
         for cls_dir in class_dirs:
-            sub_path_list = sorted(glob(os.path.join(data_path, cls_dir, data_dir,  "*" + data_suffix)))
+            sub_path_list = sorted(glob(os.path.join(data_path, data_dir, cls_dir, "*" + data_suffix)))
             self.img_path_list = self.img_path_list + sub_path_list
             sub_mask_path_list = [rreplace(rreplace(s, data_dir, label_dir, 1), data_suffix, label_suffix, 1) for s in sub_path_list]
             self.mask_path_list = self.mask_path_list + sub_mask_path_list
@@ -433,7 +433,7 @@ class ImgReconWithClassLabelDataset(Dataset):
         class_dirs = list(cls_label.keys())
 
         for cls_dir in class_dirs:
-            sub_path_list = sorted(glob(os.path.join(data_path, cls_dir, data_dir,  "*" + data_suffix)))
+            sub_path_list = sorted(glob(os.path.join(data_path, data_dir, cls_dir, "*" + data_suffix)))
             self.img_path_list = self.img_path_list + sub_path_list
             sub_target_path_list = [rreplace(rreplace(s, data_dir, target_dir, 1), data_suffix, target_suffix, 1) for s in sub_path_list]
             self.target_path_list = self.target_path_list + sub_target_path_list

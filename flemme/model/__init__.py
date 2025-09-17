@@ -13,7 +13,7 @@ from flemme.utils import load_config
 from flemme.logger import get_logger
 from flemme.encoder import create_encoder
 logger = get_logger('model.create_model')
-supported_models = {
+supported_underlying_models = {
     #### base model
     'Base': Base,
     #### h-base model
@@ -30,6 +30,12 @@ supported_models = {
     'HAE': HAE,
     #### variational auto-encoder: kl-regularized auto encoder (with KL loss)
     'VAE': VAE,
+    #### model with only encoder
+    'OnlyEncoder': OnlyEncoder,
+    #### model with only decoder
+    'OnlyDecoder': OnlyDecoder
+}
+supported_high_level_models = {
     #### diffusion model
     'DDPM': DDPM,
     #### diffusion implicit model
@@ -40,29 +46,29 @@ supported_models = {
     'LDM': LDM,
     #### supervised diffusion model: use for reconstruction or segmentation
     'SDM': SDM,
-    #### model with only encoder
-    'OnlyEncoder': OnlyEncoder,
-    #### model with only decoder
-    'OnlyDecoder': OnlyDecoder
 }
 def create_model(model_config, 
-    supported_models = supported_models, 
-    create_encoder_fn = create_encoder):
+    supported_underlying_models = supported_underlying_models,
+    supported_high_level_models = supported_high_level_models,
+    create_encoder_fn = create_encoder,
+    create_model_fn = None):
     tmpl_path = model_config.pop('template_path', None)
     if tmpl_path is not None:
         logger.info('creating model from template ...')
         model_config = load_config(tmpl_path).get('model')
         return create_model(model_config, 
-                        supported_models, 
+                        supported_underlying_models,
+                        supported_high_level_models,
                         create_encoder_fn)
     
-    logger.info('creating model from specific configuration ...')
-    
     model_name = model_config.pop('name', 'Base')
-    model_class = None
-    if model_name in supported_models:
-        model_class = supported_models[model_name]
+    if model_name in supported_underlying_models:
+        logger.info('creating underlying model from specific configuration ...')
+        return supported_underlying_models[model_name](model_config, create_encoder_fn = create_encoder_fn)
+    elif model_name in supported_high_level_models:
+        logger.info('creating high-level model from specific configuration ...')
+        create_model_fn = create_model_fn or create_model
+        return supported_high_level_models[model_name](model_config, create_model_fn = create_model_fn)
     else:
-        logger.error(f'Unsupported model class: {model_name}, should be one of {supported_models.keys()}')
+        logger.error(f'Unsupported model class: {model_name}, should be one of {supported_underlying_models.keys() + supported_high_level_models.keys() }')
         exit(1)
-    return model_class(model_config, create_encoder_fn = create_encoder_fn)

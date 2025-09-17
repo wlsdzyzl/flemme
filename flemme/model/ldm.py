@@ -6,7 +6,7 @@ from .ddim import DiffusionImplicit as DDIM
 from .ae import AutoEncoder as AE
 from .vae import VariationalAutoEncoder as VAE
 from .edm import EDM
-from flemme.utils import freeze, unfreeze, load_checkpoint
+from flemme.utils import freeze, unfreeze
 from flemme.logger import get_logger
 
 import torch
@@ -14,32 +14,17 @@ import torch.nn as nn
 logger = get_logger('model.ldm')
 ### perform diffusion on latent space
 ### LDM needs a pre-trained auto-encoder
-supported_ae_models = {'AE': AE, 'VAE': VAE}
-supported_diff_models = {'DDPM': DDPM, 'DDIM': DDIM, 'EDM': EDM}
-
-def create_ae_model(ae_config, create_encoder_fn):
-    model_name = ae_config.pop('name', 'VAE')
-    if not model_name in supported_ae_models:
-        raise RuntimeError(f'Unsupported model class: {model_name}')
-    ae_model = supported_ae_models[model_name](ae_config, create_encoder_fn)
-    return ae_model, model_name
-
-def create_diff_model(diff_config, create_encoder_fn):
-    model_name = diff_config.pop('name', 'DDPM')
-    if not model_name in supported_diff_models:
-        raise RuntimeError(f'Unsupported model class: {model_name}')
-    diff_model = supported_diff_models[model_name](diff_config, create_encoder_fn)
-    return diff_model, model_name
+supported_ae_models = ['AE', 'VAE']
+supported_diff_models = ['DDPM', 'DDIM', 'EDM']
 
 
 class LatentDiffusion(nn.Module):
 
-    def __init__(self, model_config, create_encoder_fn):
+    def __init__(self, model_config, create_model_fn):
         super().__init__()
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
 
         ae_config = model_config.pop('autoencoder', None)
-        ae_path = model_config.get('autoencoder_path', None)
         self.freezed_ae = model_config.get('freezed_ae', True)
 
         diff_config = model_config.pop('diffusion', None)
@@ -49,12 +34,16 @@ class LatentDiffusion(nn.Module):
         assert diff_config is not None, 'LDM needs a diffusion model to generate latents.'            
         ae_config['loss_reduction'] = self.loss_reduction
         diff_config['loss_reduction'] = self.loss_reduction
-        self.ae_model, self.ae_model_name = create_ae_model(ae_config, create_encoder_fn)
-        self.diff_model, self.diff_model_name = create_diff_model(diff_config, create_encoder_fn)
+        if not ae_config.get('name', 'AE') in supported_ae_models:
+            logger.error(f'Unsupported autoencoder model for latent diffusion: {ae_config.get("name", "AE")}, should be one of {supported_ae_models}.')
+            exit(1)
+        self.ae_model = create_model_fn(ae_config)
+        if not diff_config.get('name', 'DDPM') in supported_diff_models:
+            logger.error(f'Unsupported diffusion model class for latent diffusion: {diff_config.get("name", "DDPM")}, should be one of {supported_diff_models}.')
+            exit(1)
+        self.diff_model = create_model_fn(diff_config)
         
-        if ae_path is not None:
-            load_checkpoint(ae_path, self.ae_model)
-            logger.info('Using pre-trained AE model.')
+
         if self.freezed_ae: freeze(self.ae_model)
         else:
             logger.info('AE model is not freezed, DDPM and AE will be trained at the same time.')
@@ -76,7 +65,7 @@ class LatentDiffusion(nn.Module):
             ac = c 
         if self.diff_model.is_conditional:
             ec = c
-        z0 = self.diff_model.sample(xt = zt, c = ec, 
+        z0 = self.diff_model.sample(zt, c = ec, 
                 return_processing = return_processing, 
                 **kwargs)
         ### return processing

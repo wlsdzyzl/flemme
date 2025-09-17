@@ -35,27 +35,30 @@ def cosine_schedule(num_steps, max_beta = 0.999):
         beta.append( min(1 - cos(t2) / cos(t1), max_beta) )
     return torch.Tensor(beta)
 
-supported_eps_models = {'Base': Base, 'HBase': HBase}
+supported_eps_models = ['Base', 'HBase']
 
-def _create_eps_model(eps_config, create_encoder_fn):
-    model_name = eps_config.pop('name', 'Base')
-    if not model_name in supported_eps_models:
-        raise RuntimeError(f'Unsupported model class: {model_name}')
-    eps_model = supported_eps_models[model_name](eps_config, create_encoder_fn)
-    assert eps_model.with_time_embedding, \
-        'You need a encoder with time embedding for ddpm.'
-    return eps_model, model_name
+# def _create_eps_model(eps_config, create_encoder_fn):
+#     model_name = eps_config.pop('name', 'Base')
+#     if not model_name in supported_eps_models:
+#         raise RuntimeError(f'Unsupported model class: {model_name}')
+#     eps_model = supported_eps_models[model_name](eps_config, create_encoder_fn)
+
+#     return eps_model, model_name
 
 class DiffusionProbabilistic(nn.Module):
     
-    def __init__(self, model_config, create_encoder_fn):
+    def __init__(self, model_config, create_model_fn):
         super().__init__()
         self.loss_reduction = model_config.get('loss_reduction', 'mean')
         # noise predictor should be a base model with time embedding.
         eps_config = model_config.get('eps_model')
         eps_config['loss_reduction'] = self.loss_reduction
-        self.eps_model, self.eps_model_name = \
-            _create_eps_model(eps_config, create_encoder_fn)
+        if not eps_config.get('name', 'Base') in supported_eps_models:
+            logger.error(f'Unsupported model class for diffusion eps model: {model_config.get("name", "Base")}, should be one of {supported_eps_models}')
+            exit(1)
+        self.eps_model = create_model_fn(eps_config)
+        assert eps_model.with_time_embedding, \
+            'You need a encoder with time embedding for ddpm.'
         self.num_steps = model_config.get('num_steps', 1000)
         # Create $\beta_1, \dots, \beta_T$ linearly increasing variance schedule
         self.is_conditional = self.eps_model.is_conditional

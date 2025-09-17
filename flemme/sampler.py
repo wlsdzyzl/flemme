@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from flemme.model import DDPM, DDIM, EDM
 from flemme.logger import get_logger
+from tqdm import tqdm
 
 logger = get_logger('sampler')
 def create_sampler(model, sampler_config):
@@ -70,7 +71,12 @@ class NormalSampler:
         else:
             c_batch = [None, ] * len(z_batch)
         res = []
-        for bid, zb in enumerate(z_batch):
+        ## only use tqdm when batch size is larger than 10
+        if len(z_batch) > 10:
+            vessel = tqdm(enumerate(z_batch), desc="Generating", total = len(z_batch))
+        else:
+            vessel = enumerate(z_batch)
+        for bid, zb in vessel:
             if isinstance(self.model, DDIM) or \
                 hasattr(self.model, 'diff_model') and isinstance(self.model.diff_model, DDIM):
                 y = self.model.sample(zb, c = c_batch[bid], clipped=self.clipped,

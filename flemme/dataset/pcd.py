@@ -154,7 +154,7 @@ class PcdReconWithClassLabelDataset(Dataset):
         class_dirs = list(cls_label.keys())
 
         for cls_dir in class_dirs:
-            sub_path_list = sorted(glob.glob(os.path.join(data_path, cls_dir, data_dir,  "*" + data_suffix)))
+            sub_path_list = sorted(glob.glob(os.path.join(data_path, data_dir, cls_dir, "*" + data_suffix)))
             self.pcd_path_list = self.pcd_path_list + sub_path_list
             sub_target_path_list = [rreplace(rreplace(s, data_dir, target_dir, 1), data_suffix, target_suffix, 1) for s in sub_path_list]
             self.target_path_list = self.target_path_list + sub_target_path_list

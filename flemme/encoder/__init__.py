@@ -42,7 +42,7 @@ logger = get_logger('encoder.create_encoder')
 def create_encoder(encoder_config, return_encoder = True, return_decoder = True):
         encoder_name = encoder_config.pop('name')
         if not encoder_name in supported_encoders:
-            logger.error(f'Unsupported encoder: {encoder_name}')
+            logger.error(f'Unsupported encoder: {encoder_name}, should be one of {supported_encoders.keys()}')
             exit(1)        
         Encoder, Decoder = supported_encoders[encoder_name]
         ### building block usually can be fully-connected block, convolution block, swin or mamba block
