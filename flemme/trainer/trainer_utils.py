@@ -288,7 +288,7 @@ def save_checkpoint(ckp_dir, model, optimizer = None,
         shutil.copyfile(path, "{}/ckp_best_score.pth".format(ckp_dir))
     
 def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None, 
-    ignore_mismatched_keys = [], specified_model_components = None):
+    ignore_mismatched_keys = None, specified_model_components = None):
     logger.info('load model from {}'.format(ckp_path))
     state_dict = torch.load(ckp_path, map_location='cpu', weights_only=False)
     if 'trained_model' in state_dict:

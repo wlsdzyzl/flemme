@@ -4,7 +4,7 @@ from flemme.model import ClM
 from flemme.logger import get_logger
 from tqdm import tqdm
 from glob import glob
-
+from flemme.augment import get_transforms
 ## if we want to train pcd or image, 
 ## make sure that the image size from data loader and image size from the model parameters are identical
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -346,16 +346,17 @@ def test(test_config,
             cond = None
 
         if model.is_generative and eval_gen_config is not None:
-            ## for generation with fixed condition
-            if is_conditional and is_supervised:
-                ### this should never happen:
-                logger.error("Currently conditional and supervised generative model is not supported.")
-                #cond = c[0]
-                exit(1)
-            elif is_conditional:
-                cond = y[0]
-            elif is_supervised:
-                cond = x[0]
+            # ## for generation with fixed condition
+            # if is_conditional and is_supervised:
+            #     ### this should never happen:
+            #     logger.error("Currently conditional and supervised generative model is not supported.")
+            #     #cond = c[0]
+            #     exit(1)
+            # elif is_conditional:
+            #     cond = y[0]
+            # elif is_supervised:
+            #     cond = x[0]
+
             sampler = None
             sampler_config = eval_gen_config.get('sampler', {'name':'NormalSampler'})
             if sampler_config:
@@ -366,57 +367,71 @@ def test(test_config,
             ######## generate new samples -------------------------------------------
             gen_dir = eval_gen_config.get('gen_dir', None)
             if gen_dir is not None:
-                mkdirs(gen_dir)
-                #### if interpolation is set, save the interpolation results
-                inter_config = eval_gen_config.get('interpolation', None)
-                ### need loader
-                if inter_config is not None:
-                    logger.info('Generating new samples through Interpolations ...')
-                    group_num = inter_config.get('group_num', 2)
-                    corner_num = inter_config.get('corner_num', 2)
-                    inter_num = inter_config.get('inter_num', 8)
-                    if corner_num != 2 and corner_num != 4:
-                        logger.warning('number of corners should be 2 or 4. Reset corner_num to 2.')
-                        corner_num = 2
-                    for gid in range(group_num):
-                        ### interpolating the latent embeddings
-                        if loader_config is not None:
-                            latents = extract_results(results, 'latent')
-                            corner_latents = torch.from_numpy(latents[gid * corner_num: gid * corner_num + corner_num])
-                        else:
-                            corner_latents = None
+                ### condition for generation
+                ### we will 
+                condition = eval_gen_config.get('conditions', None)
+                if type(condition) == dict:
+                    condition_name, condition = condition.keys(), condition.values()
+                elif type(condition) == list:
+                    condition_name, condition = condition, condition
+                else:
+                    ## transfer to list
+                    condition_name, condition = [condition, ], [condition, ]
+                cond_trans_list = eval_gen_config.get('condition_transforms', [])
+                condition_transforms = get_transforms(cond_trans_list, data_form = model.data_form)
+                for cond_n, cond in zip(condition_name, condition):
+                    cond = condition_transforms(cond).to(device) if not cond is None else cond
+                    output_dir = os.path.join(gen_dir, cond_n) if not cond_n is None else gen_dir
+                    mkdirs(output_dir)
+                    inter_config = eval_gen_config.get('interpolation', None)
+                    ### need loader
+                    if inter_config is not None:
+                        logger.info('Generating new samples through Interpolations ...')
+                        group_num = inter_config.get('group_num', 2)
+                        corner_num = inter_config.get('corner_num', 2)
+                        inter_num = inter_config.get('inter_num', 8)
+                        if corner_num != 2 and corner_num != 4:
+                            logger.warning('number of corners should be 2 or 4. Reset corner_num to 2.')
+                            corner_num = 2
+                        for gid in range(group_num):
+                            ### interpolating the latent embeddings
+                            if loader_config is not None:
+                                latents = extract_results(results, 'latent')
+                                corner_latents = torch.from_numpy(latents[gid * corner_num: gid * corner_num + corner_num])
+                            else:
+                                corner_latents = None
+                            if is_conditional or is_supervised:
+                                x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num, cond = cond)
+                            else:
+                                x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num)
+                            ## save the images.
+                            for iid, _x_bar in enumerate(x_bar):
+                                x_bar_np = _x_bar.cpu().detach().numpy()
+                                output_path = os.path.join(output_dir, 'gen_inter_group{:02d}_{:02d}'.format(gid, iid))
+                                save_data_fn(x_bar_np, model.data_form, output_path)
+                            if model.data_form == DataForm.IMG and model.encoder.dim == 2:
+                                x_bar = F.interpolate(x_bar, size=(32, 32))
+                                save_path = os.path.join(output_dir, 'gen_inter_group{:02d}.png'.format(gid))
+                                inter_figure = combine_figures(figs=x_bar.cpu().detach().numpy(), row_length=inter_num + 2)
+                                save_img(save_path, (inter_figure * 255).astype('uint8'))
+
+                    #### if random sample numer is not 0, save the generation from random noise.
+                    random_sample_num = eval_gen_config.get('random_sample_num', 8)
+                    if random_sample_num > 0:
+                        logger.info('Gererating new samples from random noise ...')
+                        ### ddpm
                         if is_conditional or is_supervised:
-                            x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num, cond = cond)
+                            x_bar = sampler.generate_rand(n=random_sample_num, cond = cond)
                         else:
-                            x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num)
+                            x_bar = sampler.generate_rand(n=random_sample_num)
                         ## save the images.
                         for iid, _x_bar in enumerate(x_bar):
                             x_bar_np = _x_bar.cpu().detach().numpy()
-                            output_path = os.path.join(gen_dir, 'gen_inter_group{:02d}_{:02d}'.format(gid, iid))
+                            output_path = os.path.join(output_dir, 'gen_rand_{:02d}'.format(iid))
                             save_data_fn(x_bar_np, model.data_form, output_path)
-                        if model.data_form == DataForm.IMG and model.encoder.dim == 2:
+                        if model.data_form == DataForm.IMG and \
+                                len(model.get_input_shape()) == 3:
                             x_bar = F.interpolate(x_bar, size=(32, 32))
-                            save_path = os.path.join(gen_dir, 'gen_inter_group{:02d}.png'.format(gid))
-                            inter_figure = combine_figures(figs=x_bar.cpu().detach().numpy(), row_length=inter_num + 2)
+                            save_path = os.path.join(output_dir, 'gen_rand.png')
+                            inter_figure = combine_figures(figs=x_bar.cpu().detach().numpy(), row_length=int(random_sample_num ** 0.5))
                             save_img(save_path, (inter_figure * 255).astype('uint8'))
-
-                #### if random sample numer is not 0, save the generation from random noise.
-                random_sample_num = eval_gen_config.get('random_sample_num', 8)
-                if random_sample_num > 0:
-                    logger.info('Gererating new samples from random noise ...')
-                    ### ddpm
-                    if is_conditional or is_supervised:
-                        x_bar = sampler.generate_rand(n=random_sample_num, cond = cond)
-                    else:
-                        x_bar = sampler.generate_rand(n=random_sample_num)
-                    ## save the images.
-                    for iid, _x_bar in enumerate(x_bar):
-                        x_bar_np = _x_bar.cpu().detach().numpy()
-                        output_path = os.path.join(gen_dir, 'gen_rand_{:02d}'.format(iid))
-                        save_data_fn(x_bar_np, model.data_form, output_path)
-                    if model.data_form == DataForm.IMG and \
-                            len(model.get_input_shape()) == 3:
-                        x_bar = F.interpolate(x_bar, size=(32, 32))
-                        save_path = os.path.join(gen_dir, 'gen_rand.png')
-                        inter_figure = combine_figures(figs=x_bar.cpu().detach().numpy(), row_length=int(random_sample_num ** 0.5))
-                        save_img(save_path, (inter_figure * 255).astype('uint8'))
