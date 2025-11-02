@@ -35,13 +35,13 @@ loader:
     data_dir: skeleton
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/vcg-results/skeleton/shapenet/chair/sknet/
+    - /media/wlsdzyzl/DATA/vcg-results/skeleton/shapenet/chair/sknet/
   batch_size: 12
   num_workers: 8
   shuffle: true
   data_transforms:
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/shapenet/chair/skdpm-pvtrans-new/
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/shapenet/chair/skdpm-pvtrans-new/
 resume: true
 ### parameter for optimizer
 optimizer:

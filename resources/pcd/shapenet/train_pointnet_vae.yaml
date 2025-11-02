@@ -28,7 +28,7 @@ loader:
     data_dir: Airplane
     data_suffix: .pts
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/shapenetcore_v0/classification
+    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0/classification
   batch_size: 32
   num_workers: 8
   shuffle: true
@@ -37,7 +37,7 @@ loader:
     - name: FixedPoints
       num: 1024
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/02691156/PointNet/PointNet_VAE_Chamfer
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/02691156/PointNet/PointNet_VAE_Chamfer
 ### parameter for optimizer
 optimizer:
   name: Adam

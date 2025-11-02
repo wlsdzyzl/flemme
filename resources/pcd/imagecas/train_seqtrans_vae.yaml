@@ -39,7 +39,7 @@ loader:
     data_dir: left
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/lrply/mask/
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/lrply/mask/
   batch_size: 2
   num_workers: 8
   shuffle: true
@@ -49,7 +49,7 @@ loader:
       method: qfps
       num: 2560
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas/left/SeqTrans_VAE
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/imagecas/left/SeqTrans_VAE
 ### parameter for optimizer
 optimizer:
   name: Adam

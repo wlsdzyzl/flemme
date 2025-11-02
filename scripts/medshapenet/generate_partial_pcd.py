@@ -16,7 +16,7 @@ def partialize(points, num_remove = None, remove_ratio = 0.1):
     return remaining_points
 
 remove_ratio = 0.2
-dataset_path = '/media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/'
+dataset_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/'
 kfolds = glob(os.path.join(dataset_path, 'classification/*'))
 
 for current_fold in kfolds:

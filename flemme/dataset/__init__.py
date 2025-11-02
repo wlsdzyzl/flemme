@@ -1,12 +1,13 @@
 from flemme.config import module_config
 from .img import *
 from .vol_patch import PatchImgSegDataset, MultiModalityPatchImgSegDataset
-from torch.utils.data import DataLoader, ConcatDataset
+from torch.utils.data import DataLoader, ConcatDataset, random_split
 from torch.utils.data._utils.collate import default_collate
 from flemme.utils import DataForm
 from flemme.augment import get_transforms, select_label_transforms, \
     check_random_transforms, check_consistent_transforms
 from flemme.logger import get_logger
+
 from .label_dict import get_cls_label
 
 
@@ -224,3 +225,36 @@ def create_loader(loader_config):
             collate_fn = custom_collate)
     logger.info('Data sample ({}) count: {}'.format(mode, len(loader['data_loader'].dataset)))
     return loader
+
+def random_split_dataloader(dataloader, splits, shuffle=None, generator=None):
+    """
+    Split a DataLoader into multiple DataLoaders by ratio or fixed lengths.
+
+    """
+    dataset = dataloader.dataset
+    total = len(dataset)
+
+    if isinstance(splits[0], float):
+        lengths = [int(total * s) for s in splits[:-1]]
+        lengths.append(total - sum(lengths))  # 保证总和一致
+    else:
+        lengths = splits
+
+    subsets = random_split(dataset, lengths, generator=generator)
+    if type(shuffle) != list:
+        shuffle = [shuffle] * len(subsets)
+    assert len(shuffle) == len(subsets), \
+        "The length of shuffle list must be equal to the number of subsets."
+    loader_args = {
+        "batch_size": dataloader.batch_size,
+        "num_workers": dataloader.num_workers,
+        "pin_memory": getattr(dataloader, "pin_memory", False),
+        "drop_last": dataloader.drop_last,
+        "collate_fn": dataloader.collate_fn,
+    }
+
+    loaders = [
+        DataLoader(subset, shuffle=sf, **loader_args)
+        for subset, sf in zip(subsets, shuffle)
+    ]
+    return loaders

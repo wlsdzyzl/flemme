@@ -30,7 +30,7 @@ loader:
     label_dir: esc
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/fastMRI/knee_single/png/fold5/
+    - /media/wlsdzyzl/DATA/datasets/fastMRI/knee_single/png/fold5/
   batch_size: 2
   num_workers: 8
   shuffle: false
@@ -47,8 +47,8 @@ loader:
     - name: Normalize
       mean: [0.5]
       std: [0.5]
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/fastMRI-mzf1/UNet_Atten_HAE/ckp_best_score.pth
-recon_dir: /media/wlsdzyzl/DATA1/flemme-results/recon/fastMRI-mzf1/UNet_Atten_HAE/
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/fastMRI-mzf1/UNet_Atten_HAE/ckp_best_score.pth
+recon_dir: /media/wlsdzyzl/DATA/flemme-results/recon/fastMRI-mzf1/UNet_Atten_HAE/
 
 ### parameter for optimizer
 evaluation_metrics:

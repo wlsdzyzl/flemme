@@ -38,7 +38,7 @@ loader:
     data_suffix: .ply
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold5
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold5
   batch_size: 16
   num_workers: 8
   shuffle: false
@@ -55,8 +55,8 @@ loader:
     - name: ToOneHot
       num_classes: 46
     - name: ToTensor
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointMamba2/PointMamba2_SEG/ckp_best_loss.pth
-seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/medshapenet/PointMamba2/
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba2/PointMamba2_SEG/ckp_best_loss.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/seg/medshapenet/PointMamba2/
 save_colorized: true
 save_target: true
 evaluation_metrics:

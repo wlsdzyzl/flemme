@@ -29,9 +29,9 @@ loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold1/
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold2/
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold3/
+    - /media/wlsdzyzl/DATA/datasets/Echonet/fold1/
+    - /media/wlsdzyzl/DATA/datasets/Echonet/fold2/
+    - /media/wlsdzyzl/DATA/datasets/Echonet/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
@@ -48,7 +48,7 @@ val_loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold4/
+    - /media/wlsdzyzl/DATA/datasets/Echonet/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
@@ -61,7 +61,7 @@ val_loader:
     # - name: Normalize
     #   mean: [0.485, 0.456, 0.406]
     #   std: [0.229, 0.224, 0.225]
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/ResNet
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/Echonet/ResNet
 
 ### parameter for optimizer
 optimizer:

@@ -28,7 +28,7 @@ loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold5/
+    - /media/wlsdzyzl/DATA/datasets/Echonet/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false
@@ -38,8 +38,8 @@ loader:
       ## the value must be list
       size: [128, 128]
     - name: GrayScale
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/MambaU/ckp_best_loss.pth
-seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/Echonet/MambaU
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/Echonet/MambaU/ckp_best_loss.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/seg/Echonet/MambaU
 evaluation_metrics:
   seg:
     - name: Dice

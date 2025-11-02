@@ -36,7 +36,7 @@ loader:
     data_dir: left
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/lrply/surface/
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/lrply/surface/
   batch_size: 16
   num_workers: 8
   shuffle: true
@@ -45,7 +45,7 @@ loader:
     - name: FixedPoints
       num: 2048
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas/PointNet2_VAE_KL1eN4_DCD
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/imagecas/PointNet2_VAE_KL1eN4_DCD
 ### parameter for optimizer
 optimizer:
   name: Adam

@@ -1,17 +1,18 @@
 #### This file is a script, and the code style sucks. 
 import os
 import torch
+import glob
 from .trainer_utils import *
 from flemme.logger import get_logger
-
-
+from flemme.augment import get_transforms
+from .test import save_results
 logger = get_logger('trainer.eval')
 
 def eval_run(t):
     ### split x, y, path in later implementation.
     x, y, _, _, path = process_input(t)
     ### stack prediction into batch form
-    res = {'input':x}
+    res = {'input': x}
     res['target'] = y
     res['path'] = path
     return res
@@ -20,31 +21,16 @@ def evaluate(eval_config,
         run_fn):
     eval_config = load_config()
     #### create dataset and dataloader
-    loader_config = eval_config.get('loader', None)
     save_target = eval_config.get('save_target', False)
     save_input = eval_config.get('save_input', False)
-    save_colorized = eval_config.get('save_colorized', True)
+    save_colorized = eval_config.get('save_colorized', False)
     eval_type = eval_config.get('eval_type', 'segmentation')
     if eval_type == 'segmentation': eval_type = 'seg'
     elif eval_type == 'reconstruction': eval_type = 'recon'
-    assert eval_type in ['seg', 'recon'], 'Currently we only support evaluation for segmentation and reconstruction.'
-    num_classes = eval_config.get('num_classes', 2)
-    pred_info = eval_config.get('prediction', None)
-    assert pred_info is not None, 'There is no information about predictions.'
-    
-    pred_path = pred_info.get('path')
-    pred_suffix = pred_info.get('suffix')    
-
-    ### add input and target path, so we don't need dataloader (if non-augmentation is needed.)
-    # input_path = 
-    # input_suffix = 
-    # target_path = 
-    # target_suffix = 
-
-    load_data = get_load_function(pred_suffix)[0]
+    elif eval_type == 'generation': eval_type = 'gen'
+    assert eval_type in ['seg', 'recon', 'gen'], 'Currently we only support evaluation for segmentation, reconstruction and generation.'
 
     eval_batch_num = eval_config.get('eval_batch_num', float('inf'))
-    is_supervised = eval_config.get('is_supervised', True)
     is_conditional = eval_config.get('is_conditional', False)
 
     pickle_results = eval_config.get('pickle_results', False)
@@ -58,140 +44,196 @@ def evaluate(eval_config,
         logger.info('Save input for reconstruction and segmentation tasks.')
     
     dataset_name = None
-    assert loader_config is not None, 'there is no dataloader for evaluation.'
-    if 'data_path_list' in loader_config and len(loader_config['data_path_list']) > 1:
-        logger.error('Currently we only support single dataset evaluation.')
-        exit(1)
-    loader_config['mode'] = 'test'
-    dataset_name = loader_config.get('dataset').get('name')
-    loader = create_loader_fn(loader_config)
+    loader_config = eval_config.get('loader', None) 
     
-    data_loader = loader['data_loader']
+    ## information about saved predictions
+    pred_info = eval_config.get('prediction', None)
+    assert pred_info is not None, 'There is no information about predictions.'
+    pred_path = pred_info.get('path')
+    pred_suffix = pred_info.get('suffix')    
+    load_data = get_load_function(pred_suffix)[0]
+    pred_trans_list = pred_info.get('transforms', [])
     
-    results = []
-    logger.info('Finish loading data.')
-    iter_id = 0
-    data_form = loader['data_form']
-    channel_dim = -1 if data_form == DataForm.PCD else 0
-    input_suffix = loader_config['dataset'].get('data_suffix', 'png')
-    if type(input_suffix) == tuple or type(input_suffix) == list:
-        input_suffix = input_suffix[0]
-    for t in tqdm(data_loader, desc="Predicting"):
-        res = run_fn(t)
-        pred = []
-        for p in res['path']:
-            filename = os.path.basename(p).replace(input_suffix, pred_suffix)
-            tmp = load_data(os.path.join(pred_path, filename))
-            if eval_type == 'seg':
-                if num_classes > 2:
-                    tmp = label_to_onehot(tmp, channel_dim = channel_dim, num_classes = num_classes)
-                else:
-                    # binary segmentation
-                    tmp = tmp[None, :]
-            pred.append(tmp)  
-        res[eval_type] = torch.tensor(np.stack(pred))
-        iter_id += 1
-        if len(results) < eval_batch_num:
-            process_results(results=results, 
-                    res = res,
-                    data_form = data_form,
-                    is_supervised=is_supervised,
-                    is_conditional=is_conditional,
-                    pickle_results=pickle_results,
-                    pickle_path=pickle_path,
-                    mode = 'eval')                 
-        else: break
-    # results = compact_results(results, data_form = data_form)    
+    ## create evaluators
     eval_metrics = eval_config.get('evaluation_metrics', None)
-    if eval_metrics is not None:
-        logger.info('evaluating the prediction accuracy ...')   
+    assert eval_metrics is not None, 'Please specify the evaluation metrics.'
+    eval_metrics = {eval_type: eval_metrics}
+    
+
+    if loader_config is not None:
+        assert eval_type in ['seg', 'recon'], \
+            'Currently we only support evaluation for segmentation and reconstruction with dataloader.'
+        logger.info('Creating dataloader for evaluation ...')
+        ## even if there are multiple datasets, the predictions are still stored in a single folder.
+        # if 'data_path_list' in loader_config and len(loader_config['data_path_list']) > 1:
+        #     logger.error('Currently we only support single dataset evaluation.')
+        #     exit(1)
+        results = []
+        loader_config['mode'] = 'test'
+        dataset_name = loader_config.get('dataset').get('name')
+        loader = create_loader_fn(loader_config)
+        data_loader = loader['data_loader']
+        input_suffix = loader_config['dataset'].get('data_suffix', 'png')
+        if type(input_suffix) == tuple or type(input_suffix) == list:
+            input_suffix = input_suffix[0]
+        data_form = loader['data_form']
+        channel_dim = -1 if data_form == DataForm.PCD else 0
         evaluators = create_batch_evaluators(eval_metrics, data_form)
+        pred_transforms = get_transforms(pred_trans_list, data_form=data_form)
+        logger.info('Finish loading data.')
+        ### load targets and predictions
+        iter_id = 0
+        for t in tqdm(data_loader, desc="Loading predictions and targets ..."):
+            res = run_fn(t)
+            pred = []
+            for p in res['path']:
+                filename = os.path.basename(p).replace(input_suffix, pred_suffix)
+                tmp = pred_transforms(load_data(os.path.join(pred_path, filename)))
+                pred.append(tmp)  
+            res[eval_type] = torch.tensor(np.stack(pred))
+            iter_id += 1
+            if len(results) < eval_batch_num:
+                process_results(results=results, 
+                        res = res,
+                        data_form = data_form,
+                        pickle_results=pickle_results,
+                        pickle_path=pickle_path,
+                        mode = 'eval')                 
+            else: break
+        ### saving results of reconstruction and segmentation
+        save_results(results=results, 
+                        data_form=data_form,
+                        channel_dim=channel_dim,
+                        recon_dir=eval_config.get('recon_dir', None),
+                        seg_dir=eval_config.get('seg_dir', None),
+                        is_conditional=is_conditional,
+                        dataset_name=dataset_name,
+                        save_target=save_target,
+                        save_input=save_input,
+                        save_colorized=save_colorized)
         eval_res = evaluate_results(results, evaluators, data_form, verbose = True)
         if len(eval_res) > 0:
             for eval_type, eval in eval_res.items():
                 logger.info(f'{eval_type} evaluation: {eval}')
-    
-        ### saving results of reconstruction and segmentation
-    recon_dir = eval_config.get('recon_dir', None)
+    else:
+        ### directly evaluate files in the target path and prediction path
+        logger.info("There is no dataloader, we will directly evaluate files in the target path and prediction path.")
+        sub_dirs = eval_config.get('sub_dirs', ['.'])
+        eval_res_list = []
+        sample_num_list = []
+        target_info = eval_config.get('target', None)
+        assert target_info is not None, 'There is no information about target data.'
+        target_path = target_info.get('path')
+        target_suffix = target_info.get('suffix')
+        load_target_data = get_load_function(target_suffix)[0]
+        data_form = target_info.get('data_form', 'img')
+        if data_form == 'pcd': data_form = DataForm.PCD
+        elif data_form == 'img': data_form = DataForm.IMG
+        else:
+            logger.error('Currently we only support "pcd" and "img" data form.')
+            exit(1)
+        channel_dim = -1 if data_form == DataForm.PCD else 0
+        evaluators = create_batch_evaluators(eval_metrics, data_form)
+        pred_transforms = get_transforms(pred_trans_list, data_form=data_form)
+        
+        target_trans_list = target_info.get('transforms', [])
+        target_transforms = get_transforms(target_trans_list, data_form = data_form)
 
-    if recon_dir is not None:
-        logger.info(f'Saving reconstruction results to {recon_dir} ...')
-        mkdirs(recon_dir)
-        sample_idx = 0
-        for res_dict in tqdm(results):
-            res_dict = load_pickle(res_dict)
-            for idx, recon in enumerate(res_dict['recon']):
-                origin_path = res_dict['path'][idx]
-                if origin_path != '':
-                    filename = os.path.basename(origin_path).split('.')[0]
-                else:
-                    filename = 'sample_{:03d}'.format(sample_idx)
-                class_name = None
-                if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
-                    if is_supervised:
-                        class_name = origin_path.split('/')[-3]
-                    else:
-                        class_name = origin_path.split('/')[-2]
-                if class_name:
-                    output_dir = os.path.join(recon_dir, class_name)
-                    mkdirs(output_dir)
-                    output_path = os.path.join(output_dir, filename)
-                else:
-                    output_path = os.path.join(recon_dir, filename)
-                save_data(recon, data_form=data_form, output_path=output_path)
-                if save_target:
-                    target = res_dict['target'][idx]
-                    save_data(target, data_form=data_form, output_path=output_path+'_tar')
-                if save_input:
-                    input_x = res_dict['input'][idx]
-                    save_data(input_x, data_form=data_form, output_path=output_path+'_input')
-                sample_idx += 1
-    ### save segmentation
-    seg_dir = eval_config.get('seg_dir', None)
-    if seg_dir is not None:
-        logger.info(f'Saving segmentation results to {seg_dir} ...')
-        mkdirs(seg_dir)
-        sample_idx = 0
-        for res_dict in tqdm(results):
-            res_dict = load_pickle(res_dict)
-            for idx, (data, seg, tar) in enumerate(zip(res_dict['input'], res_dict['seg'], res_dict['target'])):
-                origin_path = res_dict['path'][idx]
-                if origin_path != '':
-                    filename = os.path.basename(origin_path).split('.')[0]
-                else:
-                    filename = 'sample_{:03d}'.format(sample_idx)
-                output_path = os.path.join(seg_dir, filename)
+        input_info = eval_config.get('input', None)
+        if input_info is not None:
+            input_path = input_info.get('path')
+            input_suffix = input_info.get('suffix')
+            input_trans_list = input_info.get('transforms', [])
+            input_transforms = get_transforms(input_trans_list, data_form = data_form)
+            load_input_data = get_load_function(input_suffix)[0]
+        for sd in sub_dirs:
+            results = []
+            target_files = sorted(glob.glob(os.path.join(target_path, sd + "/*" + target_suffix)))
+            sample_num_list.append(len(target_files))
+            if eval_type == 'gen':
+                ### for generation, the target is actually the input.
+                pred_files = sorted(glob.glob(os.path.join(pred_path, sd + "/*" + pred_suffix)))
+                pred_data = []
+                for p in pred_files:
+                    pred_data.append(pred_transforms(load_data(p))[None, ...])
+                pred_data = np.concatenate(pred_data, axis = 0)
                 
-                ### transfer onehot to normal label for non-binary segmentation
-                seg = onehot_to_label(seg, channel_dim=channel_dim, keepdim=True) if seg.shape[channel_dim] > 1 else seg
-                tar = onehot_to_label(tar, channel_dim=channel_dim, keepdim=True) if tar.shape[channel_dim] > 1 else tar
-                save_data(seg.astype(int), data_form=data_form, output_path=output_path, segmentation = True)
-                ### save input
-                if save_input:
-                    save_data(data, data_form=data_form, output_path=output_path+'_input')
-                ##### save target
-                if save_target:
-                    save_data(tar.astype(int), data_form=data_form, output_path=output_path + '_tar', segmentation = True)
-                
-                ### save colorized results
-                if save_colorized:
-                    #### save colorized pcd
-                    if data_form == DataForm.PCD:
-                        color = colorize_by_label(seg[..., 0])
-                        cdata = (data, color)
-                        save_data(cdata, data_form=data_form, output_path=output_path + '_colorized')
-                        ### save colorized target
-                        if save_target:
-                            color = colorize_by_label(tar[..., 0])
-                            cdata = (data, color)
-                            save_data(cdata, data_form=data_form, output_path=output_path + '_colorized_tar')
-                    #### save colorized img
-                    if data_form == DataForm.IMG:                
-                        cdata, raw_img = colorize_img_by_label(seg, data, gt = tar)
-                        save_data(cdata, data_form=data_form, output_path=output_path + '_colorized')
-                        if save_target:
-                            cdata, _ = colorize_img_by_label(tar, data, gt = tar)
-                            save_data(cdata, data_form=data_form, output_path=output_path + '_colorized_tar')
-                        if save_input:
-                            save_data(raw_img, data_form=data_form, output_path=output_path + '_input')
-                sample_idx += 1
+                target_data = []
+                for t in target_files:
+                    target_data.append(target_transforms(load_target_data(t))[None, ...])
+                target_data = np.concatenate(target_data, axis = 0)
+                results = [ {eval_type: pred_data, 'input': target_data}]
+            else:
+                batch_size = eval_config.get('batch_size', 16)
+                ## for reconstruction and segmentation, target and prediction should be one-to-one correspondended
+                for i in range(0, len(target_files), batch_size):
+                    batch_target_files = target_files[i:i+batch_size]
+                    batch_target_data = [ target_transforms(load_target_data(t)) for t in batch_target_files]
+                    batch_pred_files = [ os.path.join(pred_path, sd, os.path.basename(t).replace(target_suffix, pred_suffix)) 
+                                            for t in batch_target_files]
+                    batch_pred_data = [ pred_transforms(load_data(p)) for p in batch_pred_files]
+                    batch_target_data = np.stack(batch_target_data)
+                    batch_pred_data = np.stack(batch_pred_data)
+                    res = {'target': batch_target_data, 
+                            eval_type: batch_pred_data, 
+                            'path': batch_target_files,
+                            'input': batch_target_data}
+                    ### load input data for visualization.
+                    if input_info is not None:
+                        batch_input_files = [ os.path.join(input_path, sd, os.path.basename(t).replace(target_suffix, input_suffix)) 
+                                                for t in batch_target_files]
+                        batch_input_data = [ input_transforms(load_input_data(p)) for p in batch_input_files]
+                        batch_input_data = np.stack(batch_input_data)
+                        res['input'] = batch_input_data
+                    
+                    if len(results) < eval_batch_num:
+                        process_results(results=results, 
+                                res = res,
+                                data_form = data_form,
+                                pickle_results=pickle_results,
+                                pickle_path=pickle_path,
+                                mode = 'eval', skip_to_numpy=True)
+                    else: break
+                    ### save results to different sub dirs of the original recon/seg dir
+                    recon_dir = eval_config.get('recon_dir', None)
+                    seg_dir = eval_config.get('seg_dir', None)
+                    if recon_dir is not None: recon_dir = os.path.join(recon_dir, sd)
+                    if seg_dir is not None: seg_dir = os.path.join(seg_dir, sd)
+                    save_results(results=results, 
+                        data_form=data_form,
+                        channel_dim=channel_dim,
+                        recon_dir=recon_dir,
+                        seg_dir=seg_dir,
+                        save_target=save_target,
+                        save_input=save_input,
+                        save_colorized=save_colorized)
+            eval_res = evaluate_results(results, evaluators, data_form, verbose = True)
+            eval_res_list.append(eval_res)
+            if len(eval_res) > 0:
+                logger.info(f'{eval_type} evaluation' + (f' for sub dir ({sd})' if sd != '.' else '') + f': {eval_res[eval_type]}')
+        
+        if len(sub_dirs) > 1:   
+            ### average results for all sub dirs
+            per_sub_dir_eval_res = {}
+            for eval_res in eval_res_list:
+                for eval_type, eval in eval_res.items():
+                    if eval_type not in per_sub_dir_eval_res:
+                        per_sub_dir_eval_res[eval_type] = {}
+                    for metric, value in eval.items():
+                        if metric not in per_sub_dir_eval_res[eval_type]:
+                            per_sub_dir_eval_res[eval_type][metric] = 0.0
+                        per_sub_dir_eval_res[eval_type][metric] += value / len(sub_dirs)
+            logger.info(f'Per subdir {eval_type} evaluation: {per_sub_dir_eval_res[eval_type]}')
+            ### average results for all samples
+            if not eval_type == 'gen':
+                all_sample_num = sum(sample_num_list)
+                per_sample_eval_res = {}
+                for sid, eval_res in enumerate(eval_res_list):
+                    for eval_type, eval in eval_res.items():
+                        if eval_type not in per_sample_eval_res:
+                            per_sample_eval_res[eval_type] = {}
+                        for metric, value in eval.items():
+                            if metric not in per_sample_eval_res[eval_type]:
+                                per_sample_eval_res[eval_type][metric] = 0.0
+                            per_sample_eval_res[eval_type][metric] += value * sample_num_list[sid] / all_sample_num
+                logger.info(f'Per sample {eval_type} evaluation: {per_sample_eval_res[eval_type]}')

@@ -34,9 +34,9 @@ loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold1
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold2
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold3
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold2
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold3
   batch_size: 2
   num_workers: 8
   shuffle: true
@@ -57,7 +57,7 @@ val_loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold4
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold4
   batch_size: 4
   num_workers: 8
   shuffle: false
@@ -72,7 +72,7 @@ val_loader:
     - name: ToOneHot
       num_classes: 46
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointMamba2/PointMamba2_SFC_KNN_CLS
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba2/PointMamba2_SFC_KNN_CLS
 resume: true
 ### parameter for optimizer
 optimizer:

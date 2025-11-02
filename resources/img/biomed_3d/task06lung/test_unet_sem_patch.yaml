@@ -23,9 +23,9 @@ model:
   # in ddpm, it can be the time steps and so on.
 loader:
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold5
-    # - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold2
-    # - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold3 
+    - /media/wlsdzyzl/DATA/datasets/img/Task06_Lung/fold5
+    # - /media/wlsdzyzl/DATA/datasets/img/Task06_Lung/fold2
+    # - /media/wlsdzyzl/DATA/datasets/img/Task06_Lung/fold3 
   dataset: 
     name: PatchImgSegDataset
     dim: 3
@@ -43,14 +43,14 @@ loader:
   data_transforms:
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ImageCAS/UNet_Patch/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/ImageCAS/UNet_Patch/ckp_last.pth
 
-seg_dir: /media/wlsdzyzl/DATA1/flemme-results/UNet/task06lung
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/UNet/task06lung
 save_target: true
 save_input: true
 save_colorized: true
 pickle_results: true
-pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled
+pickle_path: /media/wlsdzyzl/DATA/flemme-pickled
 evaluation_metrics:
   seg:
     - name: Dice

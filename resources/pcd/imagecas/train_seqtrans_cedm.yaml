@@ -37,11 +37,11 @@ loader:
     cls_label: imagecas
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/surface/fold1/
-    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/surface/fold2/
-    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/surface/fold3/
-    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/surface/fold4/
-    - /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/surface/fold5/
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/surface/fold1/
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/surface/fold2/
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/surface/fold3/
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/surface/fold4/
+    - /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/surface/fold5/
   batch_size: 1
   num_workers: 8
   shuffle: true
@@ -56,7 +56,7 @@ loader:
       num_classes: 2
     - name: ToTensor
     
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas_surface/SeqTrans_EDM
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/imagecas_surface/SeqTrans_EDM
 resume: True
 ### parameter for optimizer
 optimizer:

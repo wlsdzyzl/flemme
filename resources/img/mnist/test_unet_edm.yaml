@@ -1,4 +1,5 @@
 # train ae or vae
+mode: test
 rand_seed: 2024
 model:
   # can be AE, VAE and DDPM
@@ -38,35 +39,9 @@ model:
   ## 2D ddpm
   eps_loss:
     name: MSE
-loader:
-  dataset: 
-    name: MNIST
-  data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/img/MNIST
-  batch_size: 256
-  num_workers: 8
-  shuffle: true
-  data_transforms:
-    - name: ToTensor
-    - name: Resize
-      ## the value must be list
-      size: [28, 28]
-    - name: Normalize
-      mean: [0.5]
-      std: [0.5]
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CEDM
-sampler:
-  rand_seed: 2024
-### parameter for optimizer
-optimizer:
-  name: AdamW
-  lr: 0.0003
-  weight_decay: 0.00000001
-### scheduler for learning rate
-lr_scheduler: 
-  name: LinearLR
-  start_factor: 1.0
-  end_factor: 0.01
-max_epoch: 1000
-write_after_iters: 50
-save_after_epochs: 5
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CEDM/ckp_last.pth
+eval_gen:
+  gen_dir: /media/wlsdzyzl/DATA/flemme-results/gen/mnist/unet_edm
+  sampler:
+    rand_seed: 2024
+  random_sample_num: 64

@@ -42,9 +42,9 @@ loader:
     target_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold1
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold2
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold3
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold2
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold3
   batch_size: 256
   num_workers: 8
   shuffle: true
@@ -73,7 +73,7 @@ val_loader:
     target_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold4
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold4
   batch_size: 128
   num_workers: 8
   shuffle: true
@@ -93,8 +93,8 @@ val_loader:
     - name: ToOneHot
       num_classes: 46
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointMamba/PointMamba_CPL
-resume: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointMamba/PointMamba_CPL/ckp_best_loss.pth
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba/PointMamba_CPL
+resume: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba/PointMamba_CPL/ckp_best_loss.pth
 ### parameter for optimizer
 optimizer:
   name: Adam

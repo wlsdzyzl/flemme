@@ -34,7 +34,7 @@ loader:
     data_suffix: .pts
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/shapenetcore_v0/segmentation/Airplane/
+    - /media/wlsdzyzl/DATA/datasets/pcd/shapenetcore_v0/segmentation/Airplane/
   batch_size: 8
   num_workers: 8
   shuffle: true
@@ -52,7 +52,7 @@ loader:
     - name: ToOneHot
       num_classes: 4
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/SHAPENET/Airplane/PointNet2_Seg
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/SHAPENET/Airplane/PointNet2_Seg
 ### parameter for optimizer
 optimizer:
   name: Adam

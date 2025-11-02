@@ -1,6 +1,6 @@
 import os
 ### by organ to by number
-dataset_path = "/media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/"
+dataset_path = "/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/"
 selected_numbers = []
 with open(os.path.join(dataset_path, 'MedPointSDataset.txt'), 'r') as f:
     lines = f.readlines()

@@ -11,7 +11,7 @@ loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold5
+    - /media/wlsdzyzl/DATA/datasets/img/BraTS2021/fold5
   batch_size: 2
   num_workers: 8
   shuffle: false
@@ -30,10 +30,10 @@ loader:
     - name: ToTensor
 num_classes: 4
 prediction:
-  path: /media/wlsdzyzl/DATA1/flemme-results/UNet/BRATS21
+  path: /media/wlsdzyzl/DATA/flemme-results/UNet/BRATS21
   suffix: flair.nii.gz
 pickle_results: true
-pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled
+pickle_path: /media/wlsdzyzl/DATA/flemme-pickled
 
 # eval_batch_num: 2
 evaluation_metrics:

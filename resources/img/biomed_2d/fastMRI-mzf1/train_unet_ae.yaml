@@ -29,9 +29,9 @@ loader:
     label_dir: esc
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/fastMRI/knee_single/png/fold1/
-    - /media/wlsdzyzl/DATA1/datasets/img/fastMRI/knee_single/png/fold2/
-    - /media/wlsdzyzl/DATA1/datasets/img/fastMRI/knee_single/png/fold3/
+    - /media/wlsdzyzl/DATA/datasets/img/fastMRI/knee_single/png/fold1/
+    - /media/wlsdzyzl/DATA/datasets/img/fastMRI/knee_single/png/fold2/
+    - /media/wlsdzyzl/DATA/datasets/img/fastMRI/knee_single/png/fold3/
   batch_size: 16
   num_workers: 8
   shuffle: true
@@ -55,7 +55,7 @@ val_loader:
     label_dir: esc
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/fastMRI/knee_single/png/fold4/
+    - /media/wlsdzyzl/DATA/datasets/img/fastMRI/knee_single/png/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
@@ -69,7 +69,7 @@ val_loader:
     - name: Normalize
       mean: [0.5]
       std: [0.5]
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/fastMRI-mzf1/UNet_AE
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/fastMRI-mzf1/UNet_AE
 
 ### parameter for optimizer
 optimizer:

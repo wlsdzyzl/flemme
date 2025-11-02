@@ -39,7 +39,7 @@ class PcdClsDataset(Dataset):
                 data_transform = None, 
                 class_label_transform = None,
                 mode = 'train', 
-                pre_shuffle = True,
+                pre_shuffle = False,
                 data_suffix = '.ply',
                 cls_label = {},
                 **kwargs):
@@ -136,7 +136,7 @@ class PcdReconWithClassLabelDataset(Dataset):
                  data_suffix = '.ply', 
                  target_suffix='.ply', 
                  cls_label = {},
-                 pre_shuffle = True,
+                 pre_shuffle = False,
                  **kwargs):
         super().__init__()
         if len(kwargs) > 0:

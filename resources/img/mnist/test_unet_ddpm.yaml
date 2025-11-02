@@ -26,9 +26,9 @@ model:
       normalization: group
       num_norm_groups: 16
       dropout: 0.1
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/DDPM/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/DDPM/ckp_last.pth
 eval_gen:
-  gen_dir: /media/wlsdzyzl/DATA1/flemme-results/gen/mnist/ddpm
+  gen_dir: /media/wlsdzyzl/DATA/flemme-results/gen/mnist/ddpm
   sampler:
     name: NormalSampler
     clipped: true

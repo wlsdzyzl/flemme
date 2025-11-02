@@ -59,7 +59,7 @@ loader:
       Dataset127_TOStrachea: 17
       Dataset128_TOSesophagus: 18
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/aaai_clients
+    - /media/wlsdzyzl/DATA/datasets/img/aaai_clients
   batch_size: 4
   num_workers: 8
   shuffle: true
@@ -73,7 +73,7 @@ loader:
     - name: ToOneHot
       num_classes: 18
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/aaai_clients/CNN_SeM
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/aaai_clients/CNN_SeM
 resume: true
 ### parameter for optimizer
 optimizer:

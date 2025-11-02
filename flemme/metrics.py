@@ -8,15 +8,19 @@ from sklearn.metrics.cluster import rand_score as ri, adjusted_rand_score as ari
 from sklearn.neighbors import NearestNeighbors
 import scipy.ndimage as ndimage
 from scipy.special import softmax, expit as sigmoid
+from scipy.optimize import linear_sum_assignment
 import numpy as np
+import scipy
+import torch
 import math
 from functools import partial
 from flemme.logger import get_logger
-from scipy.optimize import linear_sum_assignment
-from flemme.utils import label_to_onehot, DataForm, topk
 
+from flemme.utils import label_to_onehot, DataForm, topk
+from flemme.model import create_model
 
 logger = get_logger('metrics')
+device = "cuda" if torch.cuda.is_available() else "cpu"
 #### image similarity
 ### multi channel case
 class SSIM:
@@ -235,10 +239,12 @@ if module_config['point-cloud']:
     #### point cloud similarity
     ## Earth mover's distance
     class EMD:
-        def __init__(self, **kwargs):
+        def __init__(self, reg = 1.0, **kwargs):
             logger.info('using Earth Mover\'s distance')
             self.kwargs = kwargs
-            self.ot = partial(ot.sinkhorn, **kwargs)
+            self.ot = partial(ot.sinkhorn, 
+                reg = reg, 
+                **kwargs)
         def __call__(self, x, y):
             M = ot.dist(x, y)
             a = np.ones((x.shape[0], )) / x.shape[0]    
@@ -271,6 +277,7 @@ if module_config['point-cloud']:
                 logger.error("Invalid direction type. Supported types: \'y_x\', \'x_y\', \'bi\'")
                 raise ValueError
             return chamfer_dist
+
 if module_config['graph']: 
     from flemme.loss import GraphNodeLoss
     ## graph node distance
@@ -281,7 +288,7 @@ if module_config['graph']:
                 lambda_pos = lambda_pos, 
                 lambda_feature = lambda_feature)
         def __call__(self, x, y):
-            assert type(pred) == tuple, 'the prediction of graph should be a tuple.'
+            assert type(x) == tuple, 'the prediction of graph should be a tuple.'
             x = ( _x.detach() if _x is not None else _x for _x in x) 
             y = y.detach()
             return super().forward(x, y).item()
@@ -294,7 +301,7 @@ if module_config['graph']:
             recon_edge = pred[-1]
             gt_edge_index = data.edge_index
 
-            if recon_edge is not None and edge_index is not None:
+            if recon_edge is not None and gt_edge_index is not None:
                 valid_count = len(recon_edge.values())
                 recon_edge = torch.sparse_coo_tensor(indices = recon_edge.indices(), 
                         values = (recon_edge.values() > 0 ).float(), size = recon_edge.shape)
@@ -308,7 +315,106 @@ if module_config['graph']:
                 logger.warning('There is no edge in graph or model doesn\'t predict edges.')
             return 0.0
 
+# evaluation for generative models
+## use pre-trained model to compute Frechet Inception Distance    
+class FID:
+    def __init__(self, embedding_net,
+                    embedding_net_path,
+                    batch_size = 16):
+        logger.info('using Frechet Inception Distance')
+        self.embedding_net = create_model(embedding_net)
+        self.embedding_net.load_state_dict(
+            torch.load(embedding_net_path, map_location='cpu', weights_only=False)['trained_model'])
+        self.embedding_net = self.embedding_net.to(device)
+        self.embedding_net.eval()
+        self.batch_size = batch_size
+    def __call__(self, x, y):
+        x = torch.split(torch.tensor(x).float(), self.batch_size, dim = 0)
+        y = torch.split(torch.tensor(y).float(), self.batch_size, dim = 0)
+        z_gen = np.concatenate([self.embedding_net(_x.to(device))['latent'].detach().cpu().numpy() for _x in x], axis = 0)
+        z_real = np.concatenate([self.embedding_net(_y.to(device))['latent'].detach().cpu().numpy() for _y in y], axis = 0)        
+        mu1 = np.mean(z_real, axis=0)
+        mu2 = np.mean(z_gen, axis=0)
+        sigma1 = np.cov(z_real, rowvar=False)
+        sigma2 = np.cov(z_gen, rowvar=False)
+        diff = mu1 - mu2
+        # product might not be positive semi-definite numeric issues
+        covmean, _ = scipy.linalg.sqrtm(sigma1.dot(sigma2), disp=False)
+        if np.iscomplexobj(covmean):
+            covmean = covmean.real
+        fid = diff.dot(diff) + np.trace(sigma1 + sigma2 - 2*covmean)
+        return fid    
+
+## use pre-trained model to compute Kernel Inception Distance (based on Maximum Mean Discrepancy)
+class KID:
+    def __init__(self, embedding_net,
+                    embedding_net_path, 
+                    degree = 3, 
+                    num_subsets = 100, 
+                    subset_size = 100,
+                    batch_size = 16):
+        logger.info('using Kernel Inception Distance')
+        self.embedding_net = create_model(embedding_net)
+        self.embedding_net.load_state_dict(
+            torch.load(embedding_net_path, map_location='cpu', weights_only=False)['trained_model'])
+        self.degree = degree
+        self.num_subsets = num_subsets
+        self.subset_size = subset_size
+        self.kernel = lambda X, Y: (np.dot(X, Y.T) / X.shape[1] + 1) ** self.degree
+        self.embedding_net = self.embedding_net.to(device)
+        self.embedding_net.eval()
+        self.batch_size = batch_size
+    def __call__(self, x, y):
+        """Unbiased KID estimator"""
+        x = torch.split(torch.tensor(x).float(), self.batch_size, dim = 0)
+        y = torch.split(torch.tensor(y).float(), self.batch_size, dim = 0)
+        z_gen = np.concatenate([self.embedding_net(_x.to(device))['latent'].detach().cpu().numpy() for _x in x], axis = 0)
+        z_real = np.concatenate([self.embedding_net(_y.to(device))['latent'].detach().cpu().numpy() for _y in y], axis = 0)
+        assert len(z_real) >= self.subset_size and len(z_gen) >= self.subset_size, \
+            'Not enough samples to compute KID, please specify a smaller subset_size.'
+        kid_scores = []
+        for _ in range(self.num_subsets):
+            idx_r = np.random.choice(len(z_real), self.subset_size, replace=False)
+            idx_f = np.random.choice(len(z_gen), self.subset_size, replace=False)
+            X = z_real[idx_r]
+            Y = z_gen[idx_f]
+            K_XX = self.kernel(X, X)
+            K_YY = self.kernel(Y, Y)
+            K_XY = self.kernel(X, Y)
+            mmd = K_XX.mean() + K_YY.mean() - 2 * K_XY.mean()
+            kid_scores.append(mmd)
+        return np.mean(kid_scores)
     
+## compute mean minimum distance
+class MMD:
+    def __init__(self, distance = {'name':'CD'}):
+        self.dist_fn = get_metrics(distance)
+        logger.info(f'using Mean Minimum Distancee {distance["name"]}')
+    def __call__(self, x, y):
+        N_real = len(y)
+        N_fake = len(x)
+        dist_mat = np.zeros((N_real, N_fake))
+        for i in range(N_real):
+            for j in range(N_fake):
+                dist_mat[i, j] = self.dist_fn(y[i], x[j])
+        mmd = np.mean(np.min(dist_mat, axis=1))
+        return mmd
+    
+## compute coverage
+class COV:
+    def __init__(self, distance = {'name':'CD'}):
+        self.dist_fn = get_metrics(distance)
+        logger.info(f'using Coverage {distance["name"]}')
+    def __call__(self, x, y):
+        N_real = len(y)
+        N_fake = len(x)
+        dist_mat = np.zeros((N_real, N_fake))
+        for i in range(N_real):
+            for j in range(N_fake):
+                dist_mat[i, j] = self.dist_fn(y[i], x[j])
+        matched_fake = np.argmin(dist_mat, axis=1)
+        cov = len(np.unique(matched_fake)) / N_fake
+        return cov
 
 def get_metrics(metric_config, data_form = None, classification = False):
     channel_dim = None
@@ -366,4 +472,14 @@ def get_metrics(metric_config, data_form = None, classification = False):
         return GND(**metric_config)
     if name == 'GEA' or name == 'GraphNodeAccuracy': 
         return GEA(**metric_config)
+    ### generative model
+    if name == 'FID':
+        return FID(**metric_config)
+    if name == 'KID':
+        return KID(**metric_config) 
+    if name == 'MMD':
+        return MMD(**metric_config)
+    if name == 'COV':
+        return COV(**metric_config)
+    logger.error(f'Unsupported metric: {name}')
     return None

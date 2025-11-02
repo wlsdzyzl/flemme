@@ -28,7 +28,7 @@ loader:
   dataset: 
     name: MNIST
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/MNIST  
+    - /media/wlsdzyzl/DATA/datasets/img/MNIST  
   batch_size: 128
   num_workers: 8
   shuffle: true
@@ -41,7 +41,7 @@ loader:
       mean: [0.1307]
       std: [0.3081]
 
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/Mamba_VAE
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/Mamba_VAE
 ### parameter for optimizer
 optimizer:
   name: Adam

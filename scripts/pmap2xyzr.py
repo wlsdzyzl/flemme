@@ -88,7 +88,7 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
             save_points(_mask_array, suffix = f'_{i}')
         
 
-## command: python -u pmap2xyzr.py -i /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/label/ -o /media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/output_lr/ -p 0.5 --cc_axis x --mask --surface --skeleton --xyzr --no_normalized > extract_xyzr.out
+## command: python -u pmap2xyzr.py -i /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/label/ -o /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/output_lr/ -p 0.5 --cc_axis x --mask --surface --skeleton --xyzr --no_normalized > extract_xyzr.out
 def main(argv):
     inputfile = ''
     outputdir = ''

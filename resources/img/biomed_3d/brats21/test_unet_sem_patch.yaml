@@ -39,7 +39,7 @@ loader:
       patch_shape: [64, 128, 64]
       stride_shape: [48, 96, 48]
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold5
+    - /media/wlsdzyzl/DATA/datasets/img/BraTS2021/fold5
   batch_size: 8
   num_workers: 8
   shuffle: False
@@ -53,13 +53,13 @@ loader:
       num_classes: 4
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/BRATS21/UNet-Patch/ckp_last.pth
-seg_dir: /media/wlsdzyzl/DATA1/flemme-results/UNet-Patch/BRATS21
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/BRATS21/UNet-Patch/ckp_last.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/UNet-Patch/BRATS21
 save_target: true
 save_input: true
 save_colorized: true
 pickle_results: true
-pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled
+pickle_path: /media/wlsdzyzl/DATA/flemme-pickled
 evaluation_metrics:
   seg:
     - name: Dice

@@ -90,7 +90,7 @@ xml_tail = \
 
 xml_segments = [xml_head]
 
-mesh_file = "/media/wlsdzyzl/DATA1/datasets/pcd/imageCAS/output/mesh_from_xyzr_ours_fast/10018985.ply"
+mesh_file = "/media/wlsdzyzl/DATA/datasets/pcd/imageCAS/output/mesh_from_xyzr_ours_fast/10018985.ply"
 pcl, faces = load_ply(mesh_file, with_faces= True)
 
 pcl = pcl[:,[2, 1, 0]]

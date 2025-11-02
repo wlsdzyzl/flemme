@@ -31,9 +31,9 @@ loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/REFUGE2/fold1/
-    - /media/wlsdzyzl/DATA1/datasets/REFUGE2/fold2/
-    - /media/wlsdzyzl/DATA1/datasets/REFUGE2/fold3/
+    - /media/wlsdzyzl/DATA/datasets/REFUGE2/fold1/
+    - /media/wlsdzyzl/DATA/datasets/REFUGE2/fold2/
+    - /media/wlsdzyzl/DATA/datasets/REFUGE2/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
@@ -59,7 +59,7 @@ val_loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/REFUGE2/fold4/
+    - /media/wlsdzyzl/DATA/datasets/REFUGE2/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
@@ -77,7 +77,7 @@ val_loader:
     - name: Relabel
     - name: ToOneHot
       num_classes: 3
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/REFUGE2/ResNet
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/REFUGE2/ResNet
 
 ### parameter for optimizer
 optimizer:

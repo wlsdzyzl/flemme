@@ -22,9 +22,9 @@ model:
   # in ddpm, it can be the time steps and so on.
 loader:
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold1
-    - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold2
-    - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold3 
+    - /media/wlsdzyzl/DATA/datasets/img/Task06_Lung/fold1
+    - /media/wlsdzyzl/DATA/datasets/img/Task06_Lung/fold2
+    - /media/wlsdzyzl/DATA/datasets/img/Task06_Lung/fold3 
   dataset: 
     name: PatchImgSegDataset
     dim: 3
@@ -58,13 +58,13 @@ val_loader:
       threshold: 0.01
       slack_acceptance: 0.01
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/Task06_Lung/fold4  
+    - /media/wlsdzyzl/DATA/datasets/img/Task06_Lung/fold4  
   batch_size: 2
   num_workers: 8
   shuffle: false
   data_transforms:
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/ImageCAS/UNet_Patch
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/ImageCAS/UNet_Patch
 
 ### parameter for optimizer
 optimizer:

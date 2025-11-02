@@ -9,6 +9,7 @@ from flemme.logger import get_logger
 from flemme.color_table import color_table
 import joblib
 from tqdm import tqdm
+from skimage.transform import resize
 
 logger = get_logger('trainer.utils')
 
@@ -186,7 +187,7 @@ class WarmupScheduler:
             scale = step_num * self.each_step_scale + self.start_scale
             for group in self.optimizer.param_groups:
                 group['lr'] = group['initial_lr'] * scale
-                
+
 def create_formatter(data_form):
     if data_form == DataForm.IMG:
         return ImageTensorboardFormatter()
@@ -334,47 +335,47 @@ def load_checkpoint(ckp_path, model, optimizer = None, scheduler = None,
     else:
         model.load_state_dict(state_dict)
 
-def process_results(results, res, data_form, path = None,  
-        slice_indices = None,
-        is_supervised = False, 
-        is_conditional = False, 
+def process_results(results, res, data_form, 
         additional_keys = [],
         pickle_results = False, pickle_path = "pickled",
-        mode = 'train'):
+        mode = 'train', skip_to_numpy = False):
     if not data_form == DataForm.GRAPH:
-        res_dict = {
-            'input': res['input'].cpu().detach().numpy(),
-        }
-        if 'condition' in res: 
-            res_dict['condition'] = res['condition'].cpu().detach().numpy()
-        if 'target' in res:
-            res_dict['target'] = res['target'].cpu().detach().numpy()
-        if 'path' in res:
-            res_dict['path'] = res['path']
-        if 'slice_indices' in res:
-            res_dict['slice_indices'] = res['slice_indices']
-        if 'cluster_logits' in res:
-            res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
-        if 'cls_logits' in res:
-            res['cls'] = logits_to_onehot_label(res['cls_logits'], data_form)
-            res_dict['cls_logits'] = res['cls_logits'].cpu().detach().numpy()
-        if 'seg_logits' in res:
-            res['seg'] = logits_to_onehot_label(res['seg_logits'], data_form)
-            res_dict['seg_logits'] = res['seg_logits'].cpu().detach().numpy()
-        if 'latent' in res:
-            res_dict['latent'] = res['latent'].cpu().detach().numpy()
-        if 'recon' in res:
-            res_dict['recon'] = res['recon'].cpu().detach().numpy()
-        if 'seg' in res:
-            res_dict['seg'] = res['seg'].cpu().detach().numpy()
-        if 'cluster' in res:
-            res_dict['cluster'] = res['cluster'].cpu().detach().numpy()
-        if 'cls' in res:
-            res_dict['cls'] = res['cls'].cpu().detach().numpy()
-        if 'cluster_centers' in res:
-            res_dict['cluster_centers'] = res['cluster_centers'].cpu().detach().numpy()
-        for k in additional_keys:
-            res_dict[k] = res[k].cpu().detach().numpy()
+        if skip_to_numpy:
+            res_dict = res
+        else:
+            res_dict = {}
+            if 'input' in res:
+                res_dict['input'] = res['input'].cpu().detach().numpy(),
+            if 'condition' in res: 
+                res_dict['condition'] = res['condition'].cpu().detach().numpy()
+            if 'target' in res:
+                res_dict['target'] = res['target'].cpu().detach().numpy()
+            if 'path' in res:
+                res_dict['path'] = res['path']
+            if 'slice_indices' in res:
+                res_dict['slice_indices'] = res['slice_indices']
+            if 'cluster_logits' in res:
+                res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
+            if 'cls_logits' in res:
+                res['cls'] = logits_to_onehot_label(res['cls_logits'], data_form)
+                res_dict['cls_logits'] = res['cls_logits'].cpu().detach().numpy()
+            if 'seg_logits' in res:
+                res['seg'] = logits_to_onehot_label(res['seg_logits'], data_form)
+                res_dict['seg_logits'] = res['seg_logits'].cpu().detach().numpy()
+            if 'latent' in res:
+                res_dict['latent'] = res['latent'].cpu().detach().numpy()
+            if 'recon' in res:
+                res_dict['recon'] = res['recon'].cpu().detach().numpy()
+            if 'seg' in res:
+                res_dict['seg'] = res['seg'].cpu().detach().numpy()
+            if 'cluster' in res:
+                res_dict['cluster'] = res['cluster'].cpu().detach().numpy()
+            if 'cls' in res:
+                res_dict['cls'] = res['cls'].cpu().detach().numpy()
+            if 'cluster_centers' in res:
+                res_dict['cluster_centers'] = res['cluster_centers'].cpu().detach().numpy()
+            for k in additional_keys:
+                res_dict[k] = res[k].cpu().detach().numpy()
         if pickle_results:
             filename = os.path.join(pickle_path, f'{mode}_batch_{len(results)}.pkl')
             with open(filename, 'wb') as file:
@@ -471,7 +472,6 @@ def merge_patches_in_results(results, pickle_results = False, pickle_path = 'fle
     return new_results
 
 def create_evaluator(eval_configs, data_form, classification = False):
-
     if len(eval_configs) ==0:
         return None
     evaluator = {}
@@ -490,7 +490,7 @@ def create_batch_evaluators(eval_metrics, data_form):
     s_eval = create_evaluator(eval_metrics.get('seg', []), data_form)
     c_eval = create_evaluator(eval_metrics.get('cluster', []), data_form)
     cls_eval = create_evaluator(eval_metrics.get('cls', []), data_form, classification = True)
-
+    g_eval = create_evaluator(eval_metrics.get('gen', []), data_form)
     if r_eval is not None: 
         evaluators['recon'] = r_eval
     if s_eval is not None: 
@@ -499,9 +499,10 @@ def create_batch_evaluators(eval_metrics, data_form):
         evaluators['cluster'] = c_eval
     if cls_eval is not None:
         evaluators['cls'] = cls_eval
+    if g_eval is not None:
+        evaluators['gen'] = g_eval
     return evaluators
 
-    
 ## results is a batch of inputs, each batch can be read through pickle from external storage.
 def evaluate_results(results, evaluators, data_form, verbose = False):
     eval_res = {}
@@ -517,27 +518,21 @@ def evaluate_results(results, evaluators, data_form, verbose = False):
         for eval_type in evaluators:
             if len(res_dict[eval_type]) == 0:
                 logger.warning(f'This model doesn\'t predict {eval_type}')
-                # exit(1)
             else:
                 if eval_type not in eval_res:
                     eval_res[eval_type] = {}
                 for (eval_metric, eval_func) in evaluators[eval_type].items():
+                    if not eval_metric in eval_res[eval_type]:
+                        eval_res[eval_type][eval_metric] = 0
                     if eval_type == 'cluster':
-                        if eval_metric in eval_res[eval_type]:
-                            eval_res[eval_type][eval_metric] += eval_func(res_dict['cluster'], res_dict['target']) * batch_size
-                        else:
-                            eval_res[eval_type][eval_metric] = eval_func(res_dict['cluster'], res_dict['target']) * batch_size
+                        eval_res[eval_type][eval_metric] += eval_func(res_dict['cluster'], res_dict['target']) * batch_size
                     elif eval_type == 'cls':
                         if 'Soft' in eval_metric or 'TopK' in eval_metric:
-                            if eval_metric in eval_res[eval_type]:
-                                eval_res[eval_type][eval_metric] += eval_func(res_dict['cls_logits'], res_dict['target']) * batch_size
-                            else:
-                                eval_res[eval_type][eval_metric] = eval_func(res_dict['cls_logits'], res_dict['target']) * batch_size
+                            eval_res[eval_type][eval_metric] += eval_func(res_dict['cls_logits'], res_dict['target']) * batch_size
                         else:
-                            if eval_metric in eval_res[eval_type]:
-                                eval_res[eval_type][eval_metric] += eval_func(res_dict['cls'], res_dict['target']) * batch_size
-                            else:
-                                eval_res[eval_type][eval_metric] = eval_func(res_dict['cls'], res_dict['target']) * batch_size
+                            eval_res[eval_type][eval_metric] += eval_func(res_dict['cls'], res_dict['target']) * batch_size
+                    elif eval_type == 'gen':
+                        eval_res[eval_type][eval_metric] += eval_func(res_dict['gen'], res_dict['input']) * batch_size
                     else:
                         tmp_res = []
                         if eval_type == 'recon':
@@ -558,15 +553,12 @@ def evaluate_results(results, evaluators, data_form, verbose = False):
                         ## accuracy for different class
                         if isinstance(tmp_res, np.ndarray):
                             tmp_res = tmp_res.mean()
-                        if eval_metric in eval_res[eval_type]:
-                            eval_res[eval_type][eval_metric] += tmp_res
-                        else:
-                            eval_res[eval_type][eval_metric] = tmp_res
+                        eval_res[eval_type][eval_metric] += tmp_res
     for eval_type in eval_res:
         for eval_metric in eval_res[eval_type]:
             eval_res[eval_type][eval_metric] /= sample_num
+    
     return eval_res
-
 
 def process_input(t):
     x, y, c, si, p = None, None, None, None, None
@@ -695,11 +687,11 @@ def combine_figures(figs, row_length, size = (32, 32)):
     # display an n*n 2D manifold of digits
     if not isinstance(size, list) and not isinstance(size, tuple) :
         size = (size, size)
+    figs = resize(figs, figs.shape[0:2] + size)
     figure = np.zeros((figs.shape[1], col_length * size[0], row_length * size[1]))
     for i in range(col_length):
         for j in range(row_length):
             f = normalize_img(figs[i * row_length + j])
-
             ## size f
             figure[:,
                 i * size[0] : (i + 1) * size[0],
@@ -739,7 +731,7 @@ def save_data(output, data_form, output_path, segmentation = False):
     else:
         raise NotImplementedError
 
-def get_load_function(suffix, transpose = False):
+def get_load_function(suffix):
     load_data = None
     data_type = 'img'
     if suffix.endswith('png') or suffix.endswith('jpg') or suffix.endswith('tif'):

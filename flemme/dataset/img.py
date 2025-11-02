@@ -54,7 +54,7 @@ class ImgClsDataset(Dataset):
                 mode = 'train',
                 data_dir = '', 
                 data_suffix = '.png',
-                pre_shuffle = True,
+                pre_shuffle = False,
                 cls_label = {},
                 crop_nonzero = None,
                 **kwargs):
@@ -332,7 +332,7 @@ class ImgSegWithClassLabelDataset(Dataset):
                  data_suffix = '.png', 
                  label_suffix = None, 
                  cls_label = {},
-                 pre_shuffle = True,
+                 pre_shuffle = False,
                  crop_nonzero = None, 
                  **kwargs):
         super().__init__()
@@ -413,7 +413,7 @@ class ImgReconWithClassLabelDataset(Dataset):
                  data_suffix = '.png', 
                  target_suffix = None, 
                  cls_label = {},
-                 pre_shuffle = True,
+                 pre_shuffle = False,
                  crop_nonzero = None, 
                  **kwargs):
         super().__init__()

@@ -7,8 +7,8 @@ organ_list = ['gallbladder', 'bladder', 'brain', 'heart', 'liver', 'pancreas', '
               'spleen', 'colon', 'stomach', 'duodenum', 'uterus', 'trachea', 
               'bronchie']
 all_stl_files = []
-medshapenet_path = '/media/wlsdzyzl/DATA1/datasets/pcd/MedShapeNet/MedShapeNetDataset.txt'
-output_path = '/media/wlsdzyzl/DATA1/datasets/pcd/MedShapeNet'
+medshapenet_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet/MedShapeNetDataset.txt'
+output_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet'
 with open(medshapenet_path, 'r') as f:
     all_stl_files = f.readlines()
 

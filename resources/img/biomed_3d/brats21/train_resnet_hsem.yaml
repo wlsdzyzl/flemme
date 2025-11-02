@@ -35,9 +35,9 @@ loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold1
-    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold2
-    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold3
+    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold1
+    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold2
+    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold3
   batch_size: 2
   num_workers: 8
   shuffle: true
@@ -68,7 +68,7 @@ val_loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/biomed_3d_dataset/BraTS2021/fold4
+    - /media/wlsdzyzl/DATA/datasets/biomed_3d_dataset/BraTS2021/fold4
   batch_size: 2
   num_workers: 8
   shuffle: false
@@ -85,7 +85,7 @@ val_loader:
     - name: ToOneHot
       num_classes: 4
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/BRATS21/ResNet_HSeg
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/BRATS21/ResNet_HSeg
 
 ### parameter for optimizer
 optimizer:

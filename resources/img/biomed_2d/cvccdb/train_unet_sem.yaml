@@ -28,9 +28,9 @@ loader:
     label_dir: masks
     data_suffix: jpg
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/CVC-ClinicDB/fold1/
-    - /media/wlsdzyzl/DATA1/datasets/img/CVC-ClinicDB/fold2/
-    - /media/wlsdzyzl/DATA1/datasets/img/CVC-ClinicDB/fold3/
+    - /media/wlsdzyzl/DATA/datasets/img/CVC-ClinicDB/fold1/
+    - /media/wlsdzyzl/DATA/datasets/img/CVC-ClinicDB/fold2/
+    - /media/wlsdzyzl/DATA/datasets/img/CVC-ClinicDB/fold3/
   batch_size: 16
   num_workers: 8
   shuffle: true
@@ -46,7 +46,7 @@ val_loader:
     label_dir: masks
     data_suffix: jpg
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/CVC-ClinicDB/fold4/
+    - /media/wlsdzyzl/DATA/datasets/img/CVC-ClinicDB/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
@@ -55,7 +55,7 @@ val_loader:
     - name: Resize
       ## the value must be list
       size: [320, 256]
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/CVC-ClinicDB/UNet
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/CVC-ClinicDB/UNet
 
 ### parameter for optimizer
 optimizer:

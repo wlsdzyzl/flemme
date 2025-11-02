@@ -30,12 +30,12 @@ model:
       type: categories
       out_channel: 128
       num_classes: 10
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/CNN_CVAE/ckp_last.pth
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CNN_CVAE/ckp_last.pth
 loader:
   dataset: 
     name: MNIST
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/MNIST  
+    - /media/wlsdzyzl/DATA/datasets/MNIST  
   batch_size: 128
   num_workers: 8
   shuffle: true
@@ -48,7 +48,7 @@ loader:
       mean: [0.1307]
       std: [0.3081]
 eval_gen:
-  gen_dir: /media/wlsdzyzl/DATA1/flemme-results/gen/mnist/cvae
+  gen_dir: /media/wlsdzyzl/DATA/flemme-results/gen/mnist/cvae
   sampler:
     name: NormalSampler
     rand_seed: 2024

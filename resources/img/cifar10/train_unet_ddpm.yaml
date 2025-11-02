@@ -41,7 +41,7 @@ model:
 loader:
   dataset: 
     name: CIFAR10
-    data_path: /media/wlsdzyzl/DATA1/datasets/img/CIFAR10
+    data_path: /media/wlsdzyzl/DATA/datasets/img/CIFAR10
   batch_size: 64
   num_workers: 8
   shuffle: true
@@ -53,7 +53,7 @@ loader:
     - name: Normalize
       mean: [0.5, 0.5, 0.5]
       std: [0.5, 0.5, 0.5]
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/CIFAR10/DDIM
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/CIFAR10/DDIM
 sampler:
   rand_seed: 2024
 ### parameter for optimizer

@@ -37,7 +37,7 @@ loader:
     cls_label: imagecas
     data_suffix: ply
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/vcg-results/skeleton/imagecas_surface/sknet/skeleton
+    - /media/wlsdzyzl/DATA/vcg-results/skeleton/imagecas_surface/sknet/skeleton
   batch_size: 24
   num_workers: 8
   shuffle: true
@@ -51,7 +51,7 @@ loader:
     - name: ToTensor
 
     
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/imagecas_surface/SeqTrans_EDM_Skeleton
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/imagecas_surface/SeqTrans_EDM_Skeleton
 resume: True
 ### parameter for optimizer
 optimizer:

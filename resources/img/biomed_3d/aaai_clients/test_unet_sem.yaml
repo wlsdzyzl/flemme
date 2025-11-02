@@ -59,7 +59,7 @@ loader:
       Dataset127_TOStrachea: 17
       Dataset128_TOSesophagus: 18
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/aaai_clients
+    - /media/wlsdzyzl/DATA/datasets/img/aaai_clients
   batch_size: 4
   num_workers: 8
   shuffle: false
@@ -73,7 +73,7 @@ loader:
     - name: ToOneHot
       num_classes: 18
     - name: ToTensor
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/aaai_clients/CNN_SeM/ckp_best_score.pth
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/aaai_clients/CNN_SeM/ckp_best_score.pth
 
 evaluation_metrics:
   seg:
@@ -82,7 +82,7 @@ evaluation_metrics:
     - name: mIoU
 
 pickle_results: true
-pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled/mri
+pickle_path: /media/wlsdzyzl/DATA/flemme-pickled/mri
 load_pickle_results: true
 
 tsne_visualization: 

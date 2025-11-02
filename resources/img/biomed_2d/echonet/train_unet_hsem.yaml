@@ -28,9 +28,9 @@ loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold1/
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold2/
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold3/
+    - /media/wlsdzyzl/DATA/datasets/Echonet/fold1/
+    - /media/wlsdzyzl/DATA/datasets/Echonet/fold2/
+    - /media/wlsdzyzl/DATA/datasets/Echonet/fold3/
   batch_size: 4
   num_workers: 8
   shuffle: true
@@ -47,7 +47,7 @@ val_loader:
     label_dir: mask
     data_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/Echonet/fold4/
+    - /media/wlsdzyzl/DATA/datasets/Echonet/fold4/
   batch_size: 8
   num_workers: 8
   shuffle: false
@@ -58,7 +58,7 @@ val_loader:
       size: [128, 128]
     - name: GrayScale
 
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/Echonet/UNet_HSeg
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/Echonet/UNet_HSeg
 
 ### parameter for optimizer
 optimizer:

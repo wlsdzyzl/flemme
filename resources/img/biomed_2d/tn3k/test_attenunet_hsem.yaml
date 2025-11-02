@@ -29,7 +29,7 @@ loader:
     data_dir: image
     label_dir: mask
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/thyroid/tn3k/fold5/
+    - /media/wlsdzyzl/DATA/datasets/thyroid/tn3k/fold5/
   batch_size: 4
   num_workers: 8
   shuffle: false
@@ -45,8 +45,8 @@ loader:
       size: [256, 256]
     - name: ToBinaryMask
       threshold: 0.5
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/thyroid/tn3k/UNet_Atten_HSeg/ckp_best_loss.pth
-seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/tn3k/UNet_Atten_HSeg
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/thyroid/tn3k/UNet_Atten_HSeg/ckp_best_loss.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/seg/tn3k/UNet_Atten_HSeg
 evaluation_metrics:
   seg:
     - name: Dice

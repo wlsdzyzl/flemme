@@ -30,7 +30,7 @@ loader:
     data_suffix: jpg
     label_suffix: png
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/ISIC/fold5/
+    - /media/wlsdzyzl/DATA/datasets/img/ISIC/fold5/
   batch_size: 16
   num_workers: 8
   shuffle: false
@@ -40,10 +40,10 @@ loader:
       ## the value must be list
       size: [384, 256]
 
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/ISIC/UNet/ckp_best_loss.pth
-seg_dir: /media/wlsdzyzl/DATA1/flemme-results/seg/ISIC/UNet
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/ISIC/UNet/ckp_best_loss.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/seg/ISIC/UNet
 pickle_results: true
-# pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled
+# pickle_path: /media/wlsdzyzl/DATA/flemme-pickled
 save_target: true
 save_input: true
 save_colorized: true

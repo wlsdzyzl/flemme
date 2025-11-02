@@ -34,7 +34,7 @@ loader:
       margin: [2,2,2]
       crop_by: raw
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/img/BraTS2021/fold5
+    - /media/wlsdzyzl/DATA/datasets/img/BraTS2021/fold5
   batch_size: 2
   num_workers: 8
   shuffle: false
@@ -52,13 +52,13 @@ loader:
       num_classes: 4
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA1/flemme-ckp/BRATS21/UNet/ckp_last.pth
-seg_dir: /media/wlsdzyzl/DATA1/flemme-results/UNet/BRATS21
+model_path: /media/wlsdzyzl/DATA/flemme-ckp/BRATS21/UNet/ckp_last.pth
+seg_dir: /media/wlsdzyzl/DATA/flemme-results/UNet/BRATS21
 save_target: true
 save_input: true
 save_colorized: true
 pickle_results: true
-pickle_path: /media/wlsdzyzl/DATA1/flemme-pickled
+pickle_path: /media/wlsdzyzl/DATA/flemme-pickled
 
 # eval_batch_num: 2
 evaluation_metrics:

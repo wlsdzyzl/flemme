@@ -70,5 +70,5 @@ def create_model(model_config,
         create_model_fn = create_model_fn or create_model
         return supported_high_level_models[model_name](model_config, create_model_fn = create_model_fn)
     else:
-        logger.error(f'Unsupported model class: {model_name}, should be one of {supported_underlying_models.keys() + supported_high_level_models.keys() }')
+        logger.error(f'Unsupported model class: {model_name}, should be one of {list(supported_underlying_models.keys()) + list(supported_high_level_models.keys()) }')
         exit(1)

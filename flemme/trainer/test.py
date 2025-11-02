@@ -9,6 +9,137 @@ from flemme.augment import get_transforms
 ## make sure that the image size from data loader and image size from the model parameters are identical
 device = "cuda" if torch.cuda.is_available() else "cpu"
 logger = get_logger('trainer.test')
+
+def save_results(results, 
+                 data_form,
+                 channel_dim,
+                 recon_dir = None, 
+                 seg_dir = None, 
+                 save_data_fn = save_data,
+                 custom_res_names = [], 
+                 custom_res_dirs = [],
+                 is_conditional = False,
+                 dataset_name = '',
+                 save_target = False,
+                 save_input = False,
+                 save_colorized = False,
+                 ):
+
+    if recon_dir is not None:
+        logger.info(f'Saving reconstruction results to {recon_dir} ...')
+        mkdirs(recon_dir)
+        sample_idx = 0
+        for res_dict in tqdm(results):
+            res_dict = load_pickle(res_dict)
+            for idx, recon in enumerate(res_dict['recon']):
+                origin_path = res_dict['path'][idx]
+                if origin_path != '':
+                    filename = os.path.basename(origin_path).split('.')[0]
+                else:
+                    filename = 'sample_{:03d}'.format(sample_idx)
+                class_name = None
+                if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
+                    class_name = origin_path.split('/')[-2]
+                    output_dir = os.path.join(recon_dir, class_name)
+                    mkdirs(output_dir)
+                    output_path = os.path.join(output_dir, filename)
+                else:
+                    output_path = os.path.join(recon_dir, filename)
+                save_data_fn(recon, data_form=data_form, output_path=output_path)
+                if save_target:
+                    target = res_dict['target'][idx]
+                    save_data_fn(target, data_form=data_form, output_path=output_path+'_tar')
+                if save_input:
+                    input_x = res_dict['input'][idx]
+                    save_data_fn(input_x, data_form=data_form, output_path=output_path+'_input')
+                sample_idx += 1
+    if seg_dir is not None:
+        logger.info(f'Saving segmentation results to {seg_dir} ...')
+        mkdirs(seg_dir)
+        sample_idx = 0
+        for res_dict in tqdm(results):
+            res_dict = load_pickle(res_dict)
+            for idx, (data, seg, tar) in enumerate(zip(res_dict['input'], res_dict['seg'], res_dict['target'])):
+                origin_path = res_dict['path'][idx]
+                if origin_path != '':
+                    filename = os.path.basename(origin_path).split('.')[0]
+                else:
+                    filename = 'sample_{:03d}'.format(sample_idx)
+
+                class_name = None
+                if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
+                    class_name = origin_path.split('/')[-2]
+                    output_dir = os.path.join(seg_dir, class_name)
+                    mkdirs(output_dir)
+                    output_path = os.path.join(output_dir, filename)
+                else:
+                    output_path = os.path.join(seg_dir, filename)
+                
+                ### transfer onehot to normal label for non-binary segmentation
+                seg = onehot_to_label(seg, channel_dim=channel_dim, keepdim=True) if seg.shape[channel_dim] > 1 else seg
+                tar = onehot_to_label(tar, channel_dim=channel_dim, keepdim=True) if tar.shape[channel_dim] > 1 else tar
+                save_data_fn(seg.astype(int), data_form=data_form, output_path=output_path, segmentation = True)
+                ### save input
+                if save_input:
+                    save_data_fn(data, data_form=data_form, output_path=output_path+'_input')
+                ##### save target
+                if save_target:
+                    save_data_fn(tar.astype(int), data_form=data_form, output_path=output_path + '_tar', segmentation = True)
+                
+                ### save colorized results
+                if save_colorized:
+                    #### save colorized pcd
+                    if data_form == DataForm.PCD:
+                        color = colorize_by_label(seg[..., 0])
+                        cdata = (data, color)
+                        save_data_fn(cdata, data_form=data_form, output_path=output_path + '_colorized')
+                        ### save colorized target
+                        if save_target:
+                            color = colorize_by_label(tar[..., 0])
+                            cdata = (data, color)
+                            save_data_fn(cdata, data_form=data_form, output_path=output_path + '_colorized_tar')
+                    #### save colorized img
+                    if data_form == DataForm.IMG:                
+                        cdata, raw_img = colorize_img_by_label(seg, data, gt = tar)
+                        save_data_fn(cdata, data_form=data_form, output_path=output_path + '_colorized')
+                        if save_target:
+                            cdata, _ = colorize_img_by_label(tar, data, gt = tar)
+                            save_data_fn(cdata, data_form=data_form, output_path=output_path + '_colorized_tar')
+                        if save_input:
+                            save_data_fn(raw_img, data_form=data_form, output_path=output_path + '_input')
+                sample_idx += 1
+
+    for res_name, res_dir in zip(custom_res_names, custom_res_dirs):
+        if res_dir is not None:
+            logger.info(f'Saving {res_name} results to {res_dir} ...')
+            mkdirs(res_dir)
+            sample_idx = 0
+            for res_dict in tqdm(results):
+                res_dict = load_pickle(res_dict)
+                for idx, res_data in enumerate(res_dict[res_name]):
+                    origin_path = res_dict['path'][idx]
+                    if origin_path != '':
+                        filename = os.path.basename(origin_path).split('.')[0]
+                    else:
+                        filename = 'sample_{:03d}'.format(sample_idx)
+
+                    class_name = None
+                    if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
+                        class_name = origin_path.split('/')[-2]
+                        output_dir = os.path.join(res_dir, class_name)
+                        mkdirs(output_dir)
+                        output_path = os.path.join(output_dir, filename)
+                    else:
+                        output_path = os.path.join(res_dir, filename)
+                    save_data_fn(res_data, data_form=data_form, output_path=output_path)
+                    sample_idx += 1
+                if save_target and len(results['target']) > 0:
+                    target = results['target'][idx]
+                    save_data_fn(target, data_form=data_form, output_path=output_path+'_tar')
+                if save_input and len(results['input']) > 0:
+                    input_x = results['input'][idx]
+                    save_data_fn(input_x, data_form=data_form, output_path=output_path+'_input')
+
 def test_run(model, t):
     ### split x, y, path in later implementation.
     x, y, c, slice_indices, path = process_input(t)
@@ -156,8 +287,6 @@ def test(test_config,
                         process_results(results=results, 
                                             res = res, 
                                             data_form = model.data_form,
-                                            is_supervised=is_supervised,
-                                            is_conditional=is_conditional,
                                             additional_keys = custom_res_names,
                                             pickle_results=pickle_results, 
                                             pickle_path=pickle_path,
@@ -166,14 +295,12 @@ def test(test_config,
                 if 'slice_indices' in results:
                     results = merge_patches_in_results(results=results, 
                                                     pickle_results=pickle_results, pickle_path=pickle_path)
-            # results = compact_results(results, data_form = model.data_form,
-            #                         additional_keys = custom_res_names)    
-            
+            ### evaluate the model outputs in batch form, saving these results is not necessary.
             eval_metrics = test_config.get('evaluation_metrics', None)
             if eval_metrics is not None:
-                logger.info('evaluating the prediction accuracy ...')   
+                logger.info('evaluating the prediction accuracy ...')
                 evaluators = create_batch_evaluators(eval_metrics, model.data_form)
-                eval_res = evaluate_results(results, evaluators, data_form = model.data_form, verbose = True)
+                eval_res = evaluate_results(results, evaluators, data_form=model.data_form, verbose=True)
                 if len(eval_res) > 0:
                     for eval_type, eval in eval_res.items():
                         logger.info(f'{eval_type} evaluation: {eval}')
@@ -223,140 +350,22 @@ def test(test_config,
                     save_img(tsne_path, tsne_fig)
 
             ### saving results of reconstruction and segmentation
-            recon_dir = test_config.get('recon_dir', None)
-
-            if recon_dir is not None:
-                logger.info(f'Saving reconstruction results to {recon_dir} ...')
-                mkdirs(recon_dir)
-                sample_idx = 0
-                for res_dict in tqdm(results):
-                    res_dict = load_pickle(res_dict)
-                    for idx, recon in enumerate(res_dict['recon']):
-                        origin_path = res_dict['path'][idx]
-                        if origin_path != '':
-                            filename = os.path.basename(origin_path).split('.')[0]
-                        else:
-                            filename = 'sample_{:03d}'.format(sample_idx)
-                        class_name = None
-                        if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
-                            class_name = origin_path.split('/')[-2]
-                            output_dir = os.path.join(recon_dir, class_name)
-                            mkdirs(output_dir)
-                            output_path = os.path.join(output_dir, filename)
-                        else:
-                            output_path = os.path.join(recon_dir, filename)
-                        save_data_fn(recon, data_form=model.data_form, output_path=output_path)
-                        if save_target:
-                            target = res_dict['target'][idx]
-                            save_data_fn(target, data_form=model.data_form, output_path=output_path+'_tar')
-                        if save_input:
-                            input_x = res_dict['input'][idx]
-                            save_data_fn(input_x, data_form=model.data_form, output_path=output_path+'_input')
-                        sample_idx += 1
-            ### save segmentation
-            seg_dir = test_config.get('seg_dir', None)
-            if seg_dir is not None:
-                logger.info(f'Saving segmentation results to {seg_dir} ...')
-                mkdirs(seg_dir)
-                sample_idx = 0
-                for res_dict in tqdm(results):
-                    res_dict = load_pickle(res_dict)
-                    for idx, (data, seg, tar) in enumerate(zip(res_dict['input'], res_dict['seg'], res_dict['target'])):
-                        origin_path = res_dict['path'][idx]
-                        if origin_path != '':
-                            filename = os.path.basename(origin_path).split('.')[0]
-                        else:
-                            filename = 'sample_{:03d}'.format(sample_idx)
-
-                        class_name = None
-                        if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
-                            class_name = origin_path.split('/')[-2]
-                            output_dir = os.path.join(seg_dir, class_name)
-                            mkdirs(output_dir)
-                            output_path = os.path.join(output_dir, filename)
-                        else:
-                            output_path = os.path.join(seg_dir, filename)
-                        
-                        ### transfer onehot to normal label for non-binary segmentation
-                        seg = onehot_to_label(seg, channel_dim=channel_dim, keepdim=True) if seg.shape[channel_dim] > 1 else seg
-                        tar = onehot_to_label(tar, channel_dim=channel_dim, keepdim=True) if tar.shape[channel_dim] > 1 else tar
-                        save_data_fn(seg.astype(int), data_form=model.data_form, output_path=output_path, segmentation = True)
-                        ### save input
-                        if save_input:
-                            save_data_fn(data, data_form=model.data_form, output_path=output_path+'_input')
-                        ##### save target
-                        if save_target:
-                            save_data_fn(tar.astype(int), data_form=model.data_form, output_path=output_path + '_tar', segmentation = True)
-                        
-                        ### save colorized results
-                        if save_colorized:
-                            #### save colorized pcd
-                            if model.data_form == DataForm.PCD:
-                                color = colorize_by_label(seg[..., 0])
-                                cdata = (data, color)
-                                save_data_fn(cdata, data_form=model.data_form, output_path=output_path + '_colorized')
-                                ### save colorized target
-                                if save_target:
-                                    color = colorize_by_label(tar[..., 0])
-                                    cdata = (data, color)
-                                    save_data_fn(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
-                            #### save colorized img
-                            if model.data_form == DataForm.IMG:                
-                                cdata, raw_img = colorize_img_by_label(seg, data, gt = tar)
-                                save_data_fn(cdata, data_form=model.data_form, output_path=output_path + '_colorized')
-                                if save_target:
-                                    cdata, _ = colorize_img_by_label(tar, data, gt = tar)
-                                    save_data_fn(cdata, data_form=model.data_form, output_path=output_path + '_colorized_tar')
-                                if save_input:
-                                    save_data_fn(raw_img, data_form=model.data_form, output_path=output_path + '_input')
-                        sample_idx += 1
-
-            for res_name, res_dir in zip(custom_res_names, custom_res_dirs):
-                if res_dir is not None:
-                    logger.info(f'Saving {res_name} results to {res_dir} ...')
-                    mkdirs(res_dir)
-                    sample_idx = 0
-                    for res_dict in tqdm(results):
-                        res_dict = load_pickle(res_dict)
-                        for idx, res_data in enumerate(res_dict[res_name]):
-                            origin_path = res_dict['path'][idx]
-                            if origin_path != '':
-                                filename = os.path.basename(origin_path).split('.')[0]
-                            else:
-                                filename = 'sample_{:03d}'.format(sample_idx)
-
-                            class_name = None
-                            if is_conditional and ('ClassLabel' in dataset_name or 'Cls' in dataset_name):
-                                class_name = origin_path.split('/')[-2]
-                                output_dir = os.path.join(res_dir, class_name)
-                                mkdirs(output_dir)
-                                output_path = os.path.join(output_dir, filename)
-                            else:
-                                output_path = os.path.join(res_dir, filename)
-                            save_data_fn(res_data, data_form=model.data_form, output_path=output_path)
-                            sample_idx += 1
-                        if save_target and len(results['target']) > 0:
-                            target = results['target'][idx]
-                            save_data_fn(target, data_form=model.data_form, output_path=output_path+'_tar')
-                        if save_input and len(results['input']) > 0:
-                            input_x = results['input'][idx]
-                            save_data_fn(input_x, data_form=model.data_form, output_path=output_path+'_input')
-        else:
-            logger.warning('loader_config is None, reconstruction, segmentation, conditional generation and interpolation will be ignored.')
-            cond = None
+            save_results(results=results, 
+                         data_form=model.data_form,
+                         save_data_fn=save_data_fn,
+                         channel_dim=channel_dim,
+                         recon_dir=test_config.get('recon_dir', None),
+                         seg_dir=test_config.get('seg_dir', None),
+                         custom_res_names=custom_res_names,
+                         custom_res_dirs=custom_res_dirs,
+                         is_conditional=is_conditional,
+                         dataset_name=dataset_name,
+                         save_target=save_target,
+                         save_input=save_input,
+                         save_colorized=save_colorized)
 
         if model.is_generative and eval_gen_config is not None:
-            # ## for generation with fixed condition
-            # if is_conditional and is_supervised:
-            #     ### this should never happen:
-            #     logger.error("Currently conditional and supervised generative model is not supported.")
-            #     #cond = c[0]
-            #     exit(1)
-            # elif is_conditional:
-            #     cond = y[0]
-            # elif is_supervised:
-            #     cond = x[0]
-
+            ## evaluation metrics for generation are computed separately from other tasks
             sampler = None
             sampler_config = eval_gen_config.get('sampler', {'name':'NormalSampler'})
             if sampler_config:
@@ -386,7 +395,7 @@ def test(test_config,
                     inter_config = eval_gen_config.get('interpolation', None)
                     ### need loader
                     if inter_config is not None:
-                        logger.info('Generating new samples through Interpolations ...')
+                        logger.info('Generating new samples through Interpolations {}...'.format('with condition {}'.format(cond_n) if not cond_n is None else ''))
                         group_num = inter_config.get('group_num', 2)
                         corner_num = inter_config.get('corner_num', 2)
                         inter_num = inter_config.get('inter_num', 8)
@@ -405,14 +414,13 @@ def test(test_config,
                             else:
                                 x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num)
                             ## save the images.
+                            x_bar = x_bar.cpu().detach().numpy()
                             for iid, _x_bar in enumerate(x_bar):
-                                x_bar_np = _x_bar.cpu().detach().numpy()
                                 output_path = os.path.join(output_dir, 'gen_inter_group{:02d}_{:02d}'.format(gid, iid))
-                                save_data_fn(x_bar_np, model.data_form, output_path)
+                                save_data_fn(_x_bar, model.data_form, output_path)
                             if model.data_form == DataForm.IMG and model.encoder.dim == 2:
-                                x_bar = F.interpolate(x_bar, size=(32, 32))
                                 save_path = os.path.join(output_dir, 'gen_inter_group{:02d}.png'.format(gid))
-                                inter_figure = combine_figures(figs=x_bar.cpu().detach().numpy(), row_length=inter_num + 2)
+                                inter_figure = combine_figures(figs=x_bar, row_length=inter_num + 2)
                                 save_img(save_path, (inter_figure * 255).astype('uint8'))
 
                     #### if random sample numer is not 0, save the generation from random noise.
@@ -424,14 +432,13 @@ def test(test_config,
                             x_bar = sampler.generate_rand(n=random_sample_num, cond = cond)
                         else:
                             x_bar = sampler.generate_rand(n=random_sample_num)
+                        x_bar = x_bar.cpu().detach().numpy()
                         ## save the images.
-                        for iid, _x_bar in enumerate(x_bar):
-                            x_bar_np = _x_bar.cpu().detach().numpy()
+                        for iid, _x_bar in tqdm(enumerate(x_bar), desc='Saving', total=len(x_bar)):
                             output_path = os.path.join(output_dir, 'gen_rand_{:02d}'.format(iid))
-                            save_data_fn(x_bar_np, model.data_form, output_path)
+                            save_data_fn(_x_bar, model.data_form, output_path)
                         if model.data_form == DataForm.IMG and \
                                 len(model.get_input_shape()) == 3:
-                            x_bar = F.interpolate(x_bar, size=(32, 32))
                             save_path = os.path.join(output_dir, 'gen_rand.png')
-                            inter_figure = combine_figures(figs=x_bar.cpu().detach().numpy(), row_length=int(random_sample_num ** 0.5))
+                            inter_figure = combine_figures(figs=x_bar, row_length=int(random_sample_num ** 0.5))
                             save_img(save_path, (inter_figure * 255).astype('uint8'))

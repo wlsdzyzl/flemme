@@ -30,9 +30,9 @@ loader:
     data_suffix: .ply
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold1
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold2
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold3
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold1
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold2
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold3
   batch_size: 48
   num_workers: 8
   shuffle: true
@@ -57,7 +57,7 @@ val_loader:
     data_suffix: .ply
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/segmentation/fold4
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold4
   batch_size: 24
   num_workers: 8
   shuffle: true
@@ -74,7 +74,7 @@ val_loader:
     - name: ToOneHot
       num_classes: 46
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointNet/PointNet_LK20_SEG
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointNet/PointNet_LK20_SEG
 ### parameter for optimizer
 optimizer:
   name: Adam

@@ -2,8 +2,10 @@ from .trainer_utils import *
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau 
 from flemme.logger import get_logger
+from flemme.dataset import random_split_dataloader
 from datetime import datetime
 from tqdm import tqdm
+
 
 logger = get_logger('trainer.train')
 ## if we want to train pcd or image, 
@@ -81,7 +83,8 @@ def train(train_config,
         loader_config['mode'] = mode
 
     val_loader_config = train_config.get('val_loader', None)
-
+    val_split_ratio = train_config.get('val_split_ratio', 0.0)
+    val_split_seed = train_config.get('val_split_seed', None)
     ckp_dir = train_config.get('check_point_dir', '.')
     #### use writer to visualize the training process
     writer = SummaryWriter(log_dir = os.path.join(ckp_dir, 'logs'))
@@ -124,6 +127,7 @@ def train(train_config,
         logger.error('No training sample was found.')
         exit(1)
     ### create val dataloader
+    val_data_loader = None
     if val_loader_config is not None:
         if not 'mode' in val_loader_config:
             val_loader_config['mode'] = 'val'
@@ -133,10 +137,14 @@ def train(train_config,
         if len(val_data_loader.dataset) == 0:
             logger.error('validation set was provided, but no sample was found.')
             exit(1)
+    elif val_split_ratio > 0.0:
+        logger.error('Validation set is created by splitting training set with ratio {}.'.format(val_split_ratio))
+        data_loader, val_data_loader = random_split_dataloader(data_loader, 
+                                                               [1 - val_split_ratio, val_split_ratio], 
+                                                               shuffle=[loader_config.get('shuffle', True), False],
+                                                               generator=torch.Generator().manual_seed(val_split_seed) if val_split_seed is not None else None)
     else:
         logger.warning('No validation set, use training loss for checkpoint saving and learning scheduling.')
-
-    logger.debug('size of loader:', len(data_loader))
 
     #### define the optimizer
     optim_config = train_config.get('optimizer', None)
@@ -267,8 +275,6 @@ def train(train_config,
                 process_results(results=results, 
                                     res = res, 
                                     data_form = model.data_form, 
-                                    is_supervised=is_supervised, 
-                                    is_conditional=is_conditional,
                                     pickle_results=pickle_results, 
                                     pickle_path=pickle_path,
                                     mode = mode)
@@ -334,7 +340,7 @@ def train(train_config,
             else:
                 lr_scheduler.step()
         if epoch % save_after_epochs == 0:
-            if val_loader_config is not None:
+            if val_data_loader is not None:
                 ### validation epoch !!!!!
                 ## set val_loss as loss
                 model.eval()

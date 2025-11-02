@@ -23,7 +23,7 @@ loader:
   batch_size: 1024
   num_workers: 8
   shuffle: true
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/Toy/EDM_Layer_res
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/Toy/EDM_Layer_res
 ### parameter for optimizer
 optimizer:
   name: Adam

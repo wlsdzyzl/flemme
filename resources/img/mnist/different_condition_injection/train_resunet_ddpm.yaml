@@ -33,7 +33,7 @@ model:
 loader:
   dataset: 
     name: MNIST
-    data_path: /media/wlsdzyzl/DATA1/datasets/img/MNIST
+    data_path: /media/wlsdzyzl/DATA/datasets/img/MNIST
   batch_size: 128
   num_workers: 8
   shuffle: true
@@ -45,7 +45,7 @@ loader:
     - name: Normalize
       mean: [0.5]
       std: [0.5]
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MNIST/CDDPM/DDPM-resu-batch
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MNIST/CDDPM/DDPM-resu-batch
 resume: True
 sampler:
   num_sample_steps: 100

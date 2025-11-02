@@ -7,11 +7,11 @@ loader:
     target_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold1
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold2
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold3
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold4
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/completion/fold5
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold2
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold3
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold4
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold5
   batch_size: 128
   num_workers: 8
   shuffle: true

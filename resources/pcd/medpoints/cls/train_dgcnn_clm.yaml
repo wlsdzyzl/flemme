@@ -24,9 +24,11 @@ loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold1
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold2
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold3
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold2
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold3
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold4
+    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold5
   batch_size: 12
   num_workers: 8
   shuffle: true
@@ -41,28 +43,28 @@ loader:
     - name: ToOneHot
       num_classes: 46
     - name: ToTensor
-val_loader:
-  dataset: 
-    name: PcdClsDataset
-    data_suffix: .ply
-    cls_label: MedPointS
-  data_path_list: 
-    - /media/wlsdzyzl/DATA1/datasets/pcd/MedPointS/classification/fold4
-  batch_size: 6
-  num_workers: 8
-  shuffle: false
-  data_transforms:
-    - name: Normalize
-    - name: FixedPoints
-      num: 2048
-    - name: ToTensor
-  class_label_transforms:
-    - name: Relabel
-      offset: -1
-    - name: ToOneHot
-      num_classes: 46
-    - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA1/flemme-ckp/MedPointS/PointNet/PointNet_LK20_CLS
+# val_loader:
+#   dataset: 
+#     name: PcdClsDataset
+#     data_suffix: .ply
+#     cls_label: MedPointS
+#   data_path_list: 
+#     - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold4
+#   batch_size: 6
+#   num_workers: 8
+#   shuffle: false
+#   data_transforms:
+#     - name: Normalize
+#     - name: FixedPoints
+#       num: 2048
+#     - name: ToTensor
+#   class_label_transforms:
+#     - name: Relabel
+#       offset: -1
+#     - name: ToOneHot
+#       num_classes: 46
+#     - name: ToTensor
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/DGCNN_FOR_FID/
 ### parameter for optimizer
 optimizer:
   name: Adam
