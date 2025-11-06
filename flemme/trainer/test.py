@@ -212,27 +212,30 @@ def test(test_config,
             logger.info('You are testing a model that has never been trained before.')
         else:
             ignore_mismatched_keys = test_config.get('ignore_mismatched_keys', None)
+            loaded = True
             if type(model_path) == str:
                 if os.path.isfile(model_path):
                     load_checkpoint(model_path, model, 
                                     ignore_mismatched_keys = ignore_mismatched_keys)
                 else:
-                    logger.warning('Trained model doesn\'t exist. You are testing a model that has never been trained before.')
+                    loaded = False
             else:
                 assert type(model_path) == dict, \
                     "model_path should be a model path (str) or pathes of sub-models (dict)."
                 assert ignore_mismatched_keys is None or type(ignore_mismatched_keys) == dict, \
                     "ignore_mismatched_keys should be a dict when model_path is a dict."
-                load_part = False
+                
                 for key in model_path.keys():
                     hasattr(model, key), \
                         "Unknown submodel {} for model {}".format(key, model_name)
                     if os.path.isfile(model_path[key]):
                         load_checkpoint(model_path[key], getattr(model, key), 
                                         ignore_mismatched_keys=ignore_mismatched_keys.get(key, None) if ignore_mismatched_keys else None)
-                        load_part = True
-                if not load_part:
-                    logger.warning('Trained model doesn\'t exist. You are testing a model that has never been trained before.')
+                    else:
+                        loaded = False
+            if not loaded:
+                logger.error('Trained model doesn\'t exist. You are testing a model that has never been trained before.')
+                exit(1)
         model = model.to(device)
         ## turn to evaluation
         model.eval()

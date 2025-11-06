@@ -144,8 +144,10 @@ def train(train_config,
                                                                shuffle=[loader_config.get('shuffle', True), False],
                                                                generator=torch.Generator().manual_seed(val_split_seed) if val_split_seed is not None else None)
     else:
-        logger.warning('No validation set, use training loss for checkpoint saving and learning scheduling.')
-
+        logger.warning('No validation set, use training loss for checkpoint saving, learning scheduling, and early stopping.')
+        if early_stop_patience > 0:
+            logger.error('No validation set, early stop strategy is not reliable.')
+            exit(1)
     #### define the optimizer
     optim_config = train_config.get('optimizer', None)
     assert optim_config is not None, 'Optimizer need to be specified.'
@@ -176,14 +178,18 @@ def train(train_config,
 
     save_after_epochs = train_config.get('save_after_epochs', 1)
     write_after_iters = train_config.get('write_after_iters', 64)
+    
+    min_loss_delta = train_config.get('min_loss_delta', 1e-5)
+    min_score_delta = train_config.get('min_score_delta', 1e-5)
+    early_stop_patience = train_config.get('early_stop_patience', -1)
     formatter = create_formatter(model.data_form)
 
     ######## training iteration
     iter_id = 0     
     best_loss = 1e10   
     best_score = -1e10
-
     start_epoch = 1
+    patience_count = 0
     ## load model from check points
     pretrained = train_config.get('pretrained', None)
     resume = train_config.get('resume', False)
@@ -393,7 +399,7 @@ def train(train_config,
 
             ## if without validation, the loss and score are computed using training dataset
             is_best_loss, is_best_score = False, False
-            if loss <= best_loss:
+            if loss <= best_loss - min_loss_delta:
                 best_loss = loss
                 is_best_loss = True
 
@@ -401,7 +407,7 @@ def train(train_config,
                 ### 'lower is better' score
                 if not higher_is_better:
                     eval_score = 1 - eval_score
-                if eval_score >= best_score:
+                if eval_score >= best_score + min_score_delta:
                     best_score = eval_score
                     is_best_score = True                
             logger.info('saving model to {}'.format(ckp_dir))
@@ -413,4 +419,12 @@ def train(train_config,
                             best_score=best_score,
                             is_best_loss=is_best_loss,
                             is_best_score=is_best_score)
+            if early_stop_patience > 0 :
+                if not is_best_loss and not is_best_score:
+                    patience_count += 1
+                    if patience_count >= early_stop_patience:
+                        logger.info('Early stop training.')
+                        break
+                else:
+                    patience_count = 0
     logger.info('Finish training.')
