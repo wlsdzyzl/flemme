@@ -429,7 +429,7 @@ def test(test_config,
                     #### if random sample numer is not 0, save the generation from random noise.
                     random_sample_num = eval_gen_config.get('random_sample_num', 8)
                     if random_sample_num > 0:
-                        logger.info('Gererating new samples from random noise ...')
+                        logger.info('Generating new samples from random noise {}...'.format(f'for condition {cond_n} ' if not cond_n is None else ''))
                         ### ddpm
                         if is_conditional or is_supervised:
                             x_bar = sampler.generate_rand(n=random_sample_num, cond = cond)

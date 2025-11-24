@@ -115,6 +115,9 @@ def train(train_config,
         logger.info('Conditional model, we will using label as condition.')
 
     loss_names = model.get_loss_name()
+    min_loss_delta = train_config.get('min_loss_delta', 1e-8)
+    min_score_delta = train_config.get('min_score_delta', 1e-8)
+    early_stop_patience = train_config.get('early_stop_patience', -1)
     logger.info('Using loss(es): {}'.format(loss_names))
     logger.info("Total number of model parameters: {}".format(sum(p.numel() for p in model.parameters())))
     #### create dataset and dataloader
@@ -179,9 +182,7 @@ def train(train_config,
     save_after_epochs = train_config.get('save_after_epochs', 1)
     write_after_iters = train_config.get('write_after_iters', 64)
     
-    min_loss_delta = train_config.get('min_loss_delta', 1e-5)
-    min_score_delta = train_config.get('min_score_delta', 1e-5)
-    early_stop_patience = train_config.get('early_stop_patience', -1)
+
     formatter = create_formatter(model.data_form)
 
     ######## training iteration

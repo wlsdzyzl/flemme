@@ -48,6 +48,9 @@ def main(argv):
                 exit(1)
         elif opt in ('--separately',):
             separately = True
+        else:
+            logger.error('unknow option, usage: random_split_k_fold.py -p <dataset_path> --sub_dirs <sub_dirs=.> --subsub_dirs <subsub_dirs=.> --suffix <suffix=.> -o <output_dir=.> -k <kfold=5> --method <method=copy>')
+            sys.exit()
     if dataset_path is None:
         logger.error('dataset_path is required.')
         sys.exit()

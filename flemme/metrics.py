@@ -15,10 +15,10 @@ import torch
 import math
 from functools import partial
 from flemme.logger import get_logger
-
 from flemme.utils import label_to_onehot, DataForm, topk
 from flemme.model import create_model
-
+from flemme.loss import get_loss
+from tqdm import tqdm
 logger = get_logger('metrics')
 device = "cuda" if torch.cuda.is_available() else "cpu"
 #### image similarity
@@ -251,7 +251,6 @@ if module_config['point-cloud']:
             b = np.ones((y.shape[0], )) / y.shape[0]
             gamma = self.ot(a, b, M)
             return (M * gamma).sum()
-
     ## chamfer distance
     class CD:
         def __init__(self, metric = 'l2', direction = 'bi'):
@@ -384,37 +383,47 @@ class KID:
             mmd = K_XX.mean() + K_YY.mean() - 2 * K_XY.mean()
             kid_scores.append(mmd)
         return np.mean(kid_scores)
-    
 ## compute mean minimum distance
-class MMD:
-    def __init__(self, distance = {'name':'CD'}):
-        self.dist_fn = get_metrics(distance)
-        logger.info(f'using Mean Minimum Distancee {distance["name"]}')
+class MMDAndCov:
+    def __init__(self, distance = {'name':'CD'}, 
+                 package = 'loss', 
+                 batch_size = 16,
+                 data_form = DataForm.IMG):
+        logger.info(f'using Mean Minimum Distance and Coverage with {distance}')
+        assert package in ['loss', 'metric'], 'package should be one of [loss, metric].'
+        self.package = package
+        self.batch_size = batch_size
+        if self.package == 'loss':
+            distance['reduction'] = None
+            self.dist_fn = get_loss(distance, data_form=data_form)
+        else:
+            self.dist_fn = get_metrics(distance, data_form=data_form)
     def __call__(self, x, y):
         N_real = len(y)
         N_fake = len(x)
         dist_mat = np.zeros((N_real, N_fake))
-        for i in range(N_real):
-            for j in range(N_fake):
-                dist_mat[i, j] = self.dist_fn(y[i], x[j])
+        for i in tqdm(range(N_real), desc="DistMat"):
+            if self.package == 'loss':
+                fake = torch.from_numpy(x).float().to(device)
+                real = torch.from_numpy(y[i]).unsqueeze(0).float().to(device)
+                real = real.expand(fake.shape)
+
+                real = torch.split(real, self.batch_size, dim = 0)
+                fake = torch.split(fake, self.batch_size, dim = 0)
+                
+                res_dist = []
+                for r, f in zip(real, fake):
+                    res_dist.append(self.dist_fn(r, f))
+                res_dist = torch.cat(res_dist, dim = 0).cpu().detach().numpy()
+                dist_mat[i] = res_dist
+            else:
+                for j in range(N_fake):
+                    dist_mat[i, j] = self.dist_fn(y[i], x[j])
         mmd = np.mean(np.min(dist_mat, axis=1))
-        return mmd
-    
-## compute coverage
-class COV:
-    def __init__(self, distance = {'name':'CD'}):
-        self.dist_fn = get_metrics(distance)
-        logger.info(f'using Coverage {distance["name"]}')
-    def __call__(self, x, y):
-        N_real = len(y)
-        N_fake = len(x)
-        dist_mat = np.zeros((N_real, N_fake))
-        for i in range(N_real):
-            for j in range(N_fake):
-                dist_mat[i, j] = self.dist_fn(y[i], x[j])
+
         matched_fake = np.argmin(dist_mat, axis=1)
         cov = len(np.unique(matched_fake)) / N_fake
-        return cov
+        return np.array([mmd, cov])
 
 def get_metrics(metric_config, data_form = None, classification = False):
     channel_dim = None
@@ -477,9 +486,7 @@ def get_metrics(metric_config, data_form = None, classification = False):
         return FID(**metric_config)
     if name == 'KID':
         return KID(**metric_config) 
-    if name == 'MMD':
-        return MMD(**metric_config)
-    if name == 'COV':
-        return COV(**metric_config)
+    if name == 'MMDAndCov':
+        return MMDAndCov(data_form = data_form, **metric_config)
     logger.error(f'Unsupported metric: {name}')
     return None

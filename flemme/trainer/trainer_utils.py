@@ -477,7 +477,10 @@ def create_evaluator(eval_configs, data_form, classification = False):
     evaluator = {}
     for e_config in eval_configs:
         name = e_config.get('name')
+        if 'distance' in e_config:
+            name = name +'-{}'.format(e_config.get('distance').get('name'))
         e = get_metrics(e_config, data_form=data_form, classification = classification)
+        
         if e is not None:
             evaluator[name] = e
     return evaluator
