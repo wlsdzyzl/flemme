@@ -45,20 +45,30 @@ def evaluate(eval_config,
     
     dataset_name = None
     loader_config = eval_config.get('loader', None) 
+
+    data_form = eval_config.get('data_form', 'img')
     
+    if data_form == 'pcd': data_form = DataForm.PCD
+    elif data_form == 'img': data_form = DataForm.IMG
+    else:
+        logger.error('Currently we only support "pcd", and "img" data form.')
+        exit(1)
+    channel_dim = -1 if data_form == DataForm.PCD else 0
     ## information about saved predictions
     pred_info = eval_config.get('prediction', None)
     assert pred_info is not None, 'There is no information about predictions.'
     pred_path = pred_info.get('path')
     pred_suffix = pred_info.get('suffix')    
-    load_data = get_load_function(pred_suffix)[0]
+    is_mesh = eval_config.get('is_mesh', False)
+    load_data = get_load_function(pred_suffix, is_mesh)[0]
     pred_trans_list = pred_info.get('transforms', [])
-    
+    pred_transforms = get_transforms(pred_trans_list, data_form=data_form)
+
     ## create evaluators
     eval_metrics = eval_config.get('evaluation_metrics', None)
     assert eval_metrics is not None, 'Please specify the evaluation metrics.'
     eval_metrics = {eval_type: eval_metrics}
-    
+    evaluators = create_batch_evaluators(eval_metrics, data_form)
 
     if loader_config is not None:
         assert eval_type in ['seg', 'recon'], \
@@ -76,10 +86,9 @@ def evaluate(eval_config,
         input_suffix = loader_config['dataset'].get('data_suffix', 'png')
         if type(input_suffix) == tuple or type(input_suffix) == list:
             input_suffix = input_suffix[0]
-        data_form = loader['data_form']
-        channel_dim = -1 if data_form == DataForm.PCD else 0
-        evaluators = create_batch_evaluators(eval_metrics, data_form)
-        pred_transforms = get_transforms(pred_trans_list, data_form=data_form)
+        assert data_form == loader['data_form'], 'Unmatched data form between loader and configuration.'
+        
+        
         logger.info('Finish loading data.')
         ### load targets and predictions
         iter_id = 0
@@ -101,17 +110,18 @@ def evaluate(eval_config,
                         mode = 'eval')                 
             else: break
         ### saving results of reconstruction and segmentation
-        save_results(results=results, 
-                        data_form=data_form,
-                        channel_dim=channel_dim,
-                        recon_dir=eval_config.get('recon_dir', None),
-                        seg_dir=eval_config.get('seg_dir', None),
-                        is_conditional=is_conditional,
-                        dataset_name=dataset_name,
-                        save_target=save_target,
-                        save_input=save_input,
-                        save_colorized=save_colorized)
-        eval_res = evaluate_results(results, evaluators, data_form, verbose = True)
+        if data_form in [DataForm.PCD, DataForm.IMG]:
+            save_results(results=results, 
+                            data_form=data_form,
+                            channel_dim=channel_dim,
+                            recon_dir=eval_config.get('recon_dir', None),
+                            seg_dir=eval_config.get('seg_dir', None),
+                            is_conditional=is_conditional,
+                            dataset_name=dataset_name,
+                            save_target=save_target,
+                            save_input=save_input,
+                            save_colorized=save_colorized)
+        eval_res = evaluate_results(results, evaluators, verbose = True)
         if len(eval_res) > 0:
             for eval_type, eval in eval_res.items():
                 logger.info(f'{eval_type} evaluation: {eval}')
@@ -125,17 +135,7 @@ def evaluate(eval_config,
         assert target_info is not None, 'There is no information about target data.'
         target_path = target_info.get('path')
         target_suffix = target_info.get('suffix')
-        load_target_data = get_load_function(target_suffix)[0]
-        data_form = target_info.get('data_form', 'img')
-        if data_form == 'pcd': data_form = DataForm.PCD
-        elif data_form == 'img': data_form = DataForm.IMG
-        else:
-            logger.error('Currently we only support "pcd" and "img" data form.')
-            exit(1)
-        channel_dim = -1 if data_form == DataForm.PCD else 0
-        evaluators = create_batch_evaluators(eval_metrics, data_form)
-        pred_transforms = get_transforms(pred_trans_list, data_form=data_form)
-        
+        load_target_data = get_load_function(target_suffix, is_mesh)[0]
         target_trans_list = target_info.get('transforms', [])
         target_transforms = get_transforms(target_trans_list, data_form = data_form)
 
@@ -155,13 +155,14 @@ def evaluate(eval_config,
                 pred_files = sorted(glob.glob(os.path.join(pred_path, sd + "/*" + pred_suffix)))
                 pred_data = []
                 for p in pred_files:
-                    pred_data.append(pred_transforms(load_data(p))[None, ...])
-                pred_data = np.concatenate(pred_data, axis = 0)
+                    pred_data.append(pred_transforms(load_data(p)))
                 
                 target_data = []
                 for t in target_files:
-                    target_data.append(target_transforms(load_target_data(t))[None, ...])
-                target_data = np.concatenate(target_data, axis = 0)
+                    target_data.append(target_transforms(load_target_data(t)))
+                if not is_mesh:
+                    pred_data = np.stack(pred_data)
+                    target_data = np.stack(target_data)
                 results = [ {eval_type: pred_data, 'input': target_data}]
             else:
                 batch_size = eval_config.get('batch_size', 16)
@@ -172,8 +173,9 @@ def evaluate(eval_config,
                     batch_pred_files = [ os.path.join(pred_path, sd, os.path.basename(t).replace(target_suffix, pred_suffix)) 
                                             for t in batch_target_files]
                     batch_pred_data = [ pred_transforms(load_data(p)) for p in batch_pred_files]
-                    batch_target_data = np.stack(batch_target_data)
-                    batch_pred_data = np.stack(batch_pred_data)
+                    if not is_mesh:
+                        batch_target_data = np.stack(batch_target_data)
+                        batch_pred_data = np.stack(batch_pred_data)
                     res = {'target': batch_target_data, 
                             eval_type: batch_pred_data, 
                             'path': batch_target_files,
@@ -183,7 +185,8 @@ def evaluate(eval_config,
                         batch_input_files = [ os.path.join(input_path, sd, os.path.basename(t).replace(target_suffix, input_suffix)) 
                                                 for t in batch_target_files]
                         batch_input_data = [ input_transforms(load_input_data(p)) for p in batch_input_files]
-                        batch_input_data = np.stack(batch_input_data)
+                        if not is_mesh:
+                            batch_input_data = np.stack(batch_input_data)
                         res['input'] = batch_input_data
                     
                     if len(results) < eval_batch_num:
@@ -195,19 +198,20 @@ def evaluate(eval_config,
                                 mode = 'eval', skip_to_numpy=True)
                     else: break
                     ### save results to different sub dirs of the original recon/seg dir
-                    recon_dir = eval_config.get('recon_dir', None)
-                    seg_dir = eval_config.get('seg_dir', None)
-                    if recon_dir is not None: recon_dir = os.path.join(recon_dir, sd)
-                    if seg_dir is not None: seg_dir = os.path.join(seg_dir, sd)
-                    save_results(results=results, 
-                        data_form=data_form,
-                        channel_dim=channel_dim,
-                        recon_dir=recon_dir,
-                        seg_dir=seg_dir,
-                        save_target=save_target,
-                        save_input=save_input,
-                        save_colorized=save_colorized)
-            eval_res = evaluate_results(results, evaluators, data_form, verbose = True)
+                    if data_form in [DataForm.PCD, DataForm.IMG]:
+                        recon_dir = eval_config.get('recon_dir', None)
+                        seg_dir = eval_config.get('seg_dir', None)
+                        if recon_dir is not None: recon_dir = os.path.join(recon_dir, sd)
+                        if seg_dir is not None: seg_dir = os.path.join(seg_dir, sd)
+                        save_results(results=results, 
+                            data_form=data_form,
+                            channel_dim=channel_dim,
+                            recon_dir=recon_dir,
+                            seg_dir=seg_dir,
+                            save_target=save_target,
+                            save_input=save_input,
+                            save_colorized=save_colorized)
+            eval_res = evaluate_results(results, evaluators, verbose = True)
             eval_res_list.append(eval_res)
             if len(eval_res) > 0:
                 logger.info(f'{eval_type} evaluation' + (f' for sub dir ({sd})' if sd != '.' else '') + f': {eval_res[eval_type]}')

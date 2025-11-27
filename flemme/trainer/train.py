@@ -326,7 +326,7 @@ def train(train_config,
         ### write evaluation
         if evaluators is not None:
             # results = compact_results(results, data_form = model.data_form)
-            eval_res = evaluate_results(results, evaluators, data_form = model.data_form)
+            eval_res = evaluate_results(results, evaluators)
 
             if len(eval_res) > 0:
                 for eval_type, eval in eval_res.items():
@@ -388,7 +388,7 @@ def train(train_config,
                     ### evaluation on val datasets
                     if evaluators is not None:
                         # vresults = compact_results(vresults, data_form = model.data_form)
-                        eval_res = evaluate_results(vresults, evaluators, data_form = model.data_form)
+                        eval_res = evaluate_results(vresults, evaluators)
                         if len(eval_res) > 0:
                             for eval_type, eval in eval_res.items():
                                 for eval_metric, eval_value in eval.items():

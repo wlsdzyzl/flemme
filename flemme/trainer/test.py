@@ -60,6 +60,7 @@ def save_results(results,
         for res_dict in tqdm(results):
             res_dict = load_pickle(res_dict)
             for idx, (data, seg, tar) in enumerate(zip(res_dict['input'], res_dict['seg'], res_dict['target'])):
+                
                 origin_path = res_dict['path'][idx]
                 if origin_path != '':
                     filename = os.path.basename(origin_path).split('.')[0]
@@ -303,7 +304,7 @@ def test(test_config,
             if eval_metrics is not None:
                 logger.info('evaluating the prediction accuracy ...')
                 evaluators = create_batch_evaluators(eval_metrics, model.data_form)
-                eval_res = evaluate_results(results, evaluators, data_form=model.data_form, verbose=True)
+                eval_res = evaluate_results(results, evaluators, verbose=True)
                 if len(eval_res) > 0:
                     for eval_type, eval in eval_res.items():
                         logger.info(f'{eval_type} evaluation: {eval}')

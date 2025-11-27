@@ -24,8 +24,8 @@ class DataForm(Enum):
     VEC = auto()
     IMG = auto()
     PCD = auto()
+    # MESH = auto()
     GRAPH = auto()
-
 def to_int(m):
     if torch.is_tensor(m):
         m = m.long()
@@ -504,16 +504,20 @@ if module_config['point-cloud'] or module_config['graph']:
         pcolors = None
         if type(points) == tuple:
             points, pcolors = points
+            # print(points.shape, pcolors.shape)
         if pcolors is not None:
             if np.max(pcolors) > 1 or np.min(pcolors) < 0:
                 pcolors = (pcolors - np.min(pcolors))/ (np.max(pcolors) - np.min(pcolors))
             pcolors = (pcolors * 255).astype(int)
             # not a 3-channel color, we use the first channel as intensity.
-            if len(pcolors.shape) < 2 or pcolors.shape[1] < 3:
-                pcolors = pcolors.reshape((-1))
+            if pcolors.size() == points.shape[0]:
+                pcolors = pcolors.flatten()
                 points = [(points[i, 0], points[i, 1], points[i, 2], pcolors[i], pcolors[i], pcolors[i]) for i in range(points.shape[0])]
+            elif pcolors.shape[0] == points.shape[0] and pcolors.shape[1] == 3:
+                points = [(points[i, 0], points[i, 1], points[i, 2], pcolors[i, 0], pcolors[i, 1], pcolors[i, 2]) for i in range(points.shape[0])]
             else:
-                points = [(points[i, 0], points[i, 1], points[i, 2], pcolors[i, 0], pcolors[i, 2], pcolors[i, 2]) for i in range(points.shape[0])]
+                logger.error('Color shape mismatched.')
+                exit(1)
             vertex = np.array(points, dtype = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('red', 'u1'), ('green', 'u1'), ('blue', 'u1') ])
         else:
             points = [(points[i, 0], points[i, 1], points[i, 2]) for i in range(points.shape[0])]

@@ -276,6 +276,65 @@ if module_config['point-cloud']:
                 logger.error("Invalid direction type. Supported types: \'y_x\', \'x_y\', \'bi\'")
                 raise ValueError
             return chamfer_dist
+    def euler_betti_numbers_from_mesh(mesh):
+        components = mesh.split(only_watertight=False)
+        beta0 = len(components)
+        # β2：number of closed surfaces
+        beta2 = sum(c.is_watertight for c in components)
+        # β1：compute using Euler characteristic
+        # χ = V - E - F
+        # for 2-manifold: β1 = β0 - β2 - χ
+        beta1 = 0
+        for c in components:
+            v = len(c.vertices)
+            f = len(c.faces)
+            # edges can be extracted:
+            e = len(c.edges_unique)
+            chi = v - e + f
+            # For each component:
+            b0_c = 1
+            b2_c = 1 if c.is_watertight else 0
+            b1_c = b0_c - b2_c - chi
+            beta1 += b1_c
+        return beta0, beta1, beta2
+    def simplex_betti_numbers_from_mesh(mesh):
+        import gudhi
+        st = gudhi.SimplexTree()
+        for tri in mesh.faces:
+            st.insert([int(tri[0]), int(tri[1]), int(tri[2])])
+
+        st.compute_persistence()
+
+        bettis = st.betti_numbers()
+        betti0 = bettis[0] if len(bettis)>0 else 0
+        betti1 = bettis[1] if len(bettis)>1 else 0
+        betti2 = bettis[2] if len(bettis)>2 else 0
+
+        return betti0, betti1, betti2
+    ### compute betti-number error for triangle mesh pair
+    class BettiError:
+        def __init__(self, order = [0, 1, 2], method = 'euler'):
+            self.order = order
+            assert method in ['euler', 'simplex'], 'method should be one of [euler, simplex].'
+            assert max(order) <=2 and min(order) >=0, 'order should be in [0, 1, 2].'
+            logger.info(f'using Betti Number Error of order {order}')
+            self.compute_betti = euler_betti_numbers_from_mesh if method == 'euler' else simplex_betti_numbers_from_mesh
+        def __call__(self, x, y):
+            x_betti = self.compute_betti(x)
+            y_betti = self.compute_betti(y)
+            return (np.abs(np.array(x_betti) - np.array(y_betti))).astype(float)[self.order]
+    ### compute mean betti-number error for triangle mesh set
+    class meanBettiError:
+        def __init__(self, order = [0, 1, 2], method = 'euler'):
+            self.order = order
+            assert method in ['euler', 'simplex'], 'method should be one of [euler, simplex].'
+            assert max(order) <=2 and min(order) >=0, 'order should be in [0, 1, 2].'
+            logger.info(f'using Betti Number Error of order {order}')
+            self.compute_betti = euler_betti_numbers_from_mesh if method == 'euler' else simplex_betti_numbers_from_mesh
+        def __call__(self, x, y):
+            x_betti_mean = sum([np.array(self.compute_betti(tx)) for tx in x]) / len(x)
+            y_betti_mean = sum([np.array(self.compute_betti(ty)) for ty in y]) / len(y)
+            return np.abs(x_betti_mean - y_betti_mean)[self.order]
 
 if module_config['graph']: 
     from flemme.loss import GraphNodeLoss
@@ -433,7 +492,8 @@ def get_metrics(metric_config, data_form = None, classification = False):
     elif data_form == DataForm.IMG:
         ### if classification, the channel dim = 1
         channel_dim = 0
-    elif data_form == DataForm.PCD:
+    ## point cloud
+    else:
         channel_dim = -1
     name = metric_config.pop('name')
     ### SSIM and MSE doesn't have any configuration.
@@ -477,6 +537,10 @@ def get_metrics(metric_config, data_form = None, classification = False):
         return EMD(**metric_config)
     if name == 'CD' or name == 'Chamfer':
         return CD(**metric_config)
+    if name == 'BettiError':
+        return BettiError(**metric_config)
+    if name == 'meanBettiError':
+        return meanBettiError(**metric_config)
     if name == 'GND' or name == 'GraphNodeDistance':
         return GND(**metric_config)
     if name == 'GEA' or name == 'GraphNodeAccuracy': 

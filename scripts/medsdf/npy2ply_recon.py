@@ -1,6 +1,4 @@
 import numpy as np
-import torch
-from torch.utils.data import random_split
 import sys, getopt
 import os
 import glob

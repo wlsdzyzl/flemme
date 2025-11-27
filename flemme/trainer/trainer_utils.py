@@ -339,53 +339,50 @@ def process_results(results, res, data_form,
         additional_keys = [],
         pickle_results = False, pickle_path = "pickled",
         mode = 'train', skip_to_numpy = False):
-    if not data_form == DataForm.GRAPH:
-        if skip_to_numpy:
-            res_dict = res
-        else:
-            res_dict = {}
-            if 'input' in res:
-                res_dict['input'] = res['input'].cpu().detach().numpy(),
-            if 'condition' in res: 
-                res_dict['condition'] = res['condition'].cpu().detach().numpy()
-            if 'target' in res:
-                res_dict['target'] = res['target'].cpu().detach().numpy()
-            if 'path' in res:
-                res_dict['path'] = res['path']
-            if 'slice_indices' in res:
-                res_dict['slice_indices'] = res['slice_indices']
-            if 'cluster_logits' in res:
-                res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
-            if 'cls_logits' in res:
-                res['cls'] = logits_to_onehot_label(res['cls_logits'], data_form)
-                res_dict['cls_logits'] = res['cls_logits'].cpu().detach().numpy()
-            if 'seg_logits' in res:
-                res['seg'] = logits_to_onehot_label(res['seg_logits'], data_form)
-                res_dict['seg_logits'] = res['seg_logits'].cpu().detach().numpy()
-            if 'latent' in res:
-                res_dict['latent'] = res['latent'].cpu().detach().numpy()
-            if 'recon' in res:
-                res_dict['recon'] = res['recon'].cpu().detach().numpy()
-            if 'seg' in res:
-                res_dict['seg'] = res['seg'].cpu().detach().numpy()
-            if 'cluster' in res:
-                res_dict['cluster'] = res['cluster'].cpu().detach().numpy()
-            if 'cls' in res:
-                res_dict['cls'] = res['cls'].cpu().detach().numpy()
-            if 'cluster_centers' in res:
-                res_dict['cluster_centers'] = res['cluster_centers'].cpu().detach().numpy()
-            for k in additional_keys:
-                res_dict[k] = res[k].cpu().detach().numpy()
-        if pickle_results:
-            filename = os.path.join(pickle_path, f'{mode}_batch_{len(results)}.pkl')
-            with open(filename, 'wb') as file:
-                joblib.dump(res_dict, file)
-            results.append(filename)
-        else:
-            results.append(res_dict)
+    if skip_to_numpy:
+        res_dict = res
     else:
-        ## graph_related operation is not implemented
-        raise NotImplementedError
+        res_dict = {}
+        if 'input' in res:
+            res_dict['input'] = res['input'].cpu().detach().numpy()
+        if 'condition' in res:
+            res_dict['condition'] = res['condition'].cpu().detach().numpy()
+        if 'target' in res and res['target'] is not None:
+            res_dict['target'] = res['target'].cpu().detach().numpy()
+        if 'path' in res:
+            res_dict['path'] = res['path']
+        if 'slice_indices' in res:
+            res_dict['slice_indices'] = res['slice_indices']
+        if 'cluster_logits' in res:
+            res['cluster'] = logits_to_onehot_label(res['cluster_logits'], data_form)
+        if 'cls_logits' in res:
+            res['cls'] = logits_to_onehot_label(res['cls_logits'], data_form)
+            res_dict['cls_logits'] = res['cls_logits'].cpu().detach().numpy()
+        if 'seg_logits' in res:
+            res['seg'] = logits_to_onehot_label(res['seg_logits'], data_form)
+            res_dict['seg_logits'] = res['seg_logits'].cpu().detach().numpy()
+        if 'latent' in res:
+            res_dict['latent'] = res['latent'].cpu().detach().numpy()
+        if 'recon' in res:
+            res_dict['recon'] = res['recon'].cpu().detach().numpy()
+        if 'seg' in res:
+            res_dict['seg'] = res['seg'].cpu().detach().numpy()
+        if 'cluster' in res:
+            res_dict['cluster'] = res['cluster'].cpu().detach().numpy()
+        if 'cls' in res:
+            res_dict['cls'] = res['cls'].cpu().detach().numpy()
+        if 'cluster_centers' in res:
+            res_dict['cluster_centers'] = res['cluster_centers'].cpu().detach().numpy()
+        for k in additional_keys:
+            res_dict[k] = res[k].cpu().detach().numpy()
+    if pickle_results:
+        filename = os.path.join(pickle_path, f'{mode}_batch_{len(results)}.pkl')
+        with open(filename, 'wb') as file:
+            joblib.dump(res_dict, file)
+        results.append(filename)
+    else:
+        results.append(res_dict)
+
 def load_pickle(res_dict):
     if type(res_dict) == str:
         ### pickle path
@@ -507,11 +504,9 @@ def create_batch_evaluators(eval_metrics, data_form):
     return evaluators
 
 ## results is a batch of inputs, each batch can be read through pickle from external storage.
-def evaluate_results(results, evaluators, data_form, verbose = False):
+def evaluate_results(results, evaluators, verbose = False):
     eval_res = {}
     sample_num = 0
-    if data_form == DataForm.GRAPH:
-        raise NotImplementedError
     if verbose:
         results = tqdm(results, desc=f"evaluating")
     for res_dict in results:
@@ -553,9 +548,9 @@ def evaluate_results(results, evaluators, data_form, verbose = False):
                         for pred, target in zipped:
                             tmp_res.append(eval_func(pred, target))
                         tmp_res = sum(tmp_res) 
-                        ## accuracy for different class
-                        if isinstance(tmp_res, np.ndarray):
-                            tmp_res = tmp_res.mean()
+                        # ## accuracy for different class
+                        # if isinstance(tmp_res, np.ndarray):
+                        #     tmp_res = tmp_res.mean()
                         eval_res[eval_type][eval_metric] += tmp_res
     for eval_type in eval_res:
         for eval_metric in eval_res[eval_type]:
@@ -726,7 +721,7 @@ def save_data(output, data_form, output_path, segmentation = False):
     elif data_form == DataForm.PCD:
         if segmentation:
             np.savetxt(output_path+'.seg', output)
-        elif output.shape[-1] == 3:
+        elif type(output) == tuple or (isinstance(output, np.ndarray) and output.shape[-1] == 3):
             save_ply(output_path+'.ply', output)
         ### not regular point cloud
         else:
@@ -734,7 +729,7 @@ def save_data(output, data_form, output_path, segmentation = False):
     else:
         raise NotImplementedError
 
-def get_load_function(suffix):
+def get_load_function(suffix, mesh = False):
     load_data = None
     data_type = 'img'
     if suffix.endswith('png') or suffix.endswith('jpg') or suffix.endswith('tif'):
@@ -746,6 +741,8 @@ def get_load_function(suffix):
         load_data = load_npy
         data_type = 'npy'
     if module_config['point-cloud']:
+        if mesh:
+            return load_mesh, 'mesh'
         if suffix.endswith('xyz') or suffix.endswith('ply'):
             data_type = 'pcd'
             load_data = load_pcd
