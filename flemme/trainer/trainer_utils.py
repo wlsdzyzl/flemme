@@ -10,6 +10,7 @@ from flemme.color_table import color_table
 import joblib
 from tqdm import tqdm
 from skimage.transform import resize
+from functools import partial
 
 logger = get_logger('trainer.utils')
 
@@ -742,7 +743,7 @@ def get_load_function(suffix, mesh = False):
         data_type = 'npy'
     if module_config['point-cloud']:
         if mesh:
-            return load_mesh, 'mesh'
+            return partial(load_mesh, clean = True, repair = True), 'mesh'
         if suffix.endswith('xyz') or suffix.endswith('ply'):
             data_type = 'pcd'
             load_data = load_pcd

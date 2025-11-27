@@ -236,6 +236,7 @@ class CACC:
 
 if module_config['point-cloud']:
     import ot
+    from flemme.utils import remove_small_components, remove_small_holes
     #### point cloud similarity
     ## Earth mover's distance
     class EMD:
@@ -313,13 +314,20 @@ if module_config['point-cloud']:
         return betti0, betti1, betti2
     ### compute betti-number error for triangle mesh pair
     class BettiError:
-        def __init__(self, order = [0, 1, 2], method = 'euler'):
+        def __init__(self, order = [0, 1, 2], method = 'euler',
+                min_num_faces = 10, min_hole_size = 10):
             self.order = order
             assert method in ['euler', 'simplex'], 'method should be one of [euler, simplex].'
             assert max(order) <=2 and min(order) >=0, 'order should be in [0, 1, 2].'
             logger.info(f'using Betti Number Error of order {order}')
             self.compute_betti = euler_betti_numbers_from_mesh if method == 'euler' else simplex_betti_numbers_from_mesh
+            self.remove_small_components = partial(remove_small_components, threshold_faces=min_num_faces)
+            self.remove_small_holes = partial(remove_small_holes, threshold_holes=min_hole_size)
         def __call__(self, x, y):
+            x = self.remove_small_components(x)
+            x = self.remove_small_holes(x)
+            y = self.remove_small_components(y)
+            y = self.remove_small_holes(y)
             x_betti = self.compute_betti(x)
             y_betti = self.compute_betti(y)
             return (np.abs(np.array(x_betti) - np.array(y_betti))).astype(float)[self.order]
@@ -331,7 +339,13 @@ if module_config['point-cloud']:
             assert max(order) <=2 and min(order) >=0, 'order should be in [0, 1, 2].'
             logger.info(f'using Betti Number Error of order {order}')
             self.compute_betti = euler_betti_numbers_from_mesh if method == 'euler' else simplex_betti_numbers_from_mesh
+            self.remove_small_components = partial(remove_small_components, threshold_faces=min_num_faces)
+            self.remove_small_holes = partial(remove_small_holes, threshold_holes=min_hole_size)
         def __call__(self, x, y):
+            x = self.remove_small_components(x)
+            x = self.remove_small_holes(x)
+            y = self.remove_small_components(y)
+            y = self.remove_small_holes(y)
             x_betti_mean = sum([np.array(self.compute_betti(tx)) for tx in x]) / len(x)
             y_betti_mean = sum([np.array(self.compute_betti(ty)) for ty in y]) / len(y)
             return np.abs(x_betti_mean - y_betti_mean)[self.order]

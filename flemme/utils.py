@@ -39,13 +39,14 @@ def contains_one_of(s, sl):
         if sub in s:
             return True
     return False
-def move_to_front(l, elmnt = None, func = None):
-    index = None
+def index_of(l, element, func = None):
     for i, e in enumerate(l):
-        found = func(e) if func is not None else e == elmnt
+        found = func(e) if func is not None else e == element
         if found:
-            index = i
-            break
+            return i
+    return None
+def move_to_front(l, elmnt = None, func = None):
+    index = index_of(l, elmnt, func)
     if index is not None:
         e = l.pop(index)
         l.insert(0, e)
@@ -568,8 +569,83 @@ if module_config['point-cloud'] or module_config['graph']:
         else:
             logger.warning('unknow file format, save as ply file.')
             save_ply(filename+'.ply', x)
+    def remove_small_components(mesh, threshold_faces = 10):
+        components = mesh.split(only_watertight=False)
+        filtered = [m for m in components if len(m.faces) > threshold_faces]
+        mesh = trimesh.util.concatenate(filtered)
+        return mesh
+    def remove_small_holes(mesh, threshold_holes = 10):
+        def compute_mesh_boundary(mesh):
+            unique_edges = mesh.edges[trimesh.grouping.group_rows(mesh.edges_sorted, require_count=1)]
+            return unique_edges
+        def compute_loops(mesh, max_loop_length):
+            boundary_edges = compute_mesh_boundary(mesh)
+            if len(boundary_edges) == 0:
+                return []
+            # Create a mapping from each vertex to its connected vertices
+            edge_dict = {}
+            for edge in boundary_edges:
+                edge_dict.setdefault(edge[0], []).append(edge[1])
+                edge_dict.setdefault(edge[1], []).append(edge[0])
 
-    def load_mesh(filename, clean = False):
+            loops = []
+            visited = set()
+
+            for start_vertex in edge_dict.keys():
+                if start_vertex in visited:
+                    continue
+                current_loop = []
+                current_vertex = start_vertex
+                previous_vertex = None
+                valid_loop = True
+                while True:
+                    current_loop.append(current_vertex)
+                    visited.add(current_vertex)
+                    neighbors = edge_dict[current_vertex]
+                    # Choose the next vertex that is not the previous one
+                    next_vertex = [n for n in neighbors if n != previous_vertex]
+                    if not next_vertex:
+                        break  # Dead end
+                    next_vertex = next_vertex[0]
+                    if next_vertex == start_vertex:
+                        break  # Loop closed
+                    ## for a good mesh, this should not happen
+                    if next_vertex in visited:
+                        cid = index_of(current_loop, next_vertex)
+                        ### founded vertex as start vertex
+                        if cid is not None:
+                            current_loop = current_loop[cid:]
+                        else:
+                            valid_loop = False
+                        break  # Already visited
+                    previous_vertex = current_vertex
+                    current_vertex = next_vertex
+                    if len(current_loop) >= max_loop_length:
+                        valid_loop = False
+                        break  # Safety check to prevent infinite loops
+                # print(current_loop)
+                if len(current_loop) > 2 and valid_loop:
+                    loops.append(current_loop)
+            return loops                        
+        loops = compute_loops(mesh, max_loop_length=threshold_holes)
+        new_faces = []
+        for loop in loops:
+            if len(loop) > 4:
+                pts = mesh.vertices[loop]
+                center = pts.mean(axis=0)
+
+                center_idx = len(mesh.vertices)
+                mesh.vertices = np.vstack([mesh.vertices, center])
+
+                for i in range(len(loop)):
+                    a = loop[i]
+                    b = loop[(i+1) % len(loop)]
+                    new_faces.append([a, b, center_idx])
+        if len(new_faces) > 0:
+            mesh.faces = np.vstack([mesh.faces, np.array(new_faces)])
+            mesh.remove_unreferenced_vertices()
+        return mesh
+    def load_mesh(filename, clean = False, repair = False):
         basename = os.path.basename(filename)
         suffix = (basename.split('.')[-1]).lower()
         if suffix in ['obj', 'stl', 'off', 'glb', 'ply']:
@@ -579,11 +655,12 @@ if module_config['point-cloud'] or module_config['graph']:
                 mesh.remove_degenerate_faces()
                 mesh.remove_duplicate_faces()
                 mesh.remove_unreferenced_vertices()
-                # trimesh.repair.fix_inversion(mesh)
+            if repair:
+                trimesh.repair.fix_normals(mesh)
+                trimesh.repair.fill_holes(mesh)  
+                trimesh.repair.fix_inversion(mesh)
+                trimesh.repair.fix_winding(mesh)
             return mesh
-        else:
-            logger.error(f'unsupported mesh file format {suffix}.')
-            raise NotImplementedError
 
     ##### generate batch random rotation
     def _copysign(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
