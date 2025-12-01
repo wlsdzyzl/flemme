@@ -9,7 +9,7 @@ from scipy.spatial import cKDTree
 from flemme.logger import get_logger
 logger = get_logger('scripts.pmap2xyzr')
 def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xyzr_file = None, normalized = True, prob_threshold = None, 
-        label_value = None, cc_axis = None):
+        label_value = None, cc_axis = None, dilate = False):
     if (inputfile[-3:] == 'npy'):
         mask_array = load_npy(inputfile)
     else:
@@ -21,7 +21,11 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
 
     
     mask_array = binary_dilation(mask_array, iterations=4)
-    mask_array = binary_erosion(mask_array, iterations=4)
+    if not dilate:
+        mask_array = binary_erosion(mask_array, iterations=4)
+    else:
+        ### dilated vessel
+        mask_array = binary_erosion(mask_array, iterations=2)
     vol_coor = get_coordinates(mask_array.shape)
     # normalize to [-1, 1]
     if normalized:
@@ -93,7 +97,8 @@ def main(argv):
     inputfile = ''
     outputdir = ''
     opts, args = getopt.getopt(argv, "hi:o:p:v:", ['help', 'input=', 'input_suffix=', 'output=', 'prob_threshold=', 
-                                                   'label_value=', 'cc_axis=' , 'mask', 'surface','skeleton', 'xyzr', 'no_normalized'])
+                                                   'label_value=', 'cc_axis=' , 'mask', 'surface','skeleton', 'xyzr', 
+                                                   'no_normalized', 'dilate'])
     mask = False
     surface = False
     skeleton = False
@@ -103,12 +108,13 @@ def main(argv):
     label_value = None
     suffix = 'nii.gz'
     cc_axis = None
+    dilate = False
     if len(opts) == 0:
-        logger.error('unknow options, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
+        logger.error('unknow options, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            logger.info('usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
+            logger.info('usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
             sys.exit()
         elif opt in ("-i", '--input'):
             inputfile = arg
@@ -132,8 +138,10 @@ def main(argv):
             xyzr = True
         elif opt in ('--no_normalized',):
             normalized = False
+        elif opt in ('--dilate',):
+            dilate = True
         else:
-            logger.error('unknow option, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized')
+            logger.error('unknow option, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
             sys.exit()
     assert label_value is not None or prob_threshold is not None, "At least one of [prob_threshold, label_value] should not be None."
     input_files = []
@@ -165,6 +173,6 @@ def main(argv):
         xyzr_file_list = [ outputdir+'/xyzr/'+ filename for filename in filenames]
 
     for ifile, mask_file, surface_file, skeleton_file, xyzr_file in zip(input_files, mask_file_list, surface_file_list, skeleton_file_list, xyzr_file_list):
-        f(ifile, mask_file, surface_file, skeleton_file, xyzr_file, normalized, prob_threshold = prob_threshold, label_value = label_value, cc_axis=cc_axis)
+        f(ifile, mask_file, surface_file, skeleton_file, xyzr_file, normalized, prob_threshold = prob_threshold, label_value = label_value, cc_axis=cc_axis, dilate=dilate)
 if __name__ == "__main__":
     main(sys.argv[1:])

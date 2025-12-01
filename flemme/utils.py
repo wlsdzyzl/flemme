@@ -645,21 +645,27 @@ if module_config['point-cloud'] or module_config['graph']:
             mesh.faces = np.vstack([mesh.faces, np.array(new_faces)])
             mesh.remove_unreferenced_vertices()
         return mesh
+    def clean_mesh(mesh):
+        # logger.info('Cleaning degenerated, duplicated faces and unreferenced vertices ...')
+        mesh.remove_degenerate_faces()
+        mesh.remove_duplicate_faces()
+        mesh.remove_unreferenced_vertices()
+        return mesh
+    def repair_mesh(mesh):
+        trimesh.repair.fix_normals(mesh)
+        trimesh.repair.fill_holes(mesh)  
+        trimesh.repair.fix_inversion(mesh)
+        trimesh.repair.fix_winding(mesh)
+        return mesh
     def load_mesh(filename, clean = False, repair = False):
         basename = os.path.basename(filename)
         suffix = (basename.split('.')[-1]).lower()
         if suffix in ['obj', 'stl', 'off', 'glb', 'ply']:
             mesh = trimesh.load_mesh(filename)
             if clean:
-                # logger.info('Cleaning degenerated, duplicated faces and unreferenced vertices ...')
-                mesh.remove_degenerate_faces()
-                mesh.remove_duplicate_faces()
-                mesh.remove_unreferenced_vertices()
+                mesh = clean_mesh(mesh)
             if repair:
-                trimesh.repair.fix_normals(mesh)
-                trimesh.repair.fill_holes(mesh)  
-                trimesh.repair.fix_inversion(mesh)
-                trimesh.repair.fix_winding(mesh)
+                mesh = repair_mesh(mesh)
             return mesh
 
     ##### generate batch random rotation

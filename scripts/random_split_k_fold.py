@@ -11,8 +11,8 @@ logger = get_logger('scripts.random_split_k_fold')
 def main(argv):
     dataset_path = None
     output_dir = None
-    sub_dirs = ['.']
-    subsub_dirs = ['.']
+    sub_dirs = ['']
+    subsub_dirs = ['']
     suffix = ['']
     kfold = 5
     opts, _ = getopt.getopt(argv, "hp:o:k:", ['help', 'dataset_path=', 'sub_dirs=', 'subsub_dirs=', 'suffix=', 'output_dir=', 'kfold=', 'method=', 'separately'])

@@ -1,4 +1,5 @@
 
+### part of this code is adopted from https://github.com/zekunhao1995/PointFlowRenderer/tree/master
 import numpy as np
 from flemme.utils import load_ply, load_img, save_img
 from flemme.color_table import color_table

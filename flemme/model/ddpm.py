@@ -71,6 +71,7 @@ class DiffusionProbabilistic(nn.Module):
         classifier_free_config = model_config.get('classifier_free_guidance', None)
         self.classifier_free = classifier_free_config is not None
         if self.classifier_free:
+            assert self.is_conditional, 'eps_model is not conditional, cannot assign classifier-free guidance.'
             self.condition_dropout = classifier_free_config.get('condition_dropout', 0.1)
             self.guidance_weight = classifier_free_config.get('guidance_weight', 1.0)
             logger.info('Using classifier-free guidance with {} condition dropout and weight = {}'.format(self.condition_dropout, self.guidance_weight))
