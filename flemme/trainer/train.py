@@ -2,7 +2,7 @@ from .trainer_utils import *
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau 
 from flemme.logger import get_logger
-from flemme.dataset import random_split_dataloader, file_split_dataloader
+from flemme.dataset import random_split_dataloader, sub_dataloader_from_files
 from datetime import datetime
 from tqdm import tqdm
 
@@ -85,7 +85,8 @@ def train(train_config,
     val_loader_config = train_config.get('val_loader', None)
     val_split_ratio = train_config.get('val_split_ratio', 0.0)
     val_split_seed = train_config.get('val_split_seed', None)
-    train_val_split_files = train_config.get('train_val_split_files', None)
+    # train_val_split_files = train_config.get('train_val_split_files', None)
+    split_files = train_config.get('split_files', None)
     ckp_dir = train_config.get('check_point_dir', '.')
     #### use writer to visualize the training process
     writer = SummaryWriter(log_dir = os.path.join(ckp_dir, 'logs'))
@@ -147,21 +148,24 @@ def train(train_config,
                                                                [1 - val_split_ratio, val_split_ratio], 
                                                                shuffle=[loader_config.get('shuffle', True), False],
                                                                generator=torch.Generator().manual_seed(val_split_seed) if val_split_seed is not None else None)
-    elif train_val_split_files:
-        assert type(train_val_split_files) == list and len(train_val_split_files) == 2, \
-            'train_val_split_files should be a list of 2 file paths.'
-        logger.info(f'Train / Val sets are split based on files: {train_val_split_files}.')
-        data_loader, val_data_loader = file_split_dataloader(data_loader, train_val_split_files,
-                                                                shuffle=[loader_config.get('shuffle', True), False])
+    elif split_files:
+        assert type(split_files)==dict, 'split_files should be a dict.'
+        logger.info(f'Train / Val sets are split based on: {split_files}.')
+        if 'train' in split_files:
+            data_loader = sub_dataloader_from_files(data_loader, split_files['train'],
+                                                                shuffle=loader_config.get('shuffle', True))
+        if 'val' in split_files:
+            val_data_loader = sub_dataloader_from_files(data_loader, split_files['val'],
+                                                                shuffle=False)
     else:
         logger.warning('No validation set, use training loss for checkpoint saving, learning scheduling, and early stopping.')
         if early_stop_patience > 0:
             logger.error('No validation set, early stop strategy is not reliable.')
             exit(1)
     logger.info('Finish parsing dataset(s).')
-    logger.info('Data sample (train) count: {}'.format(len(data_loader)))
+    logger.info('Data sample (train) count: {}'.format(len(data_loader.dataset)))
     if val_data_loader:
-        logger.info('Data sample (val) count: {}'.format(len(val_data_loader)))
+        logger.info('Data sample (val) count: {}'.format(len(val_data_loader.dataset)))
 
     #### define the optimizer
     optim_config = train_config.get('optimizer', None)
@@ -380,8 +384,6 @@ def train(train_config,
                             process_results(results=vresults, 
                                                 res = vres, 
                                                 data_form = model.data_form,
-                                                is_supervised=is_supervised, 
-                                                is_conditional=is_conditional,
                                                 pickle_results=pickle_results, 
                                                 pickle_path=pickle_path,
                                                 mode = 'val')
