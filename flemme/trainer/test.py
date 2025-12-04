@@ -5,6 +5,7 @@ from flemme.logger import get_logger
 from tqdm import tqdm
 from glob import glob
 from flemme.augment import get_transforms
+from flemme.dataset import file_split_dataloader
 ## if we want to train pcd or image, 
 ## make sure that the image size from data loader and image size from the model parameters are identical
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -242,6 +243,7 @@ def test(test_config,
         model.eval()
         #### create dataset and dataloader
         loader_config = test_config.get('loader', None)
+        test_split_file = test_config.get('test_split_file', None)
         eval_gen_config = test_config.get('eval_gen', None)
         eval_batch_num = test_config.get('eval_batch_num', float('inf'))
         save_target = test_config.get('save_target', False)
@@ -261,8 +263,14 @@ def test(test_config,
             assert model.data_form == loader['data_form'], 'Inconsistent data forms for model and loader.'
             
             data_loader = loader['data_loader']
-            logger.info('Finish loading data.')
-
+            if test_split_file:
+                if not type(test_split_file) is list:
+                    test_split_file = [test_split_file,]
+                assert len(test_split_file) == 1, 'test_split_file should be one file path.'
+                data_loader = file_split_dataloader(data_loader, test_split_file, 
+                                        shuffle = loader_config.get('shuffle', False))[0]
+            logger.info('Finish parsing dataset(s).')
+            logger.info('Data sample (test) count: {}'.format(len(data_loader)))
             results = []
 
             custom_save_results = test_config.get('custom_save_results', [])

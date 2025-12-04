@@ -14,7 +14,8 @@ logger = get_logger('image_dataset')
 class ImgDataset(Dataset):
     def __init__(self, data_path, dim = 2, data_transform = None, 
                  mode = 'train', data_dir = '', 
-                 data_suffix = '.png', crop_nonzero = None, **kwargs):
+                 data_suffix = '.png', crop_nonzero = None, 
+                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))

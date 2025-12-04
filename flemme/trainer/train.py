@@ -2,7 +2,7 @@ from .trainer_utils import *
 from torch.utils.tensorboard import SummaryWriter
 from torch.optim.lr_scheduler import ReduceLROnPlateau 
 from flemme.logger import get_logger
-from flemme.dataset import random_split_dataloader
+from flemme.dataset import random_split_dataloader, file_split_dataloader
 from datetime import datetime
 from tqdm import tqdm
 
@@ -85,6 +85,7 @@ def train(train_config,
     val_loader_config = train_config.get('val_loader', None)
     val_split_ratio = train_config.get('val_split_ratio', 0.0)
     val_split_seed = train_config.get('val_split_seed', None)
+    train_val_split_files = train_config.get('train_val_split_files', None)
     ckp_dir = train_config.get('check_point_dir', '.')
     #### use writer to visualize the training process
     writer = SummaryWriter(log_dir = os.path.join(ckp_dir, 'logs'))
@@ -141,16 +142,27 @@ def train(train_config,
             logger.error('validation set was provided, but no sample was found.')
             exit(1)
     elif val_split_ratio > 0.0:
-        logger.error('Validation set is created by splitting training set with ratio {}.'.format(val_split_ratio))
+        logger.info('Validation set is created by splitting training set with ratio {}.'.format(val_split_ratio))
         data_loader, val_data_loader = random_split_dataloader(data_loader, 
                                                                [1 - val_split_ratio, val_split_ratio], 
                                                                shuffle=[loader_config.get('shuffle', True), False],
                                                                generator=torch.Generator().manual_seed(val_split_seed) if val_split_seed is not None else None)
+    elif train_val_split_files:
+        assert type(train_val_split_files) == list and len(train_val_split_files) == 2, \
+            'train_val_split_files should be a list of 2 file paths.'
+        logger.info(f'Train / Val sets are split based on files: {train_val_split_files}.')
+        data_loader, val_data_loader = file_split_dataloader(data_loader, train_val_split_files,
+                                                                shuffle=[loader_config.get('shuffle', True), False])
     else:
         logger.warning('No validation set, use training loss for checkpoint saving, learning scheduling, and early stopping.')
         if early_stop_patience > 0:
             logger.error('No validation set, early stop strategy is not reliable.')
             exit(1)
+    logger.info('Finish parsing dataset(s).')
+    logger.info('Data sample (train) count: {}'.format(len(data_loader)))
+    if val_data_loader:
+        logger.info('Data sample (val) count: {}'.format(len(val_data_loader)))
+
     #### define the optimizer
     optim_config = train_config.get('optimizer', None)
     assert optim_config is not None, 'Optimizer need to be specified.'
@@ -158,6 +170,11 @@ def train(train_config,
     model = model.to(device)
     optimizer = create_optimizer(optim_config, model)
     max_epoch = train_config.get('max_epoch', 1000)
+    max_steps = train_config.get('max_steps', float('inf'))
+    if not max_steps == max_steps + 1:
+        logger.info('max_steps is set, max_epoch will be inducted from max_steps.')
+        max_epoch =  \
+            int(max_steps // len(data_loader) ) + int((max_steps % len(data_loader)) > 0 )
     warmup_epochs = train_config.get('warmup_epochs', 0)
     scheduler_config = train_config.get('lr_scheduler', None)
     eval_batch_num = train_config.get('eval_batch_num', 8)
@@ -168,6 +185,7 @@ def train(train_config,
     ## if scheduler is OneCycleLR, set as True
     ## otherwise, scheduler is called after a training epoch
     if scheduler_config is not None:
+        ### max_steps 
         if scheduler_config['name'] == "OneCycleLR":
             scheduler_config['total_steps'] = max_epoch - warmup_epochs
             scheduler_config['max_lr'] = optim_config.get('lr')
@@ -428,4 +446,7 @@ def train(train_config,
                         break
                 else:
                     patience_count = 0
+            if iter_id >= max_steps:
+                logger.info('Reaching max steps.')
+                break
     logger.info('Finish training.')

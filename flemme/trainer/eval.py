@@ -5,6 +5,7 @@ import glob
 from .trainer_utils import *
 from flemme.logger import get_logger
 from flemme.augment import get_transforms
+from flemme.dataset import file_split_dataloader
 from .test import save_results
 logger = get_logger('trainer.eval')
 
@@ -45,7 +46,7 @@ def evaluate(eval_config,
     
     dataset_name = None
     loader_config = eval_config.get('loader', None) 
-
+    test_split_file = eval_config.get('test_split_file', None)
     data_form = eval_config.get('data_form', 'img')
     
     if data_form == 'pcd': data_form = DataForm.PCD
@@ -83,13 +84,19 @@ def evaluate(eval_config,
         dataset_name = loader_config.get('dataset').get('name')
         loader = create_loader_fn(loader_config)
         data_loader = loader['data_loader']
+        if test_split_file:
+            if not type(test_split_file) is list:
+                test_split_file = [test_split_file,]
+            assert len(test_split_file) == 1, 'test_split_file should be one file path.'
+            data_loader = file_split_dataloader(data_loader, test_split_file, 
+                                    shuffle = loader_config.get('shuffle', False))[0]
         input_suffix = loader_config['dataset'].get('data_suffix', 'png')
         if type(input_suffix) == tuple or type(input_suffix) == list:
             input_suffix = input_suffix[0]
         assert data_form == loader['data_form'], 'Unmatched data form between loader and configuration.'
         
-        
-        logger.info('Finish loading data.')
+        logger.info('Finish parsing dataset(s).')
+        logger.info('Data sample (test) count: {}'.format(len(data_loader)))
         ### load targets and predictions
         iter_id = 0
         for t in tqdm(data_loader, desc="Loading predictions and targets ..."):
