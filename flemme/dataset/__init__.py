@@ -3,7 +3,7 @@ from .img import *
 from .vol_patch import PatchImgSegDataset, MultiModalityPatchImgSegDataset
 from torch.utils.data import DataLoader, ConcatDataset, random_split, Subset
 from torch.utils.data._utils.collate import default_collate
-from flemme.utils import DataForm
+from flemme.utils import DataForm, contains_one_of
 from flemme.augment import get_transforms, select_label_transforms, \
     check_random_transforms, check_consistent_transforms
 from flemme.logger import get_logger
@@ -226,12 +226,12 @@ def create_loader(loader_config):
     return loader
 def file_split_dataloader(dataloader, split_files, shuffle):
     dataset = dataloader.dataset
-    paths = [s[0] for s in dataset]
+    paths = [s[-1] for s in dataset]
     subsets = []
     for sf in split_files:
         with open(sf, 'r') as f:
             tmp_files = [line.strip() for line in f]
-        tmp_indices = [idx for idx, p in enumerate(paths) if p in tmp_files]
+        tmp_indices = [idx for idx, p in enumerate(paths) if contains_one_of(p, tmp_files)]
         sub_dataset = Subset(dataset, tmp_indices)
         subsets.append(sub_dataset)
     if type(shuffle) != list:
