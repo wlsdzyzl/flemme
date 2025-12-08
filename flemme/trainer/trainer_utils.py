@@ -9,7 +9,6 @@ from flemme.logger import get_logger
 from flemme.color_table import color_table
 import joblib
 from tqdm import tqdm
-from skimage.transform import resize
 from functools import partial
 
 logger = get_logger('trainer.utils')
@@ -686,7 +685,7 @@ def combine_figures(figs, row_length, size = (32, 32)):
     # display an n*n 2D manifold of digits
     if not isinstance(size, list) and not isinstance(size, tuple) :
         size = (size, size)
-    figs = resize(figs, figs.shape[0:2] + size)
+    figs = sk_resize(figs, figs.shape[0:2] + size)
     figure = np.zeros((figs.shape[1], col_length * size[0], row_length * size[1]))
     for i in range(col_length):
         for j in range(row_length):

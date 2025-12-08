@@ -15,6 +15,7 @@ import argparse
 import yaml
 from flemme.block import channel_recover
 import shutil
+from skimage.transform import resize as sk_resize
 ### close warning "unexpected scales in sform"
 if module_config['suppress_simpleitk_warning']:
     sitk.ProcessObject.SetGlobalWarningDisplay(False)
@@ -465,7 +466,14 @@ def freeze(model):
 def unfreeze(model):
     for param in model.parameters():
         param.requires_grad = True
-
+def zoom(input_array, scaling = 0.5, target_shape = None, order = None):
+    if not type(scaling) == list and not type(scaling) == tuple:
+        scaling = (scaling, ) * input_array.ndim
+    if target_shape is None:
+        target_shape = [int(si * sa) for si, sa in zip(input_array.shape, scaling)]
+    output_array = sk_resize(input_array, target_shape, 
+        preserve_range=True, order = order)
+    return output_array
 if module_config['point-cloud'] or module_config['graph']:
     from plyfile import PlyData, PlyElement
     import trimesh
@@ -473,8 +481,8 @@ if module_config['point-cloud'] or module_config['graph']:
     ## here we only focus on the coordinate information.
     ## later we can add more informations
     ## without edge features
-    def load_ply(inputfile, vertex_features = None, with_edges = False, with_faces = False):
-        plydata = PlyData.read(inputfile, known_list_len={'face': {'vertex_indices': 3}})
+    def load_ply(input_file, vertex_features = None, with_edges = False, with_faces = False):
+        plydata = PlyData.read(input_file, known_list_len={'face': {'vertex_indices': 3}})
         vertex_feature_len = 0 if vertex_features is None else len(vertex_features)
         pcd = np.zeros((plydata['vertex'].count, 3 + vertex_feature_len ))
         pcd[:, 0] = plydata['vertex']['x']

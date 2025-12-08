@@ -8,12 +8,12 @@ from skimage.morphology import skeletonize as skeletonize
 from scipy.spatial import cKDTree
 from flemme.logger import get_logger
 logger = get_logger('scripts.pmap2xyzr')
-def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xyzr_file = None, normalized = True, prob_threshold = None, 
+def f(input_file, mask_file = None, surface_file = None, skeleton_file = None, xyzr_file = None, normalized = True, prob_threshold = None, 
         label_value = None, cc_axis = None, dilate = False):
-    if (inputfile[-3:] == 'npy'):
-        mask_array = load_npy(inputfile)
+    if (input_file[-3:] == 'npy'):
+        mask_array = load_npy(input_file)
     else:
-        mask_array = load_itk(inputfile)
+        mask_array = load_itk(input_file)
     if prob_threshold is not None:
         mask_array >= prob_threshold
     else:
@@ -94,9 +94,9 @@ def f(inputfile, mask_file = None, surface_file = None, skeleton_file = None, xy
 
 ## command: python -u pmap2xyzr.py -i /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/label/ -o /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/output_lr/ -p 0.5 --cc_axis x --mask --surface --skeleton --xyzr --no_normalized > extract_xyzr.out
 def main(argv):
-    inputfile = ''
-    outputdir = ''
-    opts, args = getopt.getopt(argv, "hi:o:p:v:", ['help', 'input=', 'input_suffix=', 'output=', 'prob_threshold=', 
+    input_dir = ''
+    output_dir = ''
+    opts, args = getopt.getopt(argv, "hi:o:p:v:", ['help', 'input_dir=', 'input_suffix=', 'output_dir=', 'prob_threshold=', 
                                                    'label_value=', 'cc_axis=' , 'mask', 'surface','skeleton', 'xyzr', 
                                                    'no_normalized', 'dilate'])
     mask = False
@@ -110,18 +110,18 @@ def main(argv):
     cc_axis = None
     dilate = False
     if len(opts) == 0:
-        logger.error('unknow options, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
+        logger.error('unknow options, usage: pmap2xyzr.py -i <input_dir> --input_suffix <input_suffix=nii.gz> -o <output_dir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            logger.info('usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
+            logger.info('usage: pmap2xyzr.py -i <input_dir> --input_suffix <input_suffix=nii.gz> -o <output_dir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
             sys.exit()
-        elif opt in ("-i", '--input'):
-            inputfile = arg
+        elif opt in ("-i", '--input_dir'):
+            input_dir = arg
         elif opt in ('--input_suffix'):
             suffix = arg
-        elif opt in ("-o", '--output'):
-            outputdir = arg
+        elif opt in ("-o", '--output_dir'):
+            output_dir = arg
         elif opt in ("-p", '--prob_threshold'):
             prob_threshold = float(arg)
         elif opt in ('-v', '--label_value'):
@@ -141,36 +141,33 @@ def main(argv):
         elif opt in ('--dilate',):
             dilate = True
         else:
-            logger.error('unknow option, usage: pmap2xyzr.py -i <inputfile> --input_suffix <input_suffix=nii.gz> -o <outputdir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
+            logger.error('unknow option, usage: pmap2xyzr.py -i <input_dir> --input_suffix <input_suffix=nii.gz> -o <output_dir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
             sys.exit()
     assert label_value is not None or prob_threshold is not None, "At least one of [prob_threshold, label_value] should not be None."
     input_files = []
     filenames = []
-    if os.path.isdir(outputdir):
-        rkdirs(outputdir)
-    if os.path.isdir(inputfile):
-        input_files = sorted(glob.glob(os.path.join(inputfile, "*" + suffix)))
-        filenames = [os.path.splitext(os.path.splitext(os.path.split(ifile)[1])[0])[0] for ifile in input_files]
-    else:
-        input_files = [inputfile]
-        filenames = [os.path.splitext(os.path.splitext(os.path.split(inputfile)[1])[0])[0]]
+    if os.path.isdir(output_dir):
+        rkdirs(output_dir)
+    input_files = sorted(glob.glob(os.path.join(input_dir, "*" + suffix)))
+    filenames = [os.path.splitext(os.path.splitext(os.path.split(ifile)[1])[0])[0] for ifile in input_files]
+
 
     mask_file_list = [None for _ in range(len(input_files))]
     surface_file_list = [None for _ in range(len(input_files))]
     skeleton_file_list = [None for _ in range(len(input_files))]
     xyzr_file_list = [None for _ in range(len(input_files))]
     if mask:
-        os.makedirs(outputdir+'/mask')
-        mask_file_list = [ outputdir+'/mask/'+ filename  for filename in filenames]
+        os.makedirs(output_dir+'/mask')
+        mask_file_list = [ output_dir+'/mask/'+ filename  for filename in filenames]
     if surface:
-        os.makedirs(outputdir+'/surface')
-        surface_file_list = [ outputdir+'/surface/'+ filename  for filename in filenames]
+        os.makedirs(output_dir+'/surface')
+        surface_file_list = [ output_dir+'/surface/'+ filename  for filename in filenames]
     if skeleton:
-        os.makedirs(outputdir+'/skeleton')
-        skeleton_file_list = [ outputdir+'/skeleton/'+ filename  for filename in filenames]
+        os.makedirs(output_dir+'/skeleton')
+        skeleton_file_list = [ output_dir+'/skeleton/'+ filename  for filename in filenames]
     if xyzr:
-        os.makedirs(outputdir+'/xyzr')
-        xyzr_file_list = [ outputdir+'/xyzr/'+ filename for filename in filenames]
+        os.makedirs(output_dir+'/xyzr')
+        xyzr_file_list = [ output_dir+'/xyzr/'+ filename for filename in filenames]
 
     for ifile, mask_file, surface_file, skeleton_file, xyzr_file in zip(input_files, mask_file_list, surface_file_list, skeleton_file_list, xyzr_file_list):
         f(ifile, mask_file, surface_file, skeleton_file, xyzr_file, normalized, prob_threshold = prob_threshold, label_value = label_value, cc_axis=cc_axis, dilate=dilate)

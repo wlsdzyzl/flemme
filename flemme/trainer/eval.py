@@ -86,7 +86,7 @@ def evaluate(eval_config,
         data_loader = loader['data_loader']
         if split_files:
             if type(split_files) == dict:
-                assert 'test' in split_files, 'test is not in split_files when perform testing.'
+                assert 'test' in split_files, 'test is not in split_files when performing testing.'
                 split_files = split_files['test']
             data_loader = sub_dataloader_from_files(data_loader, split_files, 
                                     shuffle = loader_config.get('shuffle', False))
