@@ -14,7 +14,7 @@ model:
       name: PointTrans
       in_channel: 3
       point_num: 256
-      building_block: pct_oa
+      building_block: pct_oa_non_ffn
       # num_neighbors_k: 20
       local_feature_channels: [128, 256, 512, 1024]
       voxel_resolutions: [32, 32, 16, 16]

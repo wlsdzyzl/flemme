@@ -10,7 +10,7 @@ model:
     in_channel: 3
     out_channel: 46
     point_num: 4096
-    building_block: pct_oa
+    building_block: pct_oa_non_ffn
     # num_neighbors_k: 20
     local_feature_channels: [64, 64, 128, 256, 512]
     dense_channels: [1024]

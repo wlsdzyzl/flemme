@@ -457,7 +457,7 @@ class KID:
             K_XY = self.kernel(X, Y)
             mmd = K_XX.mean() + K_YY.mean() - 2 * K_XY.mean()
             kid_scores.append(mmd)
-        print(np.mean(kid_scores))
+        # print(np.mean(kid_scores))
         return np.mean(kid_scores)
 ## compute mean minimum distance
 class MMDAndCov:

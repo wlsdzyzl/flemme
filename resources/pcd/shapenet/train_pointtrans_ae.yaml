@@ -9,7 +9,7 @@ model:
     name: PointTrans
     in_channel: 3
     point_num: 1024
-    building_block: pct_oa
+    building_block: pct_oa_non_ffn
     num_neighbors_k: 20
     folding_times: 2
     local_feature_channels: [64, 64, 128, 256, 512]

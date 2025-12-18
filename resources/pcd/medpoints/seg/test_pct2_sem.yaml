@@ -11,7 +11,7 @@ model:
     in_channel: 3
     out_channel: 46
     point_num: 4096
-    building_block: pct_oa
+    building_block: pct_oa_non_ffn
     num_neighbors_k: 32
     num_fps_points: [2048, 1024, 512, 256, 128]
     fps_feature_channels: [64, 64, 128, 256, 512]

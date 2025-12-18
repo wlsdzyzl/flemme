@@ -631,7 +631,6 @@ if module_config['point-cloud'] or module_config['graph']:
                     if len(current_loop) >= max_loop_length:
                         valid_loop = False
                         break  # Safety check to prevent infinite loops
-                # print(current_loop)
                 if len(current_loop) > 2 and valid_loop:
                     loops.append(current_loop)
             return loops                        
