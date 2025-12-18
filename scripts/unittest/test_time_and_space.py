@@ -27,7 +27,7 @@ for model_config in model_configs:
     logger.info(f"Input shape: {x.shape}")
     allocated_memory = 0 
     try:
-        start_time = time.time()
+        start_time = time.perf_counter()
         for iter_id in range(num_iteration):
             x, y = x.to(device), y.to(device)
             loss, _ = compute_loss(model, x, y, c = None)
@@ -35,16 +35,16 @@ for model_config in model_configs:
             loss.backward()
             allocated_memory += torch.cuda.memory_reserved() / 1024.0 ** 3
 
-        end_time = time.time()
+        end_time = time.perf_counter()
         train_time = end_time - start_time
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         with torch.no_grad():
             model.eval()
             for iter_id in range(num_iteration):
                 x, y = x.to(device), y.to(device)
                 _ = forward_pass(model, x, y, c = None)
-        end_time = time.time()
+        end_time = time.perf_counter()
         infer_time = end_time - start_time
         logger.info('Average allocated memory for each iteration: {}GB'.format(allocated_memory / num_iteration))
         logger.info('Time of training for {} iterations: {}s'.format(num_iteration, train_time))

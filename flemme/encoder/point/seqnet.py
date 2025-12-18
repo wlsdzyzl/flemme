@@ -14,6 +14,7 @@ class SeqEncoder(nn.Module):
                 num_blocks,
                 seq_feature_channels, 
                 voxel_resolutions,
+                voxel_attens,
                 voxel_conv_kernel_size,
                 with_se,
                 coordinate_normalize,
@@ -23,6 +24,7 @@ class SeqEncoder(nn.Module):
                 condition_channel,
                 condition_injection,
                 condition_first,
+                normalization,
                 **kwargs):
         super().__init__()
         if len(kwargs) > 0:
@@ -55,7 +57,7 @@ class SeqEncoder(nn.Module):
                                             dim = 3,
                                             time_channel = time_channel, 
                                             activation=activation, 
-                                            norm = 'batch', 
+                                            norm = normalization if not normalization in ['layer', 'rms'] else 'batch',
                                             num_norm_groups = num_norm_groups, 
                                             kernel_size = voxel_conv_kernel_size,
                                             time_injection = time_injection,
@@ -63,6 +65,7 @@ class SeqEncoder(nn.Module):
                                             condition_injection = condition_injection,
                                             condition_first = condition_first)
             voxel_sequence = [VoxelLayer(resolution = voxel_resolutions[i], 
+                                            atten = voxel_attens[i],
                                             in_channel = self.seq_path[i],
                                             out_channel = self.seq_path[i+1], 
                                             BuildingBlock = VBuildingBlock,
@@ -101,6 +104,7 @@ class SeqNetEncoder(SeqEncoder):
                 num_blocks = 2,
                 building_block = 'dense', seq_feature_channels = [256], 
                 voxel_resolutions = [],
+                voxel_attens = [],
                 voxel_conv_kernel_size = 3,
                 with_se = False,
                 coordinate_normalize = True,
@@ -120,7 +124,9 @@ class SeqNetEncoder(SeqEncoder):
                 activation = activation, 
                 channel_attention = channel_attention,
                 time_injection=time_injection,
+                normalization = normalization,
                 voxel_resolutions=voxel_resolutions,
+                voxel_attens = voxel_attens,
                 voxel_conv_kernel_size = voxel_conv_kernel_size,
                 with_se = with_se,
                 coordinate_normalize = coordinate_normalize,

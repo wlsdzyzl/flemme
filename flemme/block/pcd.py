@@ -597,6 +597,7 @@ class VoxelLayer(nn.Module):
                 num_blocks = 2,
                 hidden_channels = None, 
                 resolution = 16, 
+                atten = None,
                 with_se=False, 
                 coordinate_normalize=True, 
                 eps=1e-8):
@@ -615,12 +616,14 @@ class VoxelLayer(nn.Module):
                 self.se3d = SE3d(out_channel)
             else:
                 self.se3d = nn.Identity()
-
+            self.atten = get_n_x_conv_atten(atten, out_channel)
     def forward(self, features, coords, t = None, c = None):
         if self.resolution > 0:
             feature_trans, coord_trans = channel_recover(features), channel_recover(coords)
             voxel_features, voxel_coords = self.voxelization(feature_trans, coord_trans)
             voxel_features = self.se3d(self.vbb(voxel_features, t, c))
+            if self.atten:
+                voxel_features = self.atten(voxel_features)
             voxel_features = trilinear_devoxelize(voxel_features, voxel_coords, self.resolution, self.training)
             return channel_transfer(voxel_features)
         return 0.0

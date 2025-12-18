@@ -129,6 +129,9 @@ def get_norm(norm_name, norm_channel, dim = -1, num_norm_groups = 0):
             return nn.LayerNorm(norm_channel), Norm.LAYER
         elif norm_name == 'instance':
             return get_in(dim, norm_channel), Norm.INSTANCE
+        elif norm_name == 'rms':
+            assert hasattr(nn, 'RMSNorm'), "Cannot find 'RMSNorm' in torch.nn, please make sure that torch >= 2.4.0."
+            return nn.RMSNorm(norm_channel), Norm.LAYER
         else:
             return nn.Identity(), Norm.NONE 
 def get_ca(method, **kwargs):
@@ -156,11 +159,17 @@ def get_context_injection(method, context_channel, data_channel, channel_dim):
     else:
         logger.error('Unknown method for context injection, should be one of ["gate_bias", "gate", "bias", "cross_atten"].')
         exit(1)
-def get_n_x_conv_atten(atten, in_channel, num_heads, d_k, 
-            qkv_bias, qk_scale, atten_dropout, 
-            dropout, skip_connection = True, dim = None):
-    if not atten or not type(atten) == str:
+def get_n_x_conv_atten(atten, in_channel, 
+            num_heads = 3, 
+            d_k = None, 
+            qkv_bias = True, qk_scale = None, 
+            atten_dropout = None, 
+            dropout = None,
+            skip_connection = True, 
+            dim = None):
+    if not atten:
         return None
+    assert 'atten' in atten, r'atten should be a string like ${num}x${atten_type}, such as 10xatten.'
     atten = atten.split('x')
     num_atten = 1
     if len(atten) == 2:
@@ -172,7 +181,7 @@ def get_n_x_conv_atten(atten, in_channel, num_heads, d_k,
     if atten == 'atten':
         return nn.Sequential(*[SelfAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
         qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
-        dropout = dropout, skip_connection = skip_connection) for _ in range(num_atten) ])
+        dropout = dropout, skip_connection = skip_connection, channel_dim = 1) for _ in range(num_atten) ])
     elif atten == 'fft_atten':
         return nn.Sequential(*[FFTAttenBlock(dim = dim, in_channel=in_channel, num_heads=num_heads, 
         d_k = d_k, qkv_bias = qkv_bias, qk_scale = qk_scale, 
@@ -491,7 +500,7 @@ class SelfAttentionBlock(AttentionBlock):
 
     def __init__(self, in_channel, num_heads = 3, d_k = None, 
         qkv_bias = True, qk_scale = None, atten_dropout = None, 
-        dropout = None, skip_connection = False, channel_dim = 1):
+        dropout = None, skip_connection = False, channel_dim = -1):
         """
         * `in_channel` is the number of channel in the input
         * `num_heads` is the number of heads in multi-head attention
@@ -551,7 +560,7 @@ class CrossAttentionBlock(AttentionBlock):
 
     def __init__(self, in_channel, context_channel = None, num_heads = 3, d_k = None, 
         qkv_bias = False, qk_scale = None, atten_dropout = None, 
-        dropout = None, skip_connection = False, channel_dim = 1):
+        dropout = None, skip_connection = False, channel_dim = -1):
         self.d_k = d_k or int(in_channel / num_heads)
         scale = qk_scale or self.d_k ** -0.5
         super().__init__(scale=scale, atten_dropout=atten_dropout)

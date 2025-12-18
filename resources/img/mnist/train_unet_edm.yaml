@@ -19,7 +19,7 @@ model:
       building_block: single
       activation: silu
       num_blocks: 2
-      normalization: group
+      normalization: layer
       num_norm_groups: 16
       dropout: 0.1
     condition_embedding:

@@ -10,7 +10,7 @@ model:
       name: SeqTrans
       in_channel: 3
       point_num: 256
-      building_block: pct_sa
+      building_block: pct_sa_non_ffn
       # num_neighbors_k: 20
       seq_feature_channels: [512, 512, 512, 512, 512, 512]
       num_heads: 8
@@ -51,7 +51,7 @@ loader:
     - name: ToTensor
 
     
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/imagecas_surface/SeqTrans_EDM_Skeleton
+check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/imagecas_surface/SeqTrans_Non_ffn_EDM_Skeleton
 resume: True
 ### parameter for optimizer
 optimizer:

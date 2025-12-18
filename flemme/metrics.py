@@ -333,7 +333,8 @@ if module_config['point-cloud']:
             return (np.abs(np.array(x_betti) - np.array(y_betti))).astype(float)[self.order]
     ### compute mean betti-number error for triangle mesh set
     class meanBettiError:
-        def __init__(self, order = [0, 1, 2], method = 'euler'):
+        def __init__(self, order = [0, 1, 2], method = 'euler',
+                    min_num_faces = 10, min_hole_size = 10):
             self.order = order
             assert method in ['euler', 'simplex'], 'method should be one of [euler, simplex].'
             assert max(order) <=2 and min(order) >=0, 'order should be in [0, 1, 2].'
@@ -342,12 +343,12 @@ if module_config['point-cloud']:
             self.remove_small_components = partial(remove_small_components, threshold_faces=min_num_faces)
             self.remove_small_holes = partial(remove_small_holes, threshold_holes=min_hole_size)
         def __call__(self, x, y):
-            x = self.remove_small_components(x)
-            x = self.remove_small_holes(x)
-            y = self.remove_small_components(y)
-            y = self.remove_small_holes(y)
-            x_betti_mean = sum([np.array(self.compute_betti(tx)) for tx in x]) / len(x)
-            y_betti_mean = sum([np.array(self.compute_betti(ty)) for ty in y]) / len(y)
+            x_betti_mean = sum([np.array(self.compute_betti(self.remove_small_holes(
+                                        self.remove_small_components(tx)))) 
+                                for tx in x]) / len(x)
+            y_betti_mean = sum([np.array(self.compute_betti(self.remove_small_holes(
+                                        self.remove_small_components(ty)))) 
+                                for ty in y]) / len(y)
             return np.abs(x_betti_mean - y_betti_mean)[self.order]
 
 if module_config['graph']: 
@@ -415,6 +416,7 @@ class FID:
         if np.iscomplexobj(covmean):
             covmean = covmean.real
         fid = diff.dot(diff) + np.trace(sigma1 + sigma2 - 2*covmean)
+        # print(fid)
         return fid    
 
 ## use pre-trained model to compute Kernel Inception Distance (based on Maximum Mean Discrepancy)
@@ -455,6 +457,7 @@ class KID:
             K_XY = self.kernel(X, Y)
             mmd = K_XX.mean() + K_YY.mean() - 2 * K_XY.mean()
             kid_scores.append(mmd)
+        print(np.mean(kid_scores))
         return np.mean(kid_scores)
 ## compute mean minimum distance
 class MMDAndCov:
@@ -494,8 +497,8 @@ class MMDAndCov:
                     dist_mat[i, j] = self.dist_fn(y[i], x[j])
         mmd = np.mean(np.min(dist_mat, axis=1))
 
-        matched_fake = np.argmin(dist_mat, axis=1)
-        cov = len(np.unique(matched_fake)) / N_fake
+        matched_real = np.argmin(dist_mat, axis=0)
+        cov = len(np.unique(matched_real)) / N_real
         return np.array([mmd, cov])
 
 def get_metrics(metric_config, data_form = None, classification = False):

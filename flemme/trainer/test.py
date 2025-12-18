@@ -6,6 +6,7 @@ from tqdm import tqdm
 from glob import glob
 from flemme.augment import get_transforms
 from flemme.dataset import sub_dataloader_from_files
+import time
 ## if we want to train pcd or image, 
 ## make sure that the image size from data loader and image size from the model parameters are identical
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -265,7 +266,7 @@ def test(test_config,
             data_loader = loader['data_loader']
             if split_files:
                 if type(split_files) == dict:
-                    assert 'test' in split_files, 'test is not in split_files when performing testing.'
+                    assert 'test' in split_files, 'test is not in split_files when perform testing.'
                     split_files = split_files['test']
                 data_loader = sub_dataloader_from_files(data_loader, split_files, 
                                         shuffle = loader_config.get('shuffle', False))
@@ -389,7 +390,6 @@ def test(test_config,
             gen_dir = eval_gen_config.get('gen_dir', None)
             if gen_dir is not None:
                 ### condition for generation
-                ### we will 
                 condition = eval_gen_config.get('conditions', None)
                 if type(condition) == dict:
                     condition_name, condition = condition.keys(), condition.values()
@@ -400,6 +400,8 @@ def test(test_config,
                     condition_name, condition = [condition, ], [condition, ]
                 cond_trans_list = eval_gen_config.get('condition_transforms', [])
                 condition_transforms = get_transforms(cond_trans_list, data_form = model.data_form)
+                start_time = time.perf_counter()
+                num_gen_samples = 0
                 for cond_n, cond in zip(condition_name, condition):
                     cond = condition_transforms(cond).to(device) if not cond is None else cond
                     output_dir = os.path.join(gen_dir, cond_n) if not cond_n is None else gen_dir
@@ -425,8 +427,9 @@ def test(test_config,
                                 x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num, cond = cond)
                             else:
                                 x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num)
+                            num_gen_samples += len(x_bar)
                             ## save the images.
-                            x_bar = x_bar.cpu().detach().numpy()
+                            x_bar = x_bar.cpu().detach().numpy()                            
                             for iid, _x_bar in enumerate(x_bar):
                                 output_path = os.path.join(output_dir, 'gen_inter_group{:02d}_{:02d}'.format(gid, iid))
                                 save_data_fn(_x_bar, model.data_form, output_path)
@@ -444,6 +447,7 @@ def test(test_config,
                             x_bar = sampler.generate_rand(n=random_sample_num, cond = cond)
                         else:
                             x_bar = sampler.generate_rand(n=random_sample_num)
+                        num_gen_samples += len(x_bar)
                         x_bar = x_bar.cpu().detach().numpy()
                         ## save the images.
                         for iid, _x_bar in tqdm(enumerate(x_bar), desc='Saving', total=len(x_bar)):
@@ -454,3 +458,4 @@ def test(test_config,
                             save_path = os.path.join(output_dir, 'gen_rand.png')
                             inter_figure = combine_figures(figs=x_bar, row_length=int(random_sample_num ** 0.5))
                             save_img(save_path, (inter_figure * 255).astype('uint8'))
+                logger.error('generation time per sample: {}s'.format((time.perf_counter() - start_time) / num_gen_samples ) )

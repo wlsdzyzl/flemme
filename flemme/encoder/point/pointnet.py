@@ -16,6 +16,7 @@ class PointEncoder(nn.Module):
                  num_neighbors_k, 
                  local_feature_channels,
                  voxel_resolutions,
+                 voxel_attens,
                  voxel_conv_kernel_size,
                  num_blocks,
                  dense_channels,
@@ -48,7 +49,7 @@ class PointEncoder(nn.Module):
         # self.condition_channel = condition_channel
         self.num_blocks = num_blocks
         self.voxel_resolutions = voxel_resolutions
-
+        self.voxel_attens = voxel_attens
         assert len(self.voxel_resolutions) == 0 or len(self.voxel_resolutions) == len(local_feature_channels),\
             "Voxel resolutions should have a same size with local feature channels."
         ## fully connected layers
@@ -93,7 +94,7 @@ class PointEncoder(nn.Module):
                                             dim = 3,
                                             time_channel = time_channel, 
                                             activation=activation, 
-                                            norm = 'batch', 
+                                            norm = normalization if not normalization in ['layer', 'rms'] else 'batch', 
                                             num_norm_groups = num_norm_groups, 
                                             kernel_size = voxel_conv_kernel_size,
                                             time_injection = time_injection,
@@ -101,6 +102,7 @@ class PointEncoder(nn.Module):
                                             condition_injection = condition_injection,
                                             condition_first = condition_first)
             vlf_sequence = [VoxelLayer(resolution = self.voxel_resolutions[i], 
+                                            atten = self.voxel_attens[i],
                                             in_channel = self.lf_path[i],
                                             out_channel = self.lf_path[i+1], 
                                             BuildingBlock = VBuildingBlock,
@@ -109,6 +111,7 @@ class PointEncoder(nn.Module):
                                             coordinate_normalize=coordinate_normalize,
                                             ) for i in range(len(self.lf_path) - 2) ]
             vlf_sequence.append(VoxelLayer(resolution = self.voxel_resolutions[-1], 
+                                            atten = self.voxel_attens[-1],
                                             in_channel = sum(self.lf_path[1:-1]),
                                             out_channel = self.lf_path[-1], 
                                             BuildingBlock = VBuildingBlock,
@@ -180,6 +183,7 @@ class PointNetEncoder(PointEncoder):
                  ### point-voxel cnn
                  local_feature_channels = [64, 64, 128, 256], 
                  voxel_resolutions = [],
+                 voxel_attens = [],
                  num_blocks = 2,
                  dense_channels = [256, 256],
                  building_block = 'dense', 
@@ -209,6 +213,7 @@ class PointNetEncoder(PointEncoder):
                 channel_attention = channel_attention,
                 time_injection=time_injection,
                 voxel_resolutions=voxel_resolutions,
+                voxel_attens = voxel_attens,
                 voxel_conv_kernel_size = voxel_conv_kernel_size,
                 with_se = with_se,
                 coordinate_normalize = coordinate_normalize,

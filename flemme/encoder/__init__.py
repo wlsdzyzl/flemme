@@ -256,9 +256,12 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
             #### point cloud encoder
             point_num = encoder_config.pop('point_num', 2048)
             voxel_resolutions = encoder_config.pop('voxel_resolutions', [])
-            de_voxel_resolutions = encoder_config.pop('decoder_voxel_resolutions', [])
+            voxel_attens = encoder_config.pop('voxel_attens', None)
             assert type(voxel_resolutions) == list, "voxel_resolutions should be a list."
-            assert type(de_voxel_resolutions) == list, "decoder_voxel_resolutions should be a list."
+            if not isinstance(voxel_attens, list): 
+                voxel_attens = [voxel_attens,] * len(voxel_resolutions)
+            assert len(voxel_attens) == len(voxel_resolutions), 'voxel_attens and voxel_resolutions should have the same length.'
+            
             if not 'Seq' in encoder_name:
                 
                 if not encoder_name[-1] == '2':
@@ -272,6 +275,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                     dense_channels=dense_channels, 
                                                     building_block=building_block,
                                                     voxel_resolutions = voxel_resolutions,
+                                                    voxel_attens = voxel_attens,
                                                     **encoder_config)
                         latent_channel = encoder.out_channel
                     ## Different encoders of point clouds could use the same decoder.
@@ -301,17 +305,26 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                             dense_channels=dense_channels, 
                                             building_block=building_block,
                                             voxel_resolutions = voxel_resolutions,
+                                            voxel_attens = voxel_attens,
                                             **encoder_config)
                         
                         latent_channels = encoder.out_channels
                     ## Different encoders of point clouds could use the same decoder.
                     if return_decoder:
+                        de_voxel_resolutions = encoder_config.pop('decoder_voxel_resolutions', [])
+                        de_voxel_attens = encoder_config.pop('decoder_voxel_attens', None)
+                        assert type(de_voxel_resolutions) == list, "decoder_voxel_resolutions should be a list."
+                        if not isinstance(de_voxel_attens, list): 
+                            de_voxel_attens = [de_voxel_attens,] * len(de_voxel_resolutions)
+                        assert len(de_voxel_attens) == len(de_voxel_resolutions), 'decoder_voxel_attens and decoder_voxel_resolutions should have the same length.'
+
                         decoder = Decoder(point_dim=out_channel, point_num=point_num, 
                                                 latent_channels=latent_channels, 
                                                 dense_channels=de_dense_channels,
                                                 building_block=building_block,
                                                 fp_channels = fp_channels,
                                                 voxel_resolutions = de_voxel_resolutions,
+                                                voxel_attens = de_voxel_attens,
                                                 **encoder_config)
             ### sequential net
             else:
@@ -325,6 +338,7 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                 seq_feature_channels = seq_feature_channels,
                                                 building_block=building_block,
                                                 voxel_resolutions = voxel_resolutions,
+                                                voxel_attens = voxel_attens,
                                                 **encoder_config)
                     latent_channel = encoder.out_channel
                 ## Different encoders of point clouds could use the same decoder.
@@ -333,7 +347,6 @@ def create_encoder(encoder_config, return_encoder = True, return_decoder = True)
                                                 latent_channel=latent_channel, 
                                                 seq_feature_channels = decoder_seq_feature_channels,
                                                 building_block=building_block,
-                                                voxel_resolutions = de_voxel_resolutions,
                                                 **encoder_config)
             if return_encoder:
                 encoder.point_num = point_num

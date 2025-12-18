@@ -40,6 +40,7 @@ class Point2Encoder(nn.Module):
                  neighbor_radius, 
                  fps_feature_channels, 
                  voxel_resolutions,
+                 voxel_attens,
                  voxel_conv_kernel_size,
                  num_blocks,
                  num_scales,
@@ -89,6 +90,7 @@ class Point2Encoder(nn.Module):
         self.sorted_query = sorted_query
         self.knn_query = knn_query
         self.voxel_resolutions = voxel_resolutions
+        self.voxel_attens = voxel_attens
         if knn_query:
             assert knn_query in ['xyz', 'xyz_embed', 'feature'], "Unsupported KNN query space, shouled be one of ['xyz', 'xyz_embed', 'feature']."
             logger.info(f'Perform KNN query on {knn_query} space.')
@@ -186,7 +188,7 @@ class Point2Encoder(nn.Module):
                                             dim = 3,
                                             time_channel = time_channel, 
                                             activation=activation, 
-                                            norm = 'batch', 
+                                            norm = normalization if not normalization in ['layer', 'rms'] else 'batch',
                                             num_norm_groups = num_norm_groups, 
                                             kernel_size = voxel_conv_kernel_size,
                                             time_injection = time_injection,
@@ -194,6 +196,7 @@ class Point2Encoder(nn.Module):
                                             condition_injection = condition_injection,
                                             condition_first = condition_first)
             vlf_sequence = [VoxelLayer(resolution = self.voxel_resolutions[i], 
+                                            atten = self.voxel_attens[i],
                                             in_channel = self.msg_path[i],
                                             out_channel = self.msg_path[i+1], 
                                             BuildingBlock = VBuildingBlock,
@@ -293,6 +296,7 @@ class Point2Decoder(nn.Module):
                 channel_attention,
                 time_injection,
                 voxel_resolutions,
+                voxel_attens,
                 voxel_conv_kernel_size,
                 with_se,
                 coordinate_normalize,
@@ -313,8 +317,9 @@ class Point2Decoder(nn.Module):
         self.num_blocks = num_blocks
         if len(voxel_resolutions) > 0:
             voxel_resolutions = [voxel_resolutions[0], ] + voxel_resolutions
+            voxel_attens = [None, ] + voxel_attens
         self.voxel_resolutions = voxel_resolutions
-
+        self.voxel_attens = voxel_attens
         ## fully connected layer
         dense_channels = [fp_channels[-1],] + dense_channels 
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
@@ -354,7 +359,7 @@ class Point2Decoder(nn.Module):
                                             dim = 3,
                                             time_channel = time_channel, 
                                             activation=activation, 
-                                            norm = 'batch', 
+                                            norm = normalization if not normalization in ['layer', 'rms'] else 'batch',
                                             num_norm_groups = num_norm_groups, 
                                             kernel_size = voxel_conv_kernel_size,
                                             time_injection = time_injection,
@@ -362,6 +367,7 @@ class Point2Decoder(nn.Module):
                                             condition_injection = condition_injection,
                                             condition_first = condition_first)
             vf_sequence = [VoxelLayer(resolution = self.voxel_resolutions[i], 
+                                            atten = self.voxel_attens[i],
                                             in_channel = self.unknow_feature_channels[i],
                                             out_channel = self.fp_path[i+1], 
                                             BuildingBlock = VBuildingBlock,
@@ -421,6 +427,7 @@ class PointNet2Encoder(Point2Encoder):
                  channel_attention = None,
                  time_injection = 'gate_bias',
                  voxel_resolutions = [],
+                 voxel_attens = [],
                  voxel_conv_kernel_size = 3,
                  with_se = False,
                  coordinate_normalize = True,
@@ -453,6 +460,7 @@ class PointNet2Encoder(Point2Encoder):
                 channel_attention = channel_attention,
                 time_injection=time_injection,
                 voxel_resolutions = voxel_resolutions,
+                voxel_attens = voxel_attens,
                 voxel_conv_kernel_size = voxel_conv_kernel_size,
                 with_se = with_se,
                 coordinate_normalize = coordinate_normalize,
@@ -498,6 +506,7 @@ class PointNet2Decoder(Point2Decoder):
                 channel_attention = None,
                 time_injection = 'gate_bias',
                 voxel_resolutions = [],
+                voxel_attens = [],
                 voxel_conv_kernel_size = 3,
                 with_se = False,
                 coordinate_normalize = True,
@@ -519,6 +528,7 @@ class PointNet2Decoder(Point2Decoder):
                 channel_attention = channel_attention,
                 time_injection=time_injection,
                 voxel_resolutions = voxel_resolutions,
+                voxel_attens = voxel_attens,
                 voxel_conv_kernel_size = voxel_conv_kernel_size,
                 with_se = with_se,
                 coordinate_normalize = coordinate_normalize,
