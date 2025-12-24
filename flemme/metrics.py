@@ -277,6 +277,21 @@ if module_config['point-cloud']:
                 logger.error("Invalid direction type. Supported types: \'y_x\', \'x_y\', \'bi\'")
                 raise ValueError
             return chamfer_dist
+    def compute_f_score(x, y, tau, metric):
+        kdtree_x = NearestNeighbors(n_neighbors=1, leaf_size=1, algorithm='kd_tree', metric=metric).fit(x)
+        kdtree_y = NearestNeighbors(n_neighbors=1, leaf_size=1, algorithm='kd_tree', metric=metric).fit(y)
+        dist_pred_to_gt = kdtree_y.kneighbors(x)[0]
+        precision = np.mean(dist_pred_to_gt < tau)
+        dist_gt_to_pred = kdtree_x.kneighbors(y)[0]
+        recall = np.mean(dist_gt_to_pred < tau)
+        f_score = (2 * precision * recall + 1e-8) / (precision + recall + 1e-8)
+        return f_score
+    class F1Point:
+        def __init__(self, dist_threshold = 0.05, metric = 'l2'):
+            self.dist_threshold = dist_threshold
+            self.metric = metric
+        def __call__(self, x, y):
+            return compute_f_score(x, y, self.dist_threshold, self.metric)
     def euler_betti_numbers_from_mesh(mesh):
         components = mesh.split(only_watertight=False)
         beta0 = len(components)
@@ -554,6 +569,8 @@ def get_metrics(metric_config, data_form = None, classification = False):
         return EMD(**metric_config)
     if name == 'CD' or name == 'Chamfer':
         return CD(**metric_config)
+    if name == 'Dice-Point' or name == 'F1-Point':
+        return F1Point(**metric_config)
     if name == 'BettiError':
         return BettiError(**metric_config)
     if name == 'meanBettiError':
