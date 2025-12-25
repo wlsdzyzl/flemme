@@ -331,7 +331,7 @@ def load_img(input_path):
     return img
 
 def load_img_as_numpy(input_path):
-    if input_path[-4:] == '.npy':
+    if input_path[-3:] == 'npy':
         return load_npy(input_path)
     ## we don't need to squeeze here 
     ## because torchvision.totensor will expand the tensor.
@@ -552,7 +552,7 @@ if module_config['point-cloud'] or module_config['graph']:
     def load_xyz(filename):
         return np.loadtxt(filename)
 
-    def load_pcd(filename):
+    def load_pcd(filename, key = None):
         basename = os.path.basename(filename)
         suffix = (basename.split('.')[-1]).lower()
         if suffix == 'ply':

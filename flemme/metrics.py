@@ -277,21 +277,6 @@ if module_config['point-cloud']:
                 logger.error("Invalid direction type. Supported types: \'y_x\', \'x_y\', \'bi\'")
                 raise ValueError
             return chamfer_dist
-    def compute_f_score(x, y, tau, metric):
-        kdtree_x = NearestNeighbors(n_neighbors=1, leaf_size=1, algorithm='kd_tree', metric=metric).fit(x)
-        kdtree_y = NearestNeighbors(n_neighbors=1, leaf_size=1, algorithm='kd_tree', metric=metric).fit(y)
-        dist_pred_to_gt = kdtree_y.kneighbors(x)[0]
-        precision = np.mean(dist_pred_to_gt < tau)
-        dist_gt_to_pred = kdtree_x.kneighbors(y)[0]
-        recall = np.mean(dist_gt_to_pred < tau)
-        f_score = (2 * precision * recall + 1e-8) / (precision + recall + 1e-8)
-        return f_score
-    class F1Point:
-        def __init__(self, dist_threshold = 0.05, metric = 'l2'):
-            self.dist_threshold = dist_threshold
-            self.metric = metric
-        def __call__(self, x, y):
-            return compute_f_score(x, y, self.dist_threshold, self.metric)
     def euler_betti_numbers_from_mesh(mesh):
         components = mesh.split(only_watertight=False)
         beta0 = len(components)
@@ -365,7 +350,23 @@ if module_config['point-cloud']:
                                         self.remove_small_components(ty)))) 
                                 for ty in y]) / len(y)
             return np.abs(x_betti_mean - y_betti_mean)[self.order]
-
+    ### f_score and hausdorff distance
+    def compute_f_score_and_hd(x, y, tau, metric):
+        kdtree_x = NearestNeighbors(n_neighbors=1, leaf_size=1, algorithm='kd_tree', metric=metric).fit(x)
+        kdtree_y = NearestNeighbors(n_neighbors=1, leaf_size=1, algorithm='kd_tree', metric=metric).fit(y)
+        dist_pred_to_gt = kdtree_y.kneighbors(x)[0]
+        precision = np.mean(dist_pred_to_gt < tau)
+        dist_gt_to_pred = kdtree_x.kneighbors(y)[0]
+        recall = np.mean(dist_gt_to_pred < tau)
+        f_score = (2 * precision * recall + 1e-8) / (precision + recall + 1e-8)
+        hd = np.max([dist_gt_to_pred.max(), dist_pred_to_gt.max()])
+        return np.array([f_score, hd])
+    class F1AndHDPoint:
+        def __init__(self, dist_threshold = 0.05, metric = 'l2'):
+            self.dist_threshold = dist_threshold
+            self.metric = metric
+        def __call__(self, x, y):
+            return compute_f_score_and_hd(x, y, self.dist_threshold, self.metric)
 if module_config['graph']: 
     from flemme.loss import GraphNodeLoss
     ## graph node distance
@@ -551,6 +552,8 @@ def get_metrics(metric_config, data_form = None, classification = False):
         return HD(channel_dim=channel_dim, **metric_config)
     if name == 'SegARI':
         return SegARI(channel_dim=channel_dim, **metric_config)
+    if name == 'Dice&HD-Point' or name == 'F1&HD-Point':
+        return F1AndHDPoint(**metric_config)
     ### clustering metrics
     if name == 'ARI':
         return ARI(**metric_config)
@@ -569,8 +572,6 @@ def get_metrics(metric_config, data_form = None, classification = False):
         return EMD(**metric_config)
     if name == 'CD' or name == 'Chamfer':
         return CD(**metric_config)
-    if name == 'Dice-Point' or name == 'F1-Point':
-        return F1Point(**metric_config)
     if name == 'BettiError':
         return BettiError(**metric_config)
     if name == 'meanBettiError':
@@ -584,7 +585,7 @@ def get_metrics(metric_config, data_form = None, classification = False):
         return FID(**metric_config)
     if name == 'KID':
         return KID(**metric_config) 
-    if name == 'MMDAndCov':
+    if name == 'MMD&Cov':
         return MMDAndCov(data_form = data_form, **metric_config)
     logger.error(f'Unsupported metric: {name}')
     return None
