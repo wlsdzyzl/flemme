@@ -40,6 +40,11 @@ def contains_one_of(s, sl):
         if sub in s:
             return True
     return False
+def is_in_one_of(s, sl):
+    for sub in sl:
+        if s in sub:
+            return True
+    return False
 def index_of(l, element, func = None):
     for i, e in enumerate(l):
         found = func(e) if func is not None else e == element
@@ -763,7 +768,12 @@ if module_config['point-cloud'] or module_config['graph']:
         """
         quaternions = random_quaternions(n, dtype=dtype, device=device)
         return quaternion_to_matrix(quaternions)
-
+    def transform(x, rotation = None, translation = None):
+        if rotation is not None:
+            x = x @ rotation.T
+        if translation is not None:
+            x = x + translation
+        return x
     def batch_transform(x, rotation = None, translation = None):
         ### x: (B, N, 3)
         ### rot: (B, 3, 3)
@@ -779,7 +789,6 @@ if module_config['point-cloud'] or module_config['graph']:
         if batch_vec:
             x = x[:, 0, :]
         return x
-
     def batch_random_rotate(x):
         ## x: B * N * 3
         rot_mat = random_rotations(x.shape[0], dtype=x.dtype, device = x.device)
@@ -807,7 +816,26 @@ if module_config['point-cloud'] or module_config['graph']:
         kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
         rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
         return rotation_matrix
+    def rotation_from_axis_angle(alpha, beta, gamma):
+        """
+        rotate by x, y and z axis in order (counterclockwise)
+        """
+        ca, sa = np.cos(alpha), np.sin(alpha)
+        cb, sb = np.cos(beta), np.sin(beta)
+        cg, sg = np.cos(gamma), np.sin(gamma)
+        
+        R = np.array([
+            [cg*cb, cg*sb*sa - sg*ca, cg*sb*ca + sg*sa],
+            [sg*cb, sg*sb*sa + cg*ca, sg*sb*ca - cg*sa],
+            [-sb,   cb*sa,            cb*ca]
+        ])
+        return R
 
+    def rotate_by_axis_angle(pcd, x_angle=0, y_angle=0, z_angle=0):
+        rot = rotation_from_axis_angle(x_angle / 180 * np.pi, 
+            y_angle / 180 * np.pi, 
+            z_angle / 180 * np.pi)
+        return transform(pcd, rotation = rot)
 
     def batch_rotations_from_vectors(bvec1, bvec2):
         """ Find the rotation matrix that aligns a batch of vectors bvec1 to another batch of vectors bvec2
@@ -838,7 +866,6 @@ if module_config['point-cloud'] or module_config['graph']:
         kmat[:, 2, 1] = v[:, 0]
         rotations = torch.eye(3, device=bvec1.device) + kmat + torch.bmm(kmat, kmat) * ((1 - c) / (s ** 2))
         return rotations
-
 if module_config['graph']:
     from torch_geometric.data import Data as Graph
     def load_graph(filename, vertex_features = None):
@@ -861,5 +888,3 @@ if module_config['graph']:
         if type(graph_data) == tuple:
             pos, feature, edge = graph_data
             graph_data = Graph(x = feature, pos = pos, edge = edge)
-        
-        
