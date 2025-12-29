@@ -39,6 +39,6 @@ def main(argv):
         mesh = remove_small_holes(mesh, 100)
         mesh = remove_small_components(mesh, 50)
         ofile = os.path.join(output_dir, os.path.basename(ifile))
-        save_ply(ofile, v, faces = t)
+        save_ply(ofile, mesh.vertices, faces = mesh.faces)
 if __name__ == "__main__":
     main(sys.argv[1:])

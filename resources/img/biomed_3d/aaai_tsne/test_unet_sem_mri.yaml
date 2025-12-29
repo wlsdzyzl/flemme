@@ -1,0 +1,103 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: test
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: UNet
+    image_size: [40, 136, 120]
+    in_channel: 1
+    patch_size: 2
+    down_channels: [64, 128]
+    middle_channels: [256, 256]
+    building_block: single
+    normalization: group
+    # dense_channels: [512, 512]
+  condition_embedding:
+    combine_condition: injection
+    condition_injection: gate_bias
+    encoder:
+      name: OneHot
+      type: categories
+      out_channel: 128
+      num_classes: 6
+    decoder: same_as_encoder
+  segmentation_losses: 
+    - name: Dice
+      normalization: sigmoid
+    - name: BCE
+loader:
+  dataset: 
+    name: ImgSegWithClassLabelDataset
+    dim: 3
+    data_dir: imagesTr
+    label_dir: labelsTr
+    data_suffix: .nii.gz
+    label_suffix: .nii.gz
+    crop_nonzero:
+      margin: [2,2,2]
+      crop_by: raw
+    cls_label: 
+      ACDC: 1  
+      FeTS_ED: 2  
+      FeTS_ET: 3  
+      FeTS_NCR: 4  
+      GTV: 5 
+      WMH: 6
+  data_path_list: 
+    - /data/guoqingzhang/datasets/biomed_3d_dataset/aaai_tsne/MRI
+  batch_size: 32
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Resize
+      size: [40, 136, 120]
+    - name: Normalize
+    - name: ToTensor
+  label_transforms:
+    - name: Resize
+      size: [40, 136, 120]
+    - name: ToBinaryMask
+    - name: ToTensor
+  class_label_transforms:
+    - name: Relabel
+      offset: -1
+    - name: ToOneHot
+      num_classes: 6
+    - name: ToTensor
+model_path: /data/guoqingzhang/flemme-ckp/aaai_tsne/MRI/UNet_SeM/ckp_best_score.pth
+pickle_results: true
+pickle_path: /data/guoqingzhang/flemme-pickled/mri
+load_pickle_results: true
+# evaluation_metrics:
+#   seg:
+#     - name: Dice
+#     - name: ACC
+#     - name: mIoU
+tsne_visualization: 
+  top_n: 10
+  title: t-SNE Visualization
+  vis_dim: 2
+  # perplexity: 6
+  perplexity: 10
+  size: 10
+  alpha: 0.8
+  remove_ticks: false
+  # learning_rate: 800
+  # early_exaggeration: 6
+  one_to_multiple: 5
+  noise_level: 0.08
+  legend: true
+  verbose: 1
+  random_state: 1998
+  color_map: Dark2_r
+  tsne_path: tsne_mri_1998_dots_one5_noise008.png
+  label_names:       
+    - ACDC
+    - ED
+    - ET 
+    - NCR 
+    - GTV
+    - WMH

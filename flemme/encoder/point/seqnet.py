@@ -181,8 +181,9 @@ class SeqDecoder(nn.Module):
         return _str 
     # input: Nb * Np * d
     def forward(self, x, t = None, c = None):
-        if self.seq:
-            x = self.seq(x, t, c)
+        if not self.seq is None:
+            for sid in range(len(self.seq)):
+                x = self.seq[sid](x, t, c)
         return self.latent_proj(x)
     
 class SeqNetDecoder(SeqDecoder):
@@ -219,6 +220,6 @@ class SeqNetDecoder(SeqDecoder):
                                            out_channel=self.seq_path[i+1])  
                                         for i in range(len(self.seq_path) - 1) ]
         if len(sequence):
-            self.seq = SequentialT(*(copy.deepcopy(sequence)))
+            self.seq = nn.ModuleList(sequence)
 
 

@@ -92,7 +92,7 @@ xml_tail = \
 
 def main(argv):
     mesh_file = None
-    xyz_angles = [0, 0, 0]
+    xyz_angles = []
     output_path = 'mitsuba_scene.png'
     size=[160, 120]
     opts, args = getopt.getopt(argv, "hi:o:", ['help', 'input_mesh=', 'output_path=', 
@@ -100,18 +100,18 @@ def main(argv):
     float_height = 0.1
     mirror_flip = []
     if len(opts) == 0:
-        logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=0,0,0> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1>')
+        logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1>')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            logger.info('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=0,0,0> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1>')
+            logger.info('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1>')
             sys.exit()
         elif opt in ("-i", '--input_mesh'):
             mesh_file = arg
         elif opt in ("-o", '--output_path'):
             output_path = arg
         elif opt in ('--xyz_angles'):
-            xyz_angles = [float(a) for a in arg.split(',')]
+            xyz_angles = [a.split('/') for a in arg.split(',')]
         elif opt in ('--size'):
             size = [int(s) for s in arg.split(',')]
         elif opt in ('--mirror_flip'):
@@ -119,11 +119,26 @@ def main(argv):
         elif opt in ('--float_height'):
             float_height = float(arg)
         else:
-            logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=0,0,0> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1>')
+            logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1>')
             sys.exit()
     xml_segments = [xml_head.format(*size)]
     pcl, faces = load_ply(mesh_file, with_faces= True)
-    pcl = rotate_by_axis_angle(pcl, xyz_angles[0], xyz_angles[1], xyz_angles[2])
+    if  sum([len(_) == 1 for _ in xyz_angles]) == len(xyz_angles) and len(xyz_angles) % 3 == 0:
+        xyz_angles = [float(a[0]) for a in xyz_angles]
+        for i in range(0, len(xyz_angles), 3):
+            pcl = rotate_by_axis_angle(pcl, x_angle=xyz_angles[i],
+                y_angle = xyz_angles[i+1],
+                z_angle = xyz_angles[i+2])
+    else:
+        for aa in xyz_angles:
+            axis, angle = aa
+            angle = float(angle)
+            if axis == 'x':
+                pcl = rotate_by_axis_angle(pcl, x_angle = angle)
+            elif axis == 'y':
+                pcl = rotate_by_axis_angle(pcl, y_angle = angle)
+            elif axis == 'z':
+                pcl = rotate_by_axis_angle(pcl, z_angle = angle)
     if len(mirror_flip):
         flip_face = False
         for axis in mirror_flip:
@@ -142,7 +157,6 @@ def main(argv):
     pcl = standardize_bbox(pcl)
     pcl[:, 2] += float_height
 
-    save_ply('./normalized_mesh.ply', pcl, faces = faces)
     color = [color_table[6][0], color_table[6][1], color_table[6][2]]
     xml_segments.append(xml_ply.format(*color))
 

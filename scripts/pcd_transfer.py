@@ -45,6 +45,8 @@ def main(argv):
             pcd = np.load(ifile)[key]
         else:
             pcd = load_pcd(ifile)
+        if pcd.ndim == 3:
+            pcd = pcd.squeeze()
         ofile = os.path.join(output_dir, os.path.basename(ifile).replace(input_suffix, output_suffix))
         save_pcd(ofile, pcd)
 if __name__ == "__main__":

@@ -7,8 +7,10 @@ results/
 *.out
 *.pyc
 *.pkl
+mitsuba_scene*
 __pycache__
 path/
-log/
+logs/
 tmp_img/
 flemme-pickled/
+sbatch/

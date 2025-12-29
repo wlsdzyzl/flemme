@@ -1,0 +1,31 @@
+# train ae or vae
+model:
+  # can be AE, VAE and DDPM
+  name: EDM
+  eps_model:
+    # encoder config
+    time_channel: 128
+    encoder:
+      name: UNet
+      image_size: [176, 176]
+      in_channel: 1
+      out_channel: 1
+      patch_channel: 32
+      patch_size: 2
+      # kernel_size: 5
+      down_channels: [64, 128, 256]
+      middle_channels: [512, 512]
+      ### with time embedding
+      building_block: res
+      activation: silu
+      num_blocks: 2
+      normalization: group
+      num_norm_groups: 16
+      dropout: 0.1
+  eps_loss:
+    name: MSE
+
+model_path: /data/guoqingzhang/flemme-ckp/imageCAS_vessel_diffusion_mip/EDM_unet_176/ckp_last.pth
+eval_gen:
+  gen_dir: /data/guoqingzhang/flemme-results/gen/imagecas_mip2d/edm_unet
+  random_sample_num: 500

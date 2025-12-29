@@ -40,8 +40,8 @@ xml_head = \
             <integer name="sampleCount" value="256"/>
         </sampler>
         <film type="hdrfilm">
-            <integer name="width" value="1600"/>
-            <integer name="height" value="1200"/>
+            <integer name="width" value="{}"/>
+            <integer name="height" value="{}"/>
             <rfilter type="gaussian"/>
             <boolean name="banner" value="false"/>
             <string name="file_format" value="openexr"/>
@@ -101,89 +101,60 @@ def colormap(x,y,z):
     # return [vec[0], vec[1], vec[2]]
     return [color_table[6][0], color_table[6][1], color_table[6][2]]
     # return [color_table[1][0], color_table[1][1], color_table[1][2]]
+def main(argv)
+    pcd_file = None
+    xyz_angles = [0, 0, 0]
+    output_path = 'mitsuba_scene.png'
+    size=[160, 120]
+    opts, args = getopt.getopt(argv, "hi:o:", ['help', 'input_pcd=', 'output_path=', 
+                            'xyz_angles=', 'size='])
 
-xml_segments = [xml_head]
+    if len(opts) == 0:
+        logger.error('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=0,0,0> --size <size=160,120>')
+        sys.exit()
+    for opt, arg in opts:
+        if opt in ('-h', '--help'):
+            logger.info('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=0,0,0> --size <size=160,120>')
+            sys.exit()
+        elif opt in ("-i", '--input_pcd'):
+            pcd_file = arg
+        elif opt in ("-o", '--output_path'):
+            output_path = arg
+        elif opt in ('--xyz_angles'):
+            xyz_angles = [int(a) for a in arg.split(',')]
+        elif opt in ('--size'):
+            size = [int(s) for s in arg.split(',')]
+        else:
+            logger.error('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=0,0,0> --size <size=160,120>')
+            sys.exit()
+    xml_segments = [xml_head.format(*size)]
 
-# pcl = load_ply("/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold2/colorized_pcd/024165.ply", vertex_features = ['red', 'green', 'blue'])
-# pcl = load_ply("/media/wlsdzyzl/DATA/flemme-results/seg/MedPointS/036881_colorized_tar.ply", vertex_features = ['red', 'green', 'blue'])
-# heart
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/heart/s0455.ply')
-# heart partial
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1/heart/partial/s0455.ply')
-# liver
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/liver/019541.ply')
-# liver partial
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1/liver/partial/019541.ply')
-# stomach
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/stomach/s0075.ply')
-# stomach partial
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1/stomach/partial/s0075.ply')
-# pcl = load_ply("/media/wlsdzyzl/DATA/flemme-results/cpl/medshapenet/s0300_colon_ours.ply")
-# kidney
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/kidney/s0212.ply')
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold1/kidney/partial/s0212.ply')
-# spleen
+    pcl = load_ply(pcd_file)
+    pcl_color = None
+    if pcl.shape[1] == 6:
+        pcl_color = pcl[..., 3:6] / 255.0
+        pcl = pcl[..., :3]
+    pcl = rotate_by_axis_angle(pcl, xyz_angles[0], xyz_angles[1], xyz_angles[2])
+    pcl, pcl_color = standardize_bbox(pcl, 512, pcl_color)
 
+    pcl[:,2] +=0.05
+    
 
-# brain
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/brain/017214.ply')
+    if pcl_color is not None:
+        for i in range(pcl.shape[0]):
+            xml_segments.append(xml_ball_segment.format(pcl[i,0],pcl[i,1],pcl[i,2], 
+                pcl_color[i,0],pcl_color[i,1],pcl_color[i,2]))
+    else:
+        for i in range(pcl.shape[0]):
+            color = colormap(pcl[i,0]+0.5,pcl[i,1]+0.5,pcl[i,2]+0.5-0.0125)
+            xml_segments.append(xml_ball_segment.format(pcl[i,0],pcl[i,1],pcl[i,2], *color))
 
-# brain
-# pcl = load_ply('/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1/iliacartery/s0157.ply')
-# imagecas
-pcl = load_ply("/media/wlsdzyzl/DATA/datasets/pcd/imageCAS/output_lr/surface/10016975_1.ply")
-pcl_color = None
-if pcl.shape[1] == 6:
-    pcl_color = pcl[..., 3:6] / 255.0
-    pcl = pcl[..., :3]
-pcl, pcl_color = standardize_bbox(pcl, 512, pcl_color)
+    xml_segments.append(xml_tail)
+    xml_content = str.join('', xml_segments)
 
-# heart
-# pcl = pcl[:,[0, 2, 1]]
+    with open('mitsuba_scene.xml', 'w') as f:
+        f.write(xml_content)
 
-# # liver
-# pcl[:,1] *= -1
-# pcl[:,2] *= -1
-
-## stomach
-# pcl = pcl[:,[0, 2, 1]]
-# pcl[:,0] *= -1
-# pcl[:,1] *= -1
-# pcl[:,2] *= -1
-
-## segmentation
-# pcl[:,0] *= -1
-# pcl[:,1] *= -1
-# pcl[:,2] *= -1
-
-## whole body
-# pcl[:,1] *= -1
-# pcl[:,2] *= -1
-# pcl[:,2] +=0.15
-
-## imagecas
-pcl = pcl[:,[1, 0, 2]]
-# pcl[:,1] *= -1
-pcl[:,2] *= -1
-# pcl[:,2] +=0.15
-
-pcl[:,2] +=0.05
-if pcl_color is not None:
-    for i in range(pcl.shape[0]):
-        xml_segments.append(xml_ball_segment.format(pcl[i,0],pcl[i,1],pcl[i,2], 
-            pcl_color[i,0],pcl_color[i,1],pcl_color[i,2]))
-else:
-    for i in range(pcl.shape[0]):
-        color = colormap(pcl[i,0]+0.5,pcl[i,1]+0.5,pcl[i,2]+0.5-0.0125)
-        xml_segments.append(xml_ball_segment.format(pcl[i,0],pcl[i,1],pcl[i,2], *color))
-
-xml_segments.append(xml_tail)
-
-xml_content = str.join('', xml_segments)
-
-with open('mitsuba_scene.xml', 'w') as f:
-    f.write(xml_content)
-
-os.system('mitsuba mitsuba_scene.xml')
-img = load_img('mitsuba_scene.exr')
-save_img('mitsuba_scene.png', img)
+    os.system('mitsuba mitsuba_scene.xml')
+    img = load_img('mitsuba_scene.exr')
+    save_img(output_path, img)

@@ -1,0 +1,92 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: train
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: UNet
+    image_size: [40, 136, 120]
+    in_channel: 1
+    patch_size: 2
+    down_channels: [64, 128]
+    middle_channels: [256, 256]
+    building_block: single
+    normalization: group
+    # dense_channels: [512, 512]
+  condition_embedding:
+    combine_condition: injection
+    condition_injection: gate_bias
+    encoder:
+      name: OneHot
+      type: categories
+      out_channel: 128
+      num_classes: 7
+    decoder: same_as_encoder
+  segmentation_losses: 
+    - name: Dice
+      normalization: sigmoid
+    - name: BCE
+loader:
+  dataset: 
+    name: ImgSegWithClassLabelDataset
+    dim: 3
+    data_dir: imagesTr
+    label_dir: labelsTr
+    data_suffix: .nii.gz
+    label_suffix: .nii.gz
+    crop_nonzero:
+      margin: [2,2,2]
+      crop_by: raw
+    cls_label: 
+      MSD_Colon: 1
+      MSD_HepaticVessel: 2
+      MSD_Liver: 3
+      MSD_Lung: 4 
+      MSD_Pancreas: 5  
+      MSD_Spleen: 6 
+      SegTHOR: 7
+  data_path_list: 
+    - /data/guoqingzhang/datasets/biomed_3d_dataset/aaai_tsne/CT
+  batch_size: 32
+  num_workers: 8
+  shuffle: true
+  data_transforms:
+    - name: Resize
+      size: [40, 136, 120]
+    - name: Normalize
+    - name: ToTensor
+  label_transforms:
+    - name: Resize
+      size: [40, 136, 120]
+    - name: ToBinaryMask
+    - name: ToTensor
+  class_label_transforms:
+    - name: Relabel
+      offset: -1
+    - name: ToOneHot
+      num_classes: 7
+    - name: ToTensor
+check_point_dir: /data/guoqingzhang/flemme-ckp/aaai_tsne/CT/UNet_SeM
+resume: true
+### parameter for optimizer
+optimizer:
+  name: Adam
+  lr: 0.0001
+  weight_decay: 0.00000001
+evaluation_metrics:
+  seg:
+    - name: Dice
+    - name: ACC
+    - name: mIoU
+score_metric:
+  name: Dice
+### scheduler for learning rate
+lr_scheduler: 
+  name: LinearLR
+  start_factor: 1.0
+  end_factor: 0.01
+max_epoch: 100
+write_after_iters: 20
+save_after_epochs: 2

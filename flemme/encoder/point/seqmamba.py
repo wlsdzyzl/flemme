@@ -136,4 +136,4 @@ class SeqMambaDecoder(SeqDecoder):
                                            out_channel=self.seq_path[i+1])  
                                         for i in range(len(self.seq_path) - 1) ]
         if len(sequence):
-            self.seq = SequentialT(*(copy.deepcopy(sequence)))
+            self.seq = nn.ModuleList(sequence)

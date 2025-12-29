@@ -1,0 +1,112 @@
+# train ae or vae
+#### a template for pcd encoder
+mode: test
+model:
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: UNet
+    image_size: [40, 136, 120]
+    in_channel: 1
+    patch_size: 2
+    down_channels: [64, 128]
+    middle_channels: [256, 256]
+    building_block: single
+    normalization: group
+    # dense_channels: [512, 512]
+  condition_embedding:
+    combine_condition: injection
+    condition_injection: gate_bias
+    encoder:
+      name: OneHot
+      type: categories
+      out_channel: 128
+      num_classes: 7
+    decoder: same_as_encoder
+  segmentation_losses: 
+    - name: Dice
+      normalization: sigmoid
+    - name: BCE
+loader:
+  dataset: 
+    name: ImgSegWithClassLabelDataset
+    dim: 3
+    data_dir: imagesTr
+    label_dir: labelsTr
+    data_suffix: .nii.gz
+    label_suffix: .nii.gz
+    crop_nonzero:
+      margin: [2,2,2]
+      crop_by: raw
+    cls_label: 
+      MSD_Colon: 1
+      MSD_HepaticVessel: 2
+      MSD_Liver: 3
+      MSD_Lung: 4 
+      MSD_Pancreas: 5  
+      MSD_Spleen: 6 
+      SegTHOR: 7
+  data_path_list: 
+    - /data/guoqingzhang/datasets/biomed_3d_dataset/aaai_tsne/CT
+  batch_size: 32
+  num_workers: 8
+  shuffle: false
+  data_transforms:
+    - name: Resize
+      size: [40, 136, 120]
+    - name: Normalize
+    - name: ToTensor
+  label_transforms:
+    - name: Resize
+      size: [40, 136, 120]
+    - name: ToBinaryMask
+    - name: ToTensor
+  class_label_transforms:
+    - name: Relabel
+      offset: -1
+    - name: ToOneHot
+      num_classes: 7
+    - name: ToTensor
+model_path: /data/guoqingzhang/flemme-ckp/aaai_tsne/CT/UNet_SeM/ckp_last.pth
+# evaluation_metrics:
+#   seg:
+#     - name: Dice
+#     - name: ACC
+#     - name: mIoU
+pickle_results: true
+pickle_path: /data/guoqingzhang/flemme-pickled/ct
+load_pickle_results: true
+tsne_visualization: 
+  top_n: 6
+  title: t-SNE Visualization
+  vis_dim: 2
+  # perplexity: 6
+  perplexity: 10
+  size: 10
+  alpha: 0.8
+  remove_ticks: true
+  # learning_rate: 800
+  # early_exaggeration: 6
+  one_to_multiple: 5
+  noise_level: 0.04
+  legend: true
+  verbose: 1
+  color_map: tab10
+  random_state: 1998
+  tsne_path: tsne_ct_1998_dots_one5_noise004.png
+  label_names:
+    - Colon
+    - HepaticVessel
+    - Liver
+    - Lung
+    - Pancreas
+    - Spleen
+    - SegTHOR       
+    # - MSD_Colon
+    # - MSD_HepaticVessel
+    # - MSD_Liver
+    # - MSD_Lung
+    # - MSD_Pancreas
+    # - MSD_Spleen
+    # - SegTHOR
