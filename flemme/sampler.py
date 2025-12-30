@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from flemme.model import DDPM, DDIM, EDM
+from flemme.model import DDPM, DDIM, EDM, LDM, HBase
 from flemme.logger import get_logger
 from tqdm import tqdm
 
@@ -40,12 +40,15 @@ class NormalSampler:
                  num_sample_steps = -1,
                  clipped = None, clip_range = None, 
                  batch_size = 16, 
+                 ### for latent diffusion model
+                 save_latents = False,
                  **kwargs):
         if len(kwargs) > 0:
             logger.debug('Redundant parameters: {}'.format(kwargs))
         self.model = model
         assert model.is_generative, \
                     "NormalSampler can only be constructed with generative model."
+        assert not isinstance(self, HBase), 'Sampling on hierarchical based models is not supported.'
         self.is_conditional = model.is_conditional or model.is_supervised
         self.device = model.device
         self.random_generator = torch.Generator(self.device)
@@ -56,6 +59,7 @@ class NormalSampler:
         self.clip_range = clip_range
         self.num_sample_steps = num_sample_steps
         self.batch_size = batch_size
+        self.save_latents = save_latents
         if isinstance(model, DDPM):
             if self.num_sample_steps <= 0:
                 self.num_sample_steps = model.num_steps
@@ -76,25 +80,29 @@ class NormalSampler:
             vessel = tqdm(enumerate(z_batch), desc="Generating", total = len(z_batch))
         else:
             vessel = enumerate(z_batch)
-        for bid, zb in vessel:
-            if isinstance(self.model, DDIM) or \
-                hasattr(self.model, 'diff_model') and isinstance(self.model.diff_model, DDIM):
-                y = self.model.sample(zb, c = c_batch[bid], clipped=self.clipped,
-                                    clip_range=self.clip_range)
-            elif isinstance(self.model, DDPM) or \
+        
+        sample_kwargs = {}
+        if isinstance(self.model, LDM):
+            sample_kwargs['save_latents'] = self.save_latents
+        if isinstance(self.model, DDPM) or \
                 hasattr(self.model, 'diff_model') and isinstance(self.model.diff_model, DDPM):
-                y = self.model.sample(zb, end_step=self.num_sample_steps - 1, c = c_batch[bid],
-                                            clipped=self.clipped, clip_range=self.clip_range)
-            elif isinstance(self.model, EDM) or\
-                hasattr(self.model, 'diff_model') and isinstance(self.model.diff_model, EDM):
-                y = self.model.sample(zb, c = c_batch[bid])
+            sample_kwargs['clipped'] = self.clipped
+            sample_kwargs['clip_range'] = self.clip_range
+            if not isinstance(self.model, DDIM) and (
+                not hasattr(self.model, 'diff_model') or not isinstance(self.model.diff_model, DDIM)):
+                sample_kwargs['end_step'] = self.num_sample_steps - 1
+
+        for bid, zb in vessel:
+            if hasattr(self.model, 'sample'):
+                y = self.model.sample(zb, c = c_batch[bid], **sample_kwargs)
             else:
                 y = self.model.decode(zb, c_batch[bid])
-        
             res.append(y)
-        ### AE, VAE and so on.
-        if type(res[0]) == tuple:
-            res = tuple(torch.cat([res[j][i] for j in range(len(res))], dim = 0) for i in range(len(res[0])))
+        ### LDM, or denoising process is returned, or both.
+        if type(res[0]) == tuple and type(res[0][0]) == list:
+            res = tuple(list(torch.cat([res[k][j][i] for k in range(len(res))], dim = 0) for j in range(len(res[0]))) for i in range(len(res[0][0])))
+        elif type(res[0]) == tuple or type(res[0]) == list:
+            res = type(res[0])(torch.cat([res[j][i] for j in range(len(res))], dim = 0) for i in range(len(res[0])))
         else:
             res = torch.cat(res, dim = 0)
         return res

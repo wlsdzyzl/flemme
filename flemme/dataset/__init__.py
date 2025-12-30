@@ -64,7 +64,7 @@ def custom_collate(batch):
     inputs = tuple( list(i) if type(i[0]) == tuple and type(i[0][0]) == slice else None if i[0] is None else default_collate(i) for i in inputs)
     return inputs
 
-def create_loader(loader_config):
+def create_loader(loader_config, custom_attributes = []):
     """
     Returns dictionary containing the loaders (torch.utils.data.DataLoader).
     """
@@ -172,6 +172,21 @@ def create_loader(loader_config):
         class_label_transforms = get_transforms(class_label_trans_config_list, data_form, img_dim=img_dim)
         dataset_config['class_label_transform'] = class_label_transforms
     
+    ## custom attribute of data    
+    custom_suffix_lists = []
+    for custom_name in custom_attributes:
+        custom_suffix_list = loader_config.get(f'{custom_name}_suffix_list', None)
+        if custom_suffix_list is not None:
+            assert type(custom_suffix_list) == list and len(custom_suffix_list) == len(data_path_list), \
+                f"If {custom_name}_suffix_list is provided in loader config, it should be a list and has the equal length to the data_path_list."
+        custom_suffix_lists.append(custom_suffix_list)
+        custom_trans_config_list = loader_config.get(f'{custom_name}_transforms', None)
+        if  custom_trans_config_list is not None:
+            ### check random operations are in the same order.
+            check_random_transforms(trans_config_list, custom_trans_config_list)
+            custom_transforms = get_transforms(custom_trans_config_list, data_form, img_dim=img_dim)
+            dataset_config[f'{custom_name}_transform'] = custom_transforms
+
 
     num_workers = loader_config.get('num_workers', 1)
     logger.info(f'Number of workers for {mode} dataloader: {num_workers}')
@@ -211,6 +226,9 @@ def create_loader(loader_config):
                 dataset_config['label_suffix'] = label_suffix_list[idx]
             if target_suffix_list is not None:
                 dataset_config['target_suffix'] = target_suffix_list[idx]
+            for custom_name, custom_suffix_list in zip(custom_attributes, custom_suffix_lists):
+                if custom_suffix_list is not None:
+                    dataset_config[f'{custom_name}_suffix'] = custom_suffix_list[idx]
             datasets.append(dataset_class(**dataset_config))
     else:
         ### single dataset, all related information is contained in dataset configuration

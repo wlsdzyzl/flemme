@@ -296,6 +296,7 @@ class HBaseModel(BaseModel):
             kwargs = kwargs | {'t': t}
         z = self.encode(x, c = c, **kwargs)
         en_feature = z
+        ## ignore encoder feature lists
         if type(en_feature) == tuple:
             en_feature = en_feature[0]
         x, de_features = self.decode(z, c = c, **kwargs)

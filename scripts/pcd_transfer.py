@@ -14,7 +14,7 @@ def main(argv):
     input_suffix = '.pcd'
     output_suffix = '.ply'
     key = None
-    opts, args = getopt.getopt(argv, "hi:o:", ['help', 'input_dir=', 'output_dir=', 'input_suffix=', 'key='])
+    opts, args = getopt.getopt(argv, "hi:o:", ['help', 'input_dir=', 'output_dir=', 'input_suffix=', 'output_suffix=', 'key='])
 
     if len(opts) == 0:
         logger.error('unknow options, usage: pcd_transfer.py -i <input_dir> -o <output_dir> --input_suffix <input_suffix=.ply> --output_suffix <output_suffix=.ply> --key <key=None>')
@@ -47,6 +47,7 @@ def main(argv):
             pcd = load_pcd(ifile)
         if pcd.ndim == 3:
             pcd = pcd.squeeze()
+        pcd = pcd[:, 0:3]
         ofile = os.path.join(output_dir, os.path.basename(ifile).replace(input_suffix, output_suffix))
         save_pcd(ofile, pcd)
 if __name__ == "__main__":

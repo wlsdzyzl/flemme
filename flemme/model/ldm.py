@@ -59,6 +59,7 @@ class LatentDiffusion(nn.Module):
         return self.diff_model.device
     def sample(self, zt, c = None, 
             return_processing = False, 
+            save_latents = False,
             **kwargs):
         ac, ec = None, None
         if self.ae_model.is_conditional:
@@ -69,9 +70,14 @@ class LatentDiffusion(nn.Module):
                 return_processing = return_processing, 
                 **kwargs)
         ### return processing
-        if isinstance(z0, tuple) or isinstance(z0, list):
-            return type(z0)(self.ae_model.decode(_z) for _z in z0)
-        return self.ae_model.decode(z = z0, c = ac)
+        if save_latents:
+            if isinstance(z0, list):
+                return list(self.ae_model.decode(_z) for _z in z0), z0
+            return self.ae_model.decode(z = z0, c = ac), z0
+        else:
+            if isinstance(z0, list):
+                return list(self.ae_model.decode(_z) for _z in z0)
+            return self.ae_model.decode(z = z0, c = ac)
     def __str__(self):
         _str = "********************* LatentDiffusion *********************\n{}{}"\
             .format(self.ae_model.__str__(), self.diff_model.__str__())

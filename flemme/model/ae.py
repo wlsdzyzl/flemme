@@ -31,10 +31,10 @@ class AutoEncoder(BaseModel):
         return _str
     def get_loss_name(self):
         return self.recon_loss_names
-    def encode(self, x, c=None):
-        return super().encode(x, c = c)
-    def decode(self, z, c = None):
-        return super().decode(z, c = c)
+    def encode(self, x, c=None, **kwargs):
+        return super().encode(x, c = c, **kwargs)
+    def decode(self, z, c = None, **kwargs):
+        return super().decode(z, c = c, **kwargs)
     def forward(self, x, c=None):
         res, z = super().forward(x, c = c, return_z = True)
         ### unet

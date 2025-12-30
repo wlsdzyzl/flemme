@@ -416,6 +416,22 @@ def test(test_config,
                         if corner_num != 2 and corner_num != 4:
                             logger.warning('number of corners should be 2 or 4. Reset corner_num to 2.')
                             corner_num = 2
+                        def _save_inter_tensor(x_bar, gid, _id=''):
+                            if torch.is_tensor(x_bar):
+                                x_bar = x_bar.cpu().detach().numpy()                            
+                                for iid, _x_bar in enumerate(x_bar):
+                                    output_path = os.path.join(output_dir, 'gen_inter_group{:02d}{}_{:02d}'.format(gid, _id, iid))
+                                    save_data_fn(_x_bar, model.data_form, output_path)
+                                if model.data_form == DataForm.IMG and model.encoder.dim == 2:
+                                    save_path = os.path.join(output_dir, 'gen_inter_group{:02d}{}.png'.format(gid, _id))
+                                    inter_figure = combine_figures(figs=x_bar, row_length=inter_num + 2)
+                                    save_img(save_path, (inter_figure * 255).astype('uint8'))
+                                return len(x_bar)
+                            else:
+                                sample_num = 0
+                                for iid, _x_bar in enumerate(x_bar):
+                                    sample_num = _save_inter_tensor(_x_bar, gid, f'{_id}_{iid}')
+                                return sample_num
                         for gid in range(group_num):
                             ### interpolating the latent embeddings
                             if loader_config is not None:
@@ -427,16 +443,8 @@ def test(test_config,
                                 x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num, cond = cond)
                             else:
                                 x_bar = sampler.interpolate(corner_latents = corner_latents, corner_num=corner_num, inter_num=inter_num)
-                            num_gen_samples += len(x_bar)
                             ## save the images.
-                            x_bar = x_bar.cpu().detach().numpy()                            
-                            for iid, _x_bar in enumerate(x_bar):
-                                output_path = os.path.join(output_dir, 'gen_inter_group{:02d}_{:02d}'.format(gid, iid))
-                                save_data_fn(_x_bar, model.data_form, output_path)
-                            if model.data_form == DataForm.IMG and model.encoder.dim == 2:
-                                save_path = os.path.join(output_dir, 'gen_inter_group{:02d}.png'.format(gid))
-                                inter_figure = combine_figures(figs=x_bar, row_length=inter_num + 2)
-                                save_img(save_path, (inter_figure * 255).astype('uint8'))
+                            num_gen_samples += _save_inter_tensor(x_bar, gid)
 
                     #### if random sample numer is not 0, save the generation from random noise.
                     random_sample_num = eval_gen_config.get('random_sample_num', 8)
@@ -447,15 +455,23 @@ def test(test_config,
                             x_bar = sampler.generate_rand(n=random_sample_num, cond = cond)
                         else:
                             x_bar = sampler.generate_rand(n=random_sample_num)
-                        num_gen_samples += len(x_bar)
-                        x_bar = x_bar.cpu().detach().numpy()
-                        ## save the images.
-                        for iid, _x_bar in tqdm(enumerate(x_bar), desc='Saving', total=len(x_bar)):
-                            output_path = os.path.join(output_dir, 'gen_rand_{:02d}'.format(iid))
-                            save_data_fn(_x_bar, model.data_form, output_path)
-                        if model.data_form == DataForm.IMG and \
-                                len(model.get_input_shape()) == 3:
-                            save_path = os.path.join(output_dir, 'gen_rand.png')
-                            inter_figure = combine_figures(figs=x_bar, row_length=int(random_sample_num ** 0.5))
-                            save_img(save_path, (inter_figure * 255).astype('uint8'))
+                        def _save_rand_tensor(x_bar, _id=''):
+                            if torch.is_tensor(x_bar):
+                                x_bar = x_bar.cpu().detach().numpy()
+                                ## save the images.
+                                for iid, _x_bar in tqdm(enumerate(x_bar), desc='Saving', total=len(x_bar)):
+                                    output_path = os.path.join(output_dir, 'gen_rand{}_{:02d}'.format(_id, iid))
+                                    save_data_fn(_x_bar, model.data_form, output_path)
+                                if model.data_form == DataForm.IMG and \
+                                        len(model.get_input_shape()) == 3:
+                                    save_path = os.path.join(output_dir, 'gen_rand.png')
+                                    inter_figure = combine_figures(figs=x_bar, row_length=int(random_sample_num ** 0.5))
+                                    save_img(save_path, (inter_figure * 255).astype('uint8'))
+                                return len(x_bar)
+                            else:
+                                sample_num = 0
+                                for iid, _x_bar in enumerate(x_bar):
+                                    sample_num = _save_rand_tensor(_x_bar, f'{_id}_{iid}')
+                                return sample_num
+                        num_gen_samples += _save_rand_tensor(x_bar)
                 logger.error('generation time per sample: {}s'.format((time.perf_counter() - start_time) / num_gen_samples ) )

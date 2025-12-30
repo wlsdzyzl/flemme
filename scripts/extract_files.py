@@ -62,16 +62,16 @@ def main(argv):
     
     if not R:
         for tf in template_files:
-            sf = rreplace(tf.replace(template_dir, source_dir), suffix[1], suffix[0])
-            of = rreplace(tf.replace(template_dir, output_dir), suffix[1], suffix[2])
+            sf = rreplace(tf.replace(template_dir, source_dir), suffix[1], suffix[0], 1)
+            of = rreplace(tf.replace(template_dir, output_dir), suffix[1], suffix[2], 1)
             logger.info('{} from {} to {}'.format(mn, sf, of))
             method(sf, of)
     else:
         source_files = sorted(glob(os.path.join(source_dir, '**/*'+suffix[0]), recursive = True))
         for sf in source_files:
-            basename = rreplace(os.path.basename(sf), suffix[0], suffix[1])
+            basename = rreplace(os.path.basename(sf), suffix[0], suffix[1], 1)
             if is_in_one_of(basename, template_files):
-                of = rreplace(os.path.join(output_dir, basename), suffix[1], suffix[2])
+                of = rreplace(os.path.join(output_dir, basename), suffix[1], suffix[2], 1)
                 logger.info('{} from {} to {}'.format(mn, sf, of))
                 method(sf, of)
 
