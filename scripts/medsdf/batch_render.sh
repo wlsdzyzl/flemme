@@ -1,4 +1,10 @@
 #!/bin/bash
+#SBATCH --job-name=render
+#SBATCH -w inspur1
+#SBATCH --gres=shard:1
+#SBATCH -c 8
+#SBATCH -t 144000
+
 # echo bladder
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PointNet2/020636_bladder.ply -o bladder_pointnet2.png --size 1600,1200 --xyz_angles -90,110,-10
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/DGCNN/020636_bladder.ply -o bladder_dgcnn.png --size 1600,1200 --xyz_angles -90,110,-10
@@ -114,22 +120,28 @@
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/ours/078651_uterus.ply -o uterus_ours.png --size 1600,1200 --xyz_angles 170,-5,5
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/GT/078651_uterus.ply -o uterus_gt.png --size 1600,1200 --xyz_angles 170,-5,5
 
-# echo coronary
-# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PointNet2/12023987_0.ply -o coronary_pointnet2.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
-# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/DGCNN/12023987_0.ply -o coronary_dgcnn.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
-# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PCT2/12023987_0.ply -o coronary_pct2.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
-# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PointMamba2/12023987_0.ply -o coronary_pointmamba2.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
-# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/DiffPCD/12023987_0.ply -o coronary_diffpcd.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
-# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/GeM3D_origin/12023987_0.ply -o coronary_gem3d.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
-# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/ours/12023987_0.ply -o coronary_ours.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
-# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/GT/12023987_0.ply -o coronary_gt.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
+# echo coronary-left
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PointNet2/12023987_0.ply -o coronary_left_pointnet2.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/DGCNN/12023987_0.ply -o coronary_left_dgcnn.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PCT2/12023987_0.ply -o coronary_left_pct2.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PointMamba2/12023987_0.ply -o coronary_left_pointmamba2.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/DiffPCD/12023987_0.ply -o coronary_left_diffpcd.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/GeM3D_origin/12023987_0.ply -o coronary_left_gem3d.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/ours/12023987_0.ply -o coronary_left_ours.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/GT/12023987_0.ply -o coronary_left_gt.png --size 1600,1200 --xyz_angles x/100,z/-20,y/-40,x/-30,z/-10 --float_height 0.0
 
-echo coronary
-python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PointNet2/12069367_1.ply -o coronary_right_pointnet2.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
-python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/DGCNN/12069367_1.ply -o coronary_right_dgcnn.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
-python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PCT2/12069367_1.ply -o coronary_right_pct2.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
-python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PointMamba2/12069367_1.ply -o coronary_right_pointmamba2.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
-python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/DiffPCD/12069367_1.ply -o coronary_right_diffpcd.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
-python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/GeM3D_origin/12069367_1.ply -o coronary_right_gem3d.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
-python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/ours/12069367_1.ply -o coronary_right_ours.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
-python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/GT/12069367_1.ply -o coronary_right_gt.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
+# echo coronary-right
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PointNet2/12069367_1.ply -o coronary_right_pointnet2.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/DGCNN/12069367_1.ply -o coronary_right_dgcnn.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PCT2/12069367_1.ply -o coronary_right_pct2.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/PointMamba2/12069367_1.ply -o coronary_right_pointmamba2.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/DiffPCD/12069367_1.ply -o coronary_right_diffpcd.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/GeM3D_origin/12069367_1.ply -o coronary_right_gem3d.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/ours/12069367_1.ply -o coronary_right_ours.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-for-figure/recon/GT/12069367_1.ply -o coronary_right_gt.png --size 1600,1200 --xyz_angles x/-100,y/-90,x/-80,y/5 --float_height 0.0
+
+echo coronary-both
+python ../render_pcd.py -i "/data/guoqingzhang/datasets/imageCAS/fold5/surface/12070943.ply" -o coronary_ours_surface.png --size 1600,1200 --float_height 0.0 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-20,x/-20 --sphere_radius 0.005 --point_size 4096 --color_id 34
+python ../render_pcd.py -i "/data/guoqingzhang/vcg-results/imageCAS_vessel_diff/skeleton/SkCNN_val_with_SKC_LA_for_test/12070943.ply" -o coronary_ours_skeleton.png --size 1600,1200 --float_height 0.0 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-20,x/-20 --sphere_radius 0.008 --color_id 8 
+# python ../render_mesh.py -i "/data/guoqingzhang/vcg-results/imageCAS_vessel_diff/mesh/SkCNN_val_with_SKC_LA_for_test/12070943.ply" -o coronary_ours.png --size 1600,1200 --float_height 0.0 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-20,x/-20 --color_id 6
+# python ../render_mesh.py -i "/data/guoqingzhang/datasets/imageCAS/fold5/rmesh022/12070943_mesh.ply" -o coronary_gt.png --size 1600,1200 --float_height 0.0 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-20,x/-20 --color_id 6
