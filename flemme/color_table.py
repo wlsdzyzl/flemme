@@ -1,6 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
 from flemme.config import module_config
+import colorsys
+## you can check images/color_bars.png to get a vision feedback of the color tables.
 scannet_color_table = np.array([[150, 150, 150],
             [174, 199, 232],     # wall
             [152, 223, 138],     # floor
@@ -41,7 +43,8 @@ scannet_color_table = np.array([[150, 150, 150],
             [213, 92, 176],
             [94, 106, 211],
             [82, 84, 163],       # otherfurn
-            [100, 85, 144]]) / 255
+            [100, 85, 144],
+            [40, 99, 35]]) / 255
 custom_color_table = np.array([
                 [51, 255, 255],
                 [101, 255, 101],
@@ -66,4 +69,12 @@ def get_color_table(table_name, label_count = 20):
         return custom_color_table
     else:
         return get_mpl_cmap(table_name, label_count)
+def rainbow_rgb(x: float):
+    """
+    Map x in [0, 1] to RGB in rainbow order
+    """
+    x = np.clip(x, 0.0, 1.0)
+    hue = (270.0 * x) / 360.0  # HSV hue in [0, 1]
+    r, g, b = colorsys.hsv_to_rgb(hue, 1.0, 1.0)
+    return np.array([r, g, b])
 color_table = get_color_table(module_config['color_map'])

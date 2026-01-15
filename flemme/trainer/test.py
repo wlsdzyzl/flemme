@@ -474,4 +474,4 @@ def test(test_config,
                                     sample_num = _save_rand_tensor(_x_bar, f'{_id}_{iid}')
                                 return sample_num
                         num_gen_samples += _save_rand_tensor(x_bar)
-                logger.error('generation time per sample: {}s'.format((time.perf_counter() - start_time) / num_gen_samples ) )
+                logger.info('generation time per sample: {}s'.format((time.perf_counter() - start_time) / num_gen_samples ) )

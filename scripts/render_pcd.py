@@ -1,27 +1,20 @@
 
 ### part of this code is adopted from https://github.com/zekunhao1995/PointFlowRenderer/tree/master
 import numpy as np
-from flemme.utils import load_ply, load_img, save_img
+from flemme.utils import load_ply, load_img, save_img, rotate_by_axis_angle
 from flemme.color_table import color_table
 import os
 from flemme.logger import get_logger
+import sys, getopt
 logger = get_logger('scripts.render_pcd')
-def standardize_bbox(pcl, points_per_object, pcl_color = None):
-    if points_per_object > 0:
-        pt_indices = np.random.choice(pcl.shape[0], points_per_object, replace=False)
-    else:
-        pt_indices = np.arange(pcl.shape[0])
-    pcl = pcl[pt_indices] # n by 3
+def standardize_bbox(pcl):
     mins = np.amin(pcl, axis=0)
     maxs = np.amax(pcl, axis=0)
     center = ( mins + maxs ) / 2.
     scale = np.amax(maxs-mins)
     logger.info("(After standardizing) Center: {}, Scale: {}".format(center, scale))
     result = ((pcl - center)/scale).astype(np.float32) # [-0.5, 0.5]
-    if pcl_color is not None:
-        pcl_color = pcl_color[pt_indices]
-    return result, pcl_color
-
+    return result
 xml_head = \
 """
 <scene version="0.6.0">
@@ -32,7 +25,7 @@ xml_head = \
         <float name="farClip" value="100"/>
         <float name="nearClip" value="0.1"/>
         <transform name="toWorld">
-            <lookat origin="2.5,-5,2" target="0,0,0" up="0,0,1"/>
+            <lookat origin="0,-5,2" target="0,0,0" up="0,0,1"/>
         </transform>
         <float name="fov" value="25"/>
         
@@ -61,7 +54,7 @@ xml_head = \
 xml_ball_segment = \
 """
     <shape type="sphere">
-        <float name="radius" value="0.004"/>
+        <float name="radius" value="{}"/>
         <transform name="toWorld">
             <translate x="{}" y="{}" z="{}"/>
         </transform>
@@ -92,62 +85,110 @@ xml_tail = \
     </shape>
 </scene>
 """
-
-def colormap(x,y,z):
-    # vec = np.array([x,y,z])
-    # vec = np.clip(vec, 0.001,1.0)
-    # norm = np.sqrt(np.sum(vec**2))
-    # vec /= norm
-    # return [vec[0], vec[1], vec[2]]
-    return [color_table[6][0], color_table[6][1], color_table[6][2]]
-    # return [color_table[1][0], color_table[1][1], color_table[1][2]]
-def main(argv)
+def main(argv):
     pcd_file = None
-    xyz_angles = [0, 0, 0]
+    xyz_angles = []
     output_path = 'mitsuba_scene.png'
     size=[160, 120]
     opts, args = getopt.getopt(argv, "hi:o:", ['help', 'input_pcd=', 'output_path=', 
-                            'xyz_angles=', 'size='])
-
+                            'xyz_angles=', 'size=', 'mirror_flip=', 'float_height=',
+                            'point_size=', 'sphere_radius=', 'color_id=',
+                            'center=', 'scaling=', 'non_standardized'])
+    float_height = 0.1
+    point_size = 2048
+    sphere_radius = 0.004
+    mirror_flip = []
+    color_id = 0
+    center = np.zeros(3)
+    scaling = 1.0
+    standardize = True
     if len(opts) == 0:
-        logger.error('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=0,0,0> --size <size=160,120>')
+        logger.error('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --point_size <point_size=2048> --sphere_radius <sphere_radius=0.004> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            logger.info('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=0,0,0> --size <size=160,120>')
+            logger.info('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --point_size <point_size=2048> --sphere_radius <sphere_radius=0.004> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
             sys.exit()
         elif opt in ("-i", '--input_pcd'):
             pcd_file = arg
         elif opt in ("-o", '--output_path'):
             output_path = arg
         elif opt in ('--xyz_angles'):
-            xyz_angles = [int(a) for a in arg.split(',')]
+            xyz_angles = [a.split('/') for a in arg.split(',')]
         elif opt in ('--size'):
             size = [int(s) for s in arg.split(',')]
+        elif opt in ('--mirror_flip'):
+            mirror_flip = arg.split(',')
+        elif opt in ('--float_height'):
+            float_height = float(arg)
+        elif opt in ('--point_size'):
+            point_size = int(arg)
+        elif opt in ('--sphere_radius'):
+            sphere_radius = float(arg)
+        elif opt in ('--color_id'):
+            color_id = int(arg)
+        elif opt in ('--non_standardized'):
+            standardize = False
+        elif opt in ('--center'):
+            center = np.array([float(c) for c in arg.split(',')])
+        elif opt in ('--scaling'):
+            scaling = float(arg)
         else:
-            logger.error('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=0,0,0> --size <size=160,120>')
+            logger.error('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --point_size <point_size=2048> --sphere_radius <sphere_radius=0.004> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
             sys.exit()
     xml_segments = [xml_head.format(*size)]
 
     pcl = load_ply(pcd_file)
+    
+    if point_size < pcl.shape[0]:
+        pcl = pcl[np.random.choice(range(pcl.shape[0]), point_size, replace=False)]
+
     pcl_color = None
     if pcl.shape[1] == 6:
         pcl_color = pcl[..., 3:6] / 255.0
         pcl = pcl[..., :3]
-    pcl = rotate_by_axis_angle(pcl, xyz_angles[0], xyz_angles[1], xyz_angles[2])
-    pcl, pcl_color = standardize_bbox(pcl, 512, pcl_color)
-
-    pcl[:,2] +=0.05
+    if  sum([len(_) == 1 for _ in xyz_angles]) == len(xyz_angles) and len(xyz_angles) % 3 == 0:
+        xyz_angles = [float(a[0]) for a in xyz_angles]
+        for i in range(0, len(xyz_angles), 3):
+            pcl = rotate_by_axis_angle(pcl, x_angle=xyz_angles[i],
+                y_angle = xyz_angles[i+1],
+                z_angle = xyz_angles[i+2])
+    else:
+        for aa in xyz_angles:
+            axis, angle = aa
+            angle = float(angle)
+            if axis == 'x':
+                pcl = rotate_by_axis_angle(pcl, x_angle = angle)
+            elif axis == 'y':
+                pcl = rotate_by_axis_angle(pcl, y_angle = angle)
+            elif axis == 'z':
+                pcl = rotate_by_axis_angle(pcl, z_angle = angle)
+    if len(mirror_flip):
+        for axis in mirror_flip:
+            if axis == 'x':
+                pcl[:, 0] = -pcl[:, 0]
+            elif axis == 'y':
+                pcl[:, 1] = -pcl[:, 1]
+            elif axis == 'z':
+                pcl[:, 2] = -pcl[:, 2]
+            else:
+                logger.error('Unknow flip axis, should be one of [x, y, z]')
+                exit(1)
+    if standardize:
+        pcl = standardize_bbox(pcl)
+    else:
+        pcl = ((pcl - center)/scaling).astype(np.float32)
+    pcl[:, 2] += float_height
     
 
     if pcl_color is not None:
         for i in range(pcl.shape[0]):
-            xml_segments.append(xml_ball_segment.format(pcl[i,0],pcl[i,1],pcl[i,2], 
+            xml_segments.append(xml_ball_segment.format(sphere_radius, pcl[i,0],pcl[i,1],pcl[i,2], 
                 pcl_color[i,0],pcl_color[i,1],pcl_color[i,2]))
     else:
         for i in range(pcl.shape[0]):
-            color = colormap(pcl[i,0]+0.5,pcl[i,1]+0.5,pcl[i,2]+0.5-0.0125)
-            xml_segments.append(xml_ball_segment.format(pcl[i,0],pcl[i,1],pcl[i,2], *color))
+            color = color_table[color_id].tolist()
+            xml_segments.append(xml_ball_segment.format(sphere_radius, pcl[i,0],pcl[i,1],pcl[i,2], *color))
 
     xml_segments.append(xml_tail)
     xml_content = str.join('', xml_segments)
@@ -158,3 +199,5 @@ def main(argv)
     os.system('mitsuba mitsuba_scene.xml')
     img = load_img('mitsuba_scene.exr')
     save_img(output_path, img)
+if __name__ == "__main__":
+    main(sys.argv[1:])

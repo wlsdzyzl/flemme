@@ -92,13 +92,13 @@ def f(input_file, mask_file = None, surface_file = None, skeleton_file = None, x
             save_points(_mask_array, suffix = f'_{i}')
         
 
-## command: python -u pmap2xyzr.py -i /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/label/ -o /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/output_lr/ -p 0.5 --cc_axis x --mask --surface --skeleton --xyzr --no_normalized > extract_xyzr.out
+## command: python -u pmap2xyzr.py -i /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/label/ -o /media/wlsdzyzl/DATA/datasets/pcd/imageCAS/output_lr/ -p 0.5 --cc_axis x --mask --surface --skeleton --xyzr --non_normalized > extract_xyzr.out
 def main(argv):
     input_dir = ''
     output_dir = ''
     opts, args = getopt.getopt(argv, "hi:o:p:v:", ['help', 'input_dir=', 'input_suffix=', 'output_dir=', 'prob_threshold=', 
                                                    'label_value=', 'cc_axis=' , 'mask', 'surface','skeleton', 'xyzr', 
-                                                   'no_normalized', 'dilate'])
+                                                   'non_normalized', 'dilate'])
     mask = False
     surface = False
     skeleton = False
@@ -110,11 +110,11 @@ def main(argv):
     cc_axis = None
     dilate = False
     if len(opts) == 0:
-        logger.error('unknow options, usage: pmap2xyzr.py -i <input_dir> --input_suffix <input_suffix=nii.gz> -o <output_dir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
+        logger.error('unknow options, usage: pmap2xyzr.py -i <input_dir> --input_suffix <input_suffix=nii.gz> -o <output_dir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --non_normalized --dilate')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            logger.info('usage: pmap2xyzr.py -i <input_dir> --input_suffix <input_suffix=nii.gz> -o <output_dir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
+            logger.info('usage: pmap2xyzr.py -i <input_dir> --input_suffix <input_suffix=nii.gz> -o <output_dir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --non_normalized --dilate')
             sys.exit()
         elif opt in ("-i", '--input_dir'):
             input_dir = arg
@@ -136,12 +136,12 @@ def main(argv):
             skeleton = True
         elif opt in ('--xyzr',):
             xyzr = True
-        elif opt in ('--no_normalized',):
+        elif opt in ('--non_normalized',):
             normalized = False
         elif opt in ('--dilate',):
             dilate = True
         else:
-            logger.error('unknow option, usage: pmap2xyzr.py -i <input_dir> --input_suffix <input_suffix=nii.gz> -o <output_dir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --no_normalized --dilate')
+            logger.error('unknow option, usage: pmap2xyzr.py -i <input_dir> --input_suffix <input_suffix=nii.gz> -o <output_dir> -p <prob_threshold = None> -v <label_value = None> --cc_axis <cc_axis=null> --mask --surface --skeleton --xyzr --non_normalized --dilate')
             sys.exit()
     assert label_value is not None or prob_threshold is not None, "At least one of [prob_threshold, label_value] should not be None."
     input_files = []

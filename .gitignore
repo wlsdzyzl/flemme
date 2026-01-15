@@ -7,7 +7,7 @@ results/
 *.out
 *.pyc
 *.pkl
-mitsuba_scene*
+mitsuba_*
 __pycache__
 path/
 logs/

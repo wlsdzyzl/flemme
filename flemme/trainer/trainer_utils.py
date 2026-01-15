@@ -3,10 +3,9 @@ from flemme.utils import *
 from torch import optim
 from flemme.metrics import get_metrics
 from matplotlib import pyplot as plt
-from flemme.color_table import get_color_table
 from sklearn.manifold import TSNE
 from flemme.logger import get_logger
-from flemme.color_table import color_table
+from flemme.color_table import get_color_table, color_table
 import joblib
 from tqdm import tqdm
 from functools import partial

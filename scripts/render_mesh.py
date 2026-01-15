@@ -56,7 +56,7 @@ xml_head = \
 xml_ply = \
 """
     <shape type="ply">
-        <string name="filename" value="./normalized_mesh.ply"/>
+        <string name="filename" value="./mitsuba_mesh.ply"/>
         <transform name="to_world">
             <scale value="1"/>
             <translate x="0" y="0" z="0"/>
@@ -96,15 +96,20 @@ def main(argv):
     output_path = 'mitsuba_scene.png'
     size=[160, 120]
     opts, args = getopt.getopt(argv, "hi:o:", ['help', 'input_mesh=', 'output_path=', 
-                            'xyz_angles=', 'size=', 'mirror_flip=', 'float_height='])
+                            'xyz_angles=', 'size=', 'mirror_flip=', 'float_height=',
+                            'color_id=', 'center=', 'scaling=', 'non_standardized'])
     float_height = 0.1
     mirror_flip = []
+    color_id = 0
+    center = np.zeros(3)
+    scaling = 1.0
+    standardize = True
     if len(opts) == 0:
-        logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1>')
+        logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            logger.info('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1>')
+            logger.info('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
             sys.exit()
         elif opt in ("-i", '--input_mesh'):
             mesh_file = arg
@@ -118,8 +123,16 @@ def main(argv):
             mirror_flip = arg.split(',')
         elif opt in ('--float_height'):
             float_height = float(arg)
+        elif opt in ('--color_id'):
+            color_id = int(arg)
+        elif opt in ('--non_standardized'):
+            standardize = False
+        elif opt in ('--center'):
+            center = np.array([float(c) for c in arg.split(',')])
+        elif opt in ('--scaling'):
+            scaling = float(arg)
         else:
-            logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1>')
+            logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
             sys.exit()
     xml_segments = [xml_head.format(*size)]
     pcl, faces = load_ply(mesh_file, with_faces= True)
@@ -154,10 +167,14 @@ def main(argv):
                 exit(1)
         if flip_face:
             faces = faces[:, [2, 1, 0]]
-    pcl = standardize_bbox(pcl)
+    if standardize:
+        pcl = standardize_bbox(pcl)
+    else:
+        pcl = ((pcl - center)/scaling).astype(np.float32)
     pcl[:, 2] += float_height
 
-    color = [color_table[6][0], color_table[6][1], color_table[6][2]]
+    save_ply('mitsuba_mesh.ply', pcl, faces = faces)
+    color = color_table[color_id].tolist()
     xml_segments.append(xml_ply.format(*color))
 
     xml_segments.append(xml_tail)

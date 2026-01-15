@@ -5,6 +5,6 @@ cp "/data/guoqingzhang/vcg-results/MedSDF/mesh/PCT2/coronary_artery_right_d/1206
 cp "/data/guoqingzhang/vcg-results/MedSDF/mesh/PointMamba2/coronary_artery_right_d/12069367_1.ply" "/data/guoqingzhang/vcg-for-figure/recon/PointMamba2/"
 cp "/data/guoqingzhang/vcg-results/MedSDF/mesh/DiffPCD/coronary_artery_right_d/12069367_1.ply" "/data/guoqingzhang/vcg-for-figure/recon/DiffPCD/"
 cp "/data/guoqingzhang/vcg-results/MedSDF/mesh/GeM3D_origin/coronary_artery_right_d/12069367_1.ply" "/data/guoqingzhang/vcg-for-figure/recon/GeM3D_origin/"
-cp "/data/guoqingzhang/vcg-results/MedSDF/mesh/SkCNN_val_512/coronary_artery_right_d/12069367_1.ply" "/data/guoqingzhang/vcg-for-figure/recon/ours/"
+cp "/data/guoqingzhang/vcg-results/MedSDF/mesh/SkCNN_val_with_la_512/coronary_artery_right_d/12069367_1.ply" "/data/guoqingzhang/vcg-for-figure/recon/SkCNN_val_512_with_la/"
 cp "/data/guoqingzhang/datasets/MedSDF/split/fold5/raw/coronary_artery_right_d/12069367_1.ply" "/data/guoqingzhang/vcg-for-figure/recon/input/coronary_artery_right_d/"
 cp "/data/guoqingzhang/datasets/MedSDF/split/fold5/rmesh022/coronary_artery_right_d/12069367_1_mesh.ply" "/data/guoqingzhang/vcg-for-figure/recon/GT/12069367_1.ply"

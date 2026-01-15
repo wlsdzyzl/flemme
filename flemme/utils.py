@@ -8,6 +8,7 @@ from enum import Enum, auto
 import nibabel as nb
 from matplotlib import figure as mpl_figure
 from flemme.logger import get_logger
+from flemme.color_table import rainbow_rgb
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -520,18 +521,21 @@ if module_config['point-cloud'] or module_config['graph']:
             points, pcolors = points
             # print(points.shape, pcolors.shape)
         if pcolors is not None:
-            if np.max(pcolors) > 1 or np.min(pcolors) < 0:
-                pcolors = (pcolors - np.min(pcolors))/ (np.max(pcolors) - np.min(pcolors))
-            pcolors = (pcolors * 255).astype(int)
             # not a 3-channel color, we use the first channel as intensity.
-            if pcolors.size() == points.shape[0]:
+            if pcolors.size == points.shape[0]:
                 pcolors = pcolors.flatten()
-                points = [(points[i, 0], points[i, 1], points[i, 2], pcolors[i], pcolors[i], pcolors[i]) for i in range(points.shape[0])]
-            elif pcolors.shape[0] == points.shape[0] and pcolors.shape[1] == 3:
-                points = [(points[i, 0], points[i, 1], points[i, 2], pcolors[i, 0], pcolors[i, 1], pcolors[i, 2]) for i in range(points.shape[0])]
-            else:
-                logger.error('Color shape mismatched.')
+                ## normalize color / label to [0, 1]
+                if np.max(pcolors) > 1 or np.min(pcolors) < 0:
+                    pcolors = (pcolors - np.min(pcolors))/ (np.max(pcolors) - np.min(pcolors))
+                pcolors = np.array([rainbow_rgb(s) for s in pcolors])
+            elif not pcolors.shape[0] == points.shape[0] or not pcolors.shape[1] == 3:
+                logger.error(f'Color shape mismatched, get point shape {points.shape} and color shape {pcolors.shape}.')
                 exit(1)
+            assert pcolors.min() >= 0 and pcolors.max() < 256, 'Color values should be in the range of [0, 256).'
+            if pcolors.max() <= 1.0:
+                pcolors = pcolors * 255
+            pcolors = pcolors.astype(int)
+            points = [(points[i, 0], points[i, 1], points[i, 2], pcolors[i, 0], pcolors[i, 1], pcolors[i, 2]) for i in range(points.shape[0])]
             vertex = np.array(points, dtype = [('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('red', 'u1'), ('green', 'u1'), ('blue', 'u1') ])
         else:
             points = [(points[i, 0], points[i, 1], points[i, 2]) for i in range(points.shape[0])]
@@ -642,7 +646,7 @@ if module_config['point-cloud'] or module_config['graph']:
         loops = compute_loops(mesh, max_loop_length=threshold_holes)
         new_faces = []
         for loop in loops:
-            if len(loop) > 4:
+            if len(loop) >= 3:
                 pts = mesh.vertices[loop]
                 center = pts.mean(axis=0)
 
@@ -652,7 +656,7 @@ if module_config['point-cloud'] or module_config['graph']:
                 for i in range(len(loop)):
                     a = loop[i]
                     b = loop[(i+1) % len(loop)]
-                    new_faces.append([a, b, center_idx])
+                    new_faces.append([a, center_idx, b])
         if len(new_faces) > 0:
             mesh.faces = np.vstack([mesh.faces, np.array(new_faces)])
             mesh.remove_unreferenced_vertices()
