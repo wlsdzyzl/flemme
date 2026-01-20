@@ -251,6 +251,7 @@ def test(test_config,
         save_input = test_config.get('save_input', False)
         save_colorized = test_config.get('save_colorized', True)
         channel_dim = -1 if model.data_form == DataForm.PCD else 0
+        
         if save_target:
             logger.info('Save target for reconstruction and segmentation tasks.')
         if save_input:

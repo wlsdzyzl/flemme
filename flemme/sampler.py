@@ -51,9 +51,12 @@ class NormalSampler:
         assert not isinstance(self, HBase), 'Sampling on hierarchical based models is not supported.'
         self.is_conditional = model.is_conditional or model.is_supervised
         self.device = model.device
-        self.random_generator = torch.Generator(self.device)
+        self.random_generator = torch.Generator(device = self.device)
         if rand_seed is not None:
-            self.random_generator = self.random_generator.manual_seed(rand_seed)
+            self.random_generator.manual_seed(rand_seed)
+        else:
+            import random
+            self.random_generator.manual_seed(random.randint(0, 2**64-1))
 
         self.clipped = clipped
         self.clip_range = clip_range

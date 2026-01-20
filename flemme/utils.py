@@ -487,8 +487,9 @@ if module_config['point-cloud'] or module_config['graph']:
     ## here we only focus on the coordinate information.
     ## later we can add more informations
     ## without edge features
-    def load_ply(input_file, vertex_features = None, with_edges = False, with_faces = False):
+    def load_ply(input_file, vertex_features = ['red', 'green', 'blue'], with_edges = False, with_faces = False):
         plydata = PlyData.read(input_file, known_list_len={'face': {'vertex_indices': 3}})
+        vertex_features = [v for v in vertex_features if v in plydata['vertex']]
         vertex_feature_len = 0 if vertex_features is None else len(vertex_features)
         pcd = np.zeros((plydata['vertex'].count, 3 + vertex_feature_len ))
         pcd[:, 0] = plydata['vertex']['x']
