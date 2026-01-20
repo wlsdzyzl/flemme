@@ -70,5 +70,3 @@ evaluation_metrics:
   recon:
     - name: CD
     # - name: EMD
-    #   reg: 1.0
-    #   method: greenkhorn

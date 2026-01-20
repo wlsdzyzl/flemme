@@ -13,15 +13,16 @@ def main(argv):
     input_dir = ''
     output_dir = None
     suffix = '.ply'
-    opts, args = getopt.getopt(argv, "hi:o:r", ['help', 'input_dir=', 'output_dir=', 'suffix=','smoothing', 'recursive'])
+    opts, args = getopt.getopt(argv, "hi:o:r", ['help', 'input_dir=', 'output_dir=', 'suffix=','smoothing', 'recursive', 'ncc'])
     smoothing = False
     recursive = False
+    ncc = -1
     if len(opts) == 0:
-        logger.error('unknow options, usage: repair_mesh.py -i <input_dir> -o <output_dir> --suffix <suffix=.ply> --smoothing --recursive')
+        logger.error('unknow options, usage: repair_mesh.py -i <input_dir> -o <output_dir> --suffix <suffix=.ply> --smoothing --recursive --ncc <number_of_connected_components=-1>')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            logger.info('usage: repair_mesh.py -i <input_dir> -o <output_dir> --suffix <suffix=.ply> --smoothing --recursive')
+            logger.info('usage: repair_mesh.py -i <input_dir> -o <output_dir> --suffix <suffix=.ply> --smoothing --recursive --ncc <number_of_connected_components=-1>')
             sys.exit()
         elif opt in ("-i", '--input_dir'):
             input_dir = arg
@@ -33,8 +34,10 @@ def main(argv):
             smoothing = True
         elif opt in ('-r', '--recursive'):
             recursive = True
+        elif opt in ('--ncc', ):
+            ncc = int(arg)
         else:
-            logger.error('unknow option, usage: repair_mesh.py -i <input_dir> -o <output_dir> --suffix <suffix=.ply> --smoothing --recursive')
+            logger.error('unknow option, usage: repair_mesh.py -i <input_dir> -o <output_dir> --suffix <suffix=.ply> --smoothing --recursive --ncc <number_of_connected_components=-1>')
             sys.exit()
     if not output_dir:
         output_dir = input_dir
@@ -54,6 +57,10 @@ def main(argv):
                 beta=0.5,
                 iterations=10
             )
+        if ncc > 0:
+            components = mesh.split(only_watertight=False)
+            components = sorted(components, key = lambda x: len(x.faces), reverse=True)
+            mesh = trimesh.util.concatenate(components[:ncc])
         ofile = ifile.replace(input_dir, output_dir)
         if recursive:
             ofile_dir = os.path.dirname(ofile)

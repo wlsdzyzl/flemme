@@ -143,11 +143,12 @@ def test_cd():
     print("Input_size: ", x1.shape)
     print('distance size:', d1.shape, d2.shape)
 
-
 def test_emd():
     import time
-    x1 = torch.rand(20, 8192, 3).cuda() # please normalize your point cloud to [0, 1]
-    x2 = torch.rand(20, 8192, 3).cuda()
+    x1 = torch.rand(20, 2048, 3).cuda()
+    x2 = torch.rand(20, 2048, 3).cuda()
+    # x1 = torch.randn(1, 1024, 3).cuda()
+    # x2 = x1 - 0.0001
     emd = emdModule(0.002, 10000)
     start_time = time.perf_counter()
     dis, assigment = emd(x1, x2) # 0.005, 50 for training 
@@ -155,6 +156,7 @@ def test_emd():
     print('distance size:', dis.shape)
     print("Runtime: %lfs" % (time.perf_counter() - start_time))
     print("EMD: %lf" % np.sqrt(dis.cpu()).mean())
+    # print("EMD: %lf" % dis.cpu().sum(-1).mean())
     print("|set(assignment)|: %d" % assigment.unique().numel())
     assigment = assigment.cpu().numpy()
     assigment = np.expand_dims(assigment, -1)
@@ -162,5 +164,16 @@ def test_emd():
     d = (x1 - x2) * (x1 - x2)
     print("Verified EMD: %lf" % np.sqrt(d.cpu().sum(-1)).mean())
 
+    from flemme.metrics import EMD
+    emd_ot = EMD()
+    start_time = time.perf_counter()
+    dist = 0.0
+    for xx1, xx2 in zip(x1, x2):
+        dist += emd_ot(xx1.cpu().numpy(), xx2.cpu().numpy())
+    dist /= x1.shape[0]
+    print('EMD from OT:', dist)
+    print("Runtime: %lfs" % (time.perf_counter() - start_time))
+
+# test_cd()
 # test_emd()
         

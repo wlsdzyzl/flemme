@@ -187,15 +187,19 @@ if module_config['point-cloud']:
     ### The following loss can be used as reconstruction loss for point clouds
     ## Chamfer distance
     class ChamferLoss(nn.Module):
-        def __init__(self, reduction = 'mean', extended = False):
+        def __init__(self, reduction = 'mean', extended = False, 
+            squared_distance = True):
             super().__init__()
             self.reduction = reduction
             self.chamfer = ChamferDistance()
             self.extended = extended
+            self.squared_distance = squared_distance
         def calc_cd(self, x, gt):
             return self.chamfer(x, gt)
         def forward(self, x, y, sample_weight = 1.0):
             d1, d2 = self.calc_cd(x, y)
+            if not self.squared_distance:
+                d1, d2 = d1 ** 0.5, d2 ** 0.5
             d1, d2 = d1.mean(dim=-1, keepdim=True), d2.mean(dim=-1, keepdim=True)
             if self.extended:
                 ## for each pair of point cloud,  we compute the maximum distance

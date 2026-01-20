@@ -16,8 +16,8 @@ import math
 from functools import partial
 from flemme.logger import get_logger
 from flemme.utils import label_to_onehot, DataForm, topk
-from flemme.model import create_model
-from flemme.loss import get_loss
+
+
 from tqdm import tqdm
 logger = get_logger('metrics')
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -240,17 +240,19 @@ if module_config['point-cloud']:
     #### point cloud similarity
     ## Earth mover's distance
     class EMD:
-        def __init__(self, reg = 1.0, **kwargs):
+        def __init__(self, reg = None, **kwargs):
             logger.info('using Earth Mover\'s distance')
             self.kwargs = kwargs
-            self.ot = partial(ot.sinkhorn, 
-                reg = reg, 
-                **kwargs)
+            if not reg:
+                self.ot = partial(ot.emd, 
+                    **kwargs)
+            else:
+                self.ot = partial(ot.sinkhorn,
+                    reg = reg,
+                    **kwargs)
         def __call__(self, x, y):
-            M = ot.dist(x, y)
-            a = np.ones((x.shape[0], )) / x.shape[0]    
-            b = np.ones((y.shape[0], )) / y.shape[0]
-            gamma = self.ot(a, b, M)
+            M = ot.dist(x, y, metric='euclidean')
+            gamma = self.ot([], [], M)
             return (M * gamma).sum()
     ## chamfer distance
     class CD:
@@ -411,6 +413,7 @@ class FID:
                     embedding_net_path,
                     batch_size = 16):
         logger.info('using Frechet Inception Distance')
+        from flemme.model import create_model
         self.embedding_net = create_model(embedding_net)
         self.embedding_net.load_state_dict(
             torch.load(embedding_net_path, map_location='cpu', weights_only=False)['trained_model'])
@@ -443,6 +446,7 @@ class KID:
                     subset_size = 100,
                     batch_size = 16):
         logger.info('using Kernel Inception Distance')
+        from flemme.model import create_model
         self.embedding_net = create_model(embedding_net)
         self.embedding_net.load_state_dict(
             torch.load(embedding_net_path, map_location='cpu', weights_only=False)['trained_model'])
@@ -480,11 +484,14 @@ class MMDAndCov:
                  batch_size = 16,
                  data_form = DataForm.IMG):
         logger.info(f'using Mean Minimum Distance and Coverage with {distance}')
-        assert package in ['loss', 'metric'], 'package should be one of [loss, metric].'
+        assert package in ['loss', 'metrics'], 'package should be one of [loss, metrics].'
         self.package = package
         self.batch_size = batch_size
         if self.package == 'loss':
             distance['reduction'] = None
+            if distance['name'] == 'Chamfer' or distance['name'] == 'CD':
+                distance['squared_distance'] = False
+            from flemme.loss import get_loss
             self.dist_fn = get_loss(distance, data_form=data_form)
         else:
             self.dist_fn = get_metrics(distance, data_form=data_form)
