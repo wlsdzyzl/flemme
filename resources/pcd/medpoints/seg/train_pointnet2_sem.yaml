@@ -34,9 +34,9 @@ loader:
     data_suffix: .ply
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold1
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold2
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold3
+    - /data/guoqingzhang/datasets/MedPointS/segmentation/fold1
+    - /data/guoqingzhang/datasets/MedPointS/segmentation/fold2
+    - /data/guoqingzhang/datasets/MedPointS/segmentation/fold3
   batch_size: 8
   num_workers: 8
   shuffle: true
@@ -61,7 +61,7 @@ val_loader:
     data_suffix: .ply
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold4
+    - /data/guoqingzhang/datasets/MedPointS/segmentation/fold4
   batch_size: 32
   num_workers: 8
   shuffle: true
@@ -78,7 +78,7 @@ val_loader:
     - name: ToOneHot
       num_classes: 46
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointNet2/PointNet2_SEG_WO_Dense
+check_point_dir: /data/guoqingzhang/flemme-ckp/MedPointS/PointNet2/PointNet2_SEG_WO_Dense
 ### parameter for optimizer
 optimizer:
   name: Adam

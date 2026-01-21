@@ -30,7 +30,7 @@ loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold5
+    - /data/guoqingzhang/datasets/MedPointS/classification/fold5
   batch_size: 32
   num_workers: 8
   shuffle: true
@@ -45,7 +45,7 @@ loader:
     - name: ToOneHot
       num_classes: 46
     - name: ToTensor
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointTrans2/PointTrans2_CLS/ckp_best_loss.pth
+model_path: /data/guoqingzhang/flemme-ckp/MedPointS/PointTrans2/PointTrans2_CLS/ckp_best_loss.pth
 
 
 evaluation_metrics:

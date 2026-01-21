@@ -13,7 +13,7 @@ def main(argv):
     input_dir = ''
     output_dir = None
     suffix = '.ply'
-    opts, args = getopt.getopt(argv, "hi:o:r", ['help', 'input_dir=', 'output_dir=', 'suffix=','smoothing', 'recursive', 'ncc'])
+    opts, args = getopt.getopt(argv, "hi:o:r", ['help', 'input_dir=', 'output_dir=', 'suffix=','smoothing', 'recursive', 'ncc='])
     smoothing = False
     recursive = False
     ncc = -1
@@ -43,7 +43,7 @@ def main(argv):
         output_dir = input_dir
     mkdirs(output_dir)
     if recursive:
-        input_files = sorted(glob.glob(os.path.join(input_dir, f"*/*{suffix}"), recursive = True))
+        input_files = sorted(glob.glob(os.path.join(input_dir, f"**/*{suffix}"), recursive = True))
     else:
         input_files = sorted(glob.glob(os.path.join(input_dir, f"*{suffix}")))
     for ifile in tqdm(input_files, 'fixing'):

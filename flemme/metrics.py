@@ -489,7 +489,7 @@ class MMDAndCov:
         self.batch_size = batch_size
         if self.package == 'loss':
             distance['reduction'] = None
-            if distance['name'] == 'Chamfer' or distance['name'] == 'CD':
+            if distance['name'] in ['Chamfer', 'CD', 'EMD']:
                 distance['squared_distance'] = False
             from flemme.loss import get_loss
             self.dist_fn = get_loss(distance, data_form=data_form)

@@ -38,24 +38,24 @@
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/LDM_EDM_SkCNN_with_la/bladder/gen_rand_0_407.ply -o ./tmp_img/gen/bladder_ours_4.png --size 1600,1200 --color_id 41 --xyz_angles x/210 --float_height 0.0
 
 # echo brain
-python ../render_pcd.py --sphere_radius 0.005 --point_size 2560 --color_id 8 -i /data/guoqingzhang/vcg-for-figure/gen/brain/006919_brain.ply -o ./tmp_img/gen/brain_ref.png --size 1600,1200 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/brain/gen_rand_43.ply -o ./tmp_img/gen/brain_diffpcd_0.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/brain/gen_rand_234.ply -o ./tmp_img/gen/brain_diffpcd_1.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/brain/gen_rand_118.ply -o ./tmp_img/gen/brain_diffpcd_2.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/brain/gen_rand_245.ply -o ./tmp_img/gen/brain_diffpcd_3.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/brain/gen_rand_290.ply -o ./tmp_img/gen/brain_diffpcd_4.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_pcd.py --sphere_radius 0.005 --point_size 2560 --color_id 8 -i /data/guoqingzhang/vcg-for-figure/gen/brain/006919_brain.ply -o ./tmp_img/gen/brain_ref.png --size 1600,1200 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/brain/gen_rand_43.ply -o ./tmp_img/gen/brain_diffpcd_0.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/brain/gen_rand_234.ply -o ./tmp_img/gen/brain_diffpcd_1.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/brain/gen_rand_118.ply -o ./tmp_img/gen/brain_diffpcd_2.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/brain/gen_rand_245.ply -o ./tmp_img/gen/brain_diffpcd_3.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/brain/gen_rand_290.ply -o ./tmp_img/gen/brain_diffpcd_4.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
 
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh/brain/gen_rand_437.ply -o ./tmp_img/gen/brain_edm_0.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh/brain/gen_rand_298.ply -o ./tmp_img/gen/brain_edm_1.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh/brain/gen_rand_416.ply -o ./tmp_img/gen/brain_edm_2.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh/brain/gen_rand_49.ply -o ./tmp_img/gen/brain_edm_3.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh/brain/gen_rand_494.ply -o ./tmp_img/gen/brain_edm_4.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh/brain/gen_rand_437.ply -o ./tmp_img/gen/brain_edm_0.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh/brain/gen_rand_298.ply -o ./tmp_img/gen/brain_edm_1.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh/brain/gen_rand_416.ply -o ./tmp_img/gen/brain_edm_2.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh/brain/gen_rand_49.ply -o ./tmp_img/gen/brain_edm_3.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh/brain/gen_rand_494.ply -o ./tmp_img/gen/brain_edm_4.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
 
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/brain/gen_rand_11.ply -o ./tmp_img/gen/brain_pvd_0.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/brain/gen_rand_99.ply -o ./tmp_img/gen/brain_pvd_1.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/brain/gen_rand_273.ply -o ./tmp_img/gen/brain_pvd_2.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/brain/gen_rand_285.ply -o ./tmp_img/gen/brain_pvd_3.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
-python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/brain/gen_rand_492.ply -o ./tmp_img/gen/brain_pvd_4.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/brain/gen_rand_11.ply -o ./tmp_img/gen/brain_pvd_0.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/brain/gen_rand_99.ply -o ./tmp_img/gen/brain_pvd_1.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/brain/gen_rand_273.ply -o ./tmp_img/gen/brain_pvd_2.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/brain/gen_rand_285.ply -o ./tmp_img/gen/brain_pvd_3.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/brain/gen_rand_492.ply -o ./tmp_img/gen/brain_pvd_4.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
 
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/GeM3D_origin/brain/00000002-469.ply -o ./tmp_img/gen/brain_gem3d_0.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/GeM3D_origin/brain/00000002-425.ply -o ./tmp_img/gen/brain_gem3d_1.png --size 1600,1200 --color_id 41 --xyz_angles 180,0,-90
@@ -547,7 +547,7 @@ python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh/b
 
 
 # echo pancreas
-python ../render_pcd.py --sphere_radius 0.005 --point_size 2560 --color_id 8 -i /data/guoqingzhang/vcg-for-figure/gen/pancreas/s0213_pancreas.ply -o ./tmp_img/gen/pancreas_ref.png --size 1600,1200 --xyz_angles x/-90,z/180,y/10 --float_height 0.0
+# python ../render_pcd.py --sphere_radius 0.005 --point_size 2560 --color_id 8 -i /data/guoqingzhang/vcg-for-figure/gen/pancreas/s0213_pancreas.ply -o ./tmp_img/gen/pancreas_ref.png --size 1600,1200 --xyz_angles x/-90,z/180,y/10 --float_height 0.0
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/pancreas/gen_rand_237.ply -o ./tmp_img/gen/pancreas_diffpcd_0.png --size 1600,1200 --color_id 41 --xyz_angles x/-90,z/180,y/10 --float_height 0.0
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/pancreas/gen_rand_186.ply -o ./tmp_img/gen/pancreas_diffpcd_1.png --size 1600,1200 --color_id 41 --xyz_angles x/-90,z/180,y/10 --float_height 0.0
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh/pancreas/gen_rand_54.ply -o ./tmp_img/gen/pancreas_diffpcd_2.png --size 1600,1200 --color_id 41 --xyz_angles x/-90,z/180,y/10 --float_height 0.0
@@ -705,3 +705,63 @@ python ../render_pcd.py --sphere_radius 0.005 --point_size 2560 --color_id 8 -i 
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/LDM_EDM_SkCNN_with_la/uterus/gen_rand_0_12.ply -o ./tmp_img/gen/uterus_ours_2.png --size 1600,1200 --color_id 41 --xyz_angles y/90,z/-120,y/90,x/-20
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/LDM_EDM_SkCNN_with_la/uterus/gen_rand_0_13.ply -o ./tmp_img/gen/uterus_ours_3.png --size 1600,1200 --color_id 41 --xyz_angles y/90,z/-120,y/90,x/-20
 # python ../render_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/LDM_EDM_SkCNN_with_la/uterus/gen_rand_0_29.ply -o ./tmp_img/gen/uterus_ours_4.png --size 1600,1200 --color_id 41 --xyz_angles y/90,z/-120,y/90,x/-20
+
+echo imagecas
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_296.ply -o ./tmp_img/gen/imagecas_ours_0.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_363.ply -o ./tmp_img/gen/imagecas_ours_1.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_04.ply -o ./tmp_img/gen/imagecas_ours_2.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_472.ply -o ./tmp_img/gen/imagecas_ours_3.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_360.ply -o ./tmp_img/gen/imagecas_ours_4.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_223.ply -o ./tmp_img/gen/imagecas_ours_5.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_327.ply -o ./tmp_img/gen/imagecas_ours_6.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_495.ply -o ./tmp_img/gen/imagecas_ours_7.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_312.ply -o ./tmp_img/gen/imagecas_ours_8.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_425.ply -o ./tmp_img/gen/imagecas_ours_9.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_497.ply -o ./tmp_img/gen/imagecas_ours_10.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_417.ply -o ./tmp_img/gen/imagecas_ours_11.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_114.ply -o ./tmp_img/gen/imagecas_ours_12.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_269.ply -o ./tmp_img/gen/imagecas_ours_13.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_58.ply -o ./tmp_img/gen/imagecas_ours_14.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_334.ply -o ./tmp_img/gen/imagecas_ours_15.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_57.ply -o ./tmp_img/gen/imagecas_ours_16.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_109.ply -o ./tmp_img/gen/imagecas_ours_17.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_71.ply -o ./tmp_img/gen/imagecas_ours_18.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_285.ply -o ./tmp_img/gen/imagecas_ours_19.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_170.ply -o ./tmp_img/gen/imagecas_vessdiff_0.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_207.ply -o ./tmp_img/gen/imagecas_vessdiff_1.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_393.ply -o ./tmp_img/gen/imagecas_vessdiff_2.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_478.ply -o ./tmp_img/gen/imagecas_vessdiff_3.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_314.ply -o ./tmp_img/gen/imagecas_vessdiff_4.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_414.ply -o ./tmp_img/gen/imagecas_vessdiff_5.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_354.ply -o ./tmp_img/gen/imagecas_vessdiff_6.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_456.ply -o ./tmp_img/gen/imagecas_vessdiff_7.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_241.ply -o ./tmp_img/gen/imagecas_vessdiff_8.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_80.ply -o ./tmp_img/gen/imagecas_vessdiff_9.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_135.ply -o ./tmp_img/gen/imagecas_vessdiff_10.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_45.ply -o ./tmp_img/gen/imagecas_vessdiff_11.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_81.ply -o ./tmp_img/gen/imagecas_vessdiff_12.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_403.ply -o ./tmp_img/gen/imagecas_vessdiff_13.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_251.ply -o ./tmp_img/gen/imagecas_vessdiff_14.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_189.ply -o ./tmp_img/gen/imagecas_vessdiff_15.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_28.ply -o ./tmp_img/gen/imagecas_vessdiff_16.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_199.ply -o ./tmp_img/gen/imagecas_vessdiff_17.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_312.ply -o ./tmp_img/gen/imagecas_vessdiff_18.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+python ../render_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_240.ply -o ./tmp_img/gen/imagecas_vessdiff_19.png --size 1600,1200 --color_id 41 --xyz_angles y/-100,x/-30,y/-10,z/-45,y/-15,x/-10,z/10,x/-20 --float_height 0.0
+
+
+
+# echo cow
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_15.ply -o ./tmp_img/gen/cow_ours_0.png --size 1600,1200 --color_id 41 --xyz_angles y/-90,z/-5,x/20,y/-5
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_76.ply -o ./tmp_img/gen/cow_ours_1.png --size 1600,1200 --color_id 41 --xyz_angles y/-90,z/-5,x/20,y/-5
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_09.ply -o ./tmp_img/gen/cow_ours_2.png --size 1600,1200 --color_id 41 --xyz_angles y/-90,z/-5,x/20,y/-5
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_357.ply -o ./tmp_img/gen/cow_ours_3.png --size 1600,1200 --color_id 41 --xyz_angles y/-90,z/-5,x/20,y/-5
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired/gen_rand_499.ply -o ./tmp_img/gen/cow_ours_4.png --size 1600,1200 --color_id 41 --xyz_angles y/-90,z/-5,x/20,y/-5
+
+
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_75.ply -o ./tmp_img/gen/cow_vessdiff_0.png --size 1600,1200 --color_id 41 --xyz_angles y/-90,z/-5,x/20,y/-5
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_219.ply -o ./tmp_img/gen/cow_vessdiff_1.png --size 1600,1200 --color_id 41 --xyz_angles y/-90,z/-5,x/20,y/-5
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_68.ply -o ./tmp_img/gen/cow_vessdiff_2.png --size 1600,1200 --color_id 41 --xyz_angles y/-90,z/-5,x/20,y/-5
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_475.ply -o ./tmp_img/gen/cow_vessdiff_3.png --size 1600,1200 --color_id 41 --xyz_angles y/-90,z/-5,x/20,y/-5
+# python ../render_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/VessDiff_Mesh_repaired/gen_rand_396.ply -o ./tmp_img/gen/cow_vessdiff_4.png --size 1600,1200 --color_id 41 --xyz_angles y/-90,z/-5,x/20,y/-5
+

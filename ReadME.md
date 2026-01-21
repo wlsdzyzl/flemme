@@ -173,7 +173,7 @@ Alternatively, you can use load the dataset from Hugging Face: [MedPoints-cls](h
 If you want to load completion dataset from MedPoints through the current version of `Flemme`, please make sure the dataset samples are stored as `/dataset_path/subfold/class_name/data_sample1.ply`. You can use `script/reorganize_cpl_cls_datasets.py` to reorganize the directory structure. The following command will transfer `/dataset_path/class_name/subfold/data_sample1.ply` to `/dataset_path/subfold/class_name/data_sample1.ply`.
 
 ```bash
-python reorganize_cls_datasets.py --dataset_path /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold5
+python reorganize_cls_datasets.py --dataset_path /data/guoqingzhang/datasets/MedPointS/completion/fold5
 ```
 
 ## Play with Flemme

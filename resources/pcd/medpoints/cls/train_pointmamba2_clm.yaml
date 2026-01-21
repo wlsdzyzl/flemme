@@ -33,9 +33,9 @@ loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold1
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold2
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold3
+    - /data/guoqingzhang/datasets/MedPointS/classification/fold1
+    - /data/guoqingzhang/datasets/MedPointS/classification/fold2
+    - /data/guoqingzhang/datasets/MedPointS/classification/fold3
   batch_size: 1
   num_workers: 8
   shuffle: true
@@ -56,7 +56,7 @@ val_loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold4
+    - /data/guoqingzhang/datasets/MedPointS/classification/fold4
   batch_size: 2
   num_workers: 8
   shuffle: true
@@ -71,7 +71,7 @@ val_loader:
     - name: ToOneHot
       num_classes: 46
     - name: ToTensor
-check_point_dir: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba2/PointMamba2_LG_CLS
+check_point_dir: /data/guoqingzhang/flemme-ckp/MedPointS/PointMamba2/PointMamba2_LG_CLS
 ### parameter for optimizer
 optimizer:
   name: Adam

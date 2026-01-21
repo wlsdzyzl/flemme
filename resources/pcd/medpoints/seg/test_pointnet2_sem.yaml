@@ -34,7 +34,7 @@ loader:
     data_suffix: .ply
     label_suffix: .seg
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/segmentation/fold5
+    - /data/guoqingzhang/datasets/MedPointS/segmentation/fold5
   batch_size: 16
   num_workers: 8
   shuffle: false
@@ -52,8 +52,8 @@ loader:
       num_classes: 46
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointNet2/PointNet2_SEG_WO_Dense/ckp_best_loss.pth
-seg_dir: /media/wlsdzyzl/DATA/flemme-results/seg/medshapenet/PointNet2/
+model_path: /data/guoqingzhang/flemme-ckp/MedPointS/PointNet2/PointNet2_SEG_WO_Dense/ckp_best_loss.pth
+seg_dir: /data/guoqingzhang/flemme-results/seg/medpoints/PointNet2/
 save_colorized: true
 save_target: true
 evaluation_metrics:

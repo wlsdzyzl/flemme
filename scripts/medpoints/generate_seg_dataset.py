@@ -5,7 +5,7 @@ import numpy as np
 from flemme.dataset.label_dict.MedPointS import fine_labels, coarse_labels
 from flemme.color_table import color_table
 dataset_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedShapeNet'
-output_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedPointS'
+output_path = '/data/guoqingzhang/datasets/MedPointS'
 selected_number_paths = glob(os.path.join(dataset_path, 'by_number/*')) 
 sample_num = 65536
 broken_stls = []

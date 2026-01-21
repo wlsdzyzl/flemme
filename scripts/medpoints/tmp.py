@@ -2,8 +2,8 @@ import shutil
 from glob import glob
 import os
 from flemme.utils import rkdirs
-dataset_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion'
-# target_path = '/media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion'
+dataset_path = '/data/guoqingzhang/datasets/MedPointS/completion'
+# target_path = '/data/guoqingzhang/datasets/MedPointS/completion'
 organ_dirs =  glob(dataset_path +'/*')
 kfolds = glob(dataset_path + '/brain/*')
 for o in organ_dirs:

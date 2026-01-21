@@ -13,3 +13,10 @@
 # python ../repair_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/DiffPCD_Mesh -r
 # python ../repair_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/EDM_NONE_Mesh -r
 # python ../repair_mesh.py -i /data/guoqingzhang/vcg-results/MedSDF/gen/PVD_Mesh -r
+# python ../repair_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA -o /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired --smoothing --ncc 1
+python ../repair_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC -o /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_repaired --ncc 1
+# python ../repair_mesh.py -i /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/VessDiff_Mesh -o /data/guoqingzhang/vcg-results/CoW_vessel_diff/gen/VessDiff_Mesh_repaired --ncc 1
+
+# python ../repair_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA -o /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_LA_repaired --smoothing --ncc 2
+python ../repair_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC -o /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/LDM_EDM_SkCNN_with_SKC_repaired --ncc 2
+# python ../repair_mesh.py -i /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh -o /data/guoqingzhang/vcg-results/imageCAS_vessel_diff/gen/VessDiff_Mesh_repaired --ncc 2

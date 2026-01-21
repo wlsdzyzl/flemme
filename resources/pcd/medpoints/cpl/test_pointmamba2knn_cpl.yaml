@@ -58,7 +58,7 @@ loader:
     target_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/completion/fold5
+    - /data/guoqingzhang/datasets/MedPointS/completion/fold5
   batch_size: 24
   num_workers: 8
   shuffle: false
@@ -79,8 +79,8 @@ loader:
       num_classes: 46
     - name: ToTensor
 
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointMamba2/PointMamba2_KNN_SFC_CPL/ckp_best_loss.pth
-recon_dir: /media/wlsdzyzl/DATA/flemme-results/cpl/medshapenet/PointMamba2_KNN_SFC/
+model_path: /data/guoqingzhang/flemme-ckp/MedPointS/PointMamba2/PointMamba2_KNN_SFC_CPL/ckp_best_loss.pth
+recon_dir: /data/guoqingzhang/flemme-results/cpl/medpoints/PointMamba2_KNN_SFC/
 save_input: true
 save_target: true
 eval_batch_num: 10

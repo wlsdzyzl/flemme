@@ -24,7 +24,7 @@ loader:
     data_suffix: .ply
     cls_label: MedPointS
   data_path_list: 
-    - /media/wlsdzyzl/DATA/datasets/pcd/MedPointS/classification/fold5
+    - /data/guoqingzhang/datasets/MedPointS/classification/fold5
   batch_size: 32
   num_workers: 8
   shuffle: false
@@ -39,7 +39,7 @@ loader:
     - name: ToOneHot
       num_classes: 46
     - name: ToTensor
-model_path: /media/wlsdzyzl/DATA/flemme-ckp/MedPointS/PointNet/PointNet_CLS/ckp_last.pth
+model_path: /data/guoqingzhang/flemme-ckp/MedPointS/PointNet/PointNet_CLS/ckp_last.pth
 # eval_batch_num: 8
 pickle_results: true
 pickle_path: /media/wlsdzyzl/DATA/flemme-pickled

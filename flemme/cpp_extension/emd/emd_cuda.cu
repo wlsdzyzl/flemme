@@ -144,7 +144,6 @@ __global__ void Bid(int b, int n, const float * xyz1, const float * xyz2, float 
 					float z2 = xyz2_buf[k * 3 + 2] - z1;
 					// the coordinates of points should be normalized to [0, 1]
 					float d = 3.0 - sqrtf(x2 * x2 + y2 * y2 + z2 * z2) - price_buf[k];
-					// float d = - sqrtf(x2 * x2 + y2 * y2 + z2 * z2) - price_buf[k];
 					if (d > best) {
 						better = best;
 						best = d;
