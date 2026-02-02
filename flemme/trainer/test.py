@@ -29,7 +29,7 @@ def save_results(results,
 
     if recon_dir is not None:
         logger.info(f'Saving reconstruction results to {recon_dir} ...')
-        mkdirs(recon_dir)
+        rkdirs(recon_dir)
         sample_idx = 0
         for res_dict in tqdm(results):
             res_dict = load_pickle(res_dict)
@@ -57,7 +57,7 @@ def save_results(results,
                 sample_idx += 1
     if seg_dir is not None:
         logger.info(f'Saving segmentation results to {seg_dir} ...')
-        mkdirs(seg_dir)
+        rkdirs(seg_dir)
         sample_idx = 0
         for res_dict in tqdm(results):
             res_dict = load_pickle(res_dict)
@@ -115,7 +115,7 @@ def save_results(results,
     for res_name, res_dir in zip(custom_res_names, custom_res_dirs):
         if res_dir is not None:
             logger.info(f'Saving {res_name} results to {res_dir} ...')
-            mkdirs(res_dir)
+            rkdirs(res_dir)
             sample_idx = 0
             for res_dict in tqdm(results):
                 res_dict = load_pickle(res_dict)
@@ -237,7 +237,7 @@ def test(test_config,
                     else:
                         loaded = False
             if not loaded:
-                logger.error('Trained model doesn\'t exist. You are testing a model that has never been trained before.')
+                logger.error('Trained model doesn\'t exist.')
                 exit(1)
         model = model.to(device)
         ## turn to evaluation
