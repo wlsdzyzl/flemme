@@ -477,6 +477,91 @@ class KID:
             mmd = K_XX.mean() + K_YY.mean() - 2 * K_XY.mean()
             kid_scores.append(mmd)
         return np.mean(kid_scores)
+
+## Maximum Mean Discrepancy
+class MaxMD:
+    def __init__(self, distance = {'name':'CD'}, 
+                 package = 'loss', 
+                 batch_size = 16,
+                 var = 1.0,
+                 data_form = DataForm.IMG):
+        logger.info(f'using Maximum Mean Discrepancy with {distance}')
+        logger.warning('This metric is not recommended to evaluate two sets of point clouds, because RBF based on Chamfer Distance and EMD are not Positive-definite kernels.')
+        assert package in ['loss', 'metrics'], 'package should be one of [loss, metrics].'
+        self.package = package
+        self.batch_size = batch_size
+        if self.package == 'loss':
+            distance['reduction'] = None
+            if distance['name'] in ['Chamfer', 'CD', 'EMD']:
+                distance['squared_distance'] = False
+            from flemme.loss import get_loss
+            self.dist_fn = get_loss(distance, data_form=data_form)
+        else:
+            self.dist_fn = get_metrics(distance, data_form=data_form)
+        self.kernel = lambda d: np.exp(-d**2 / (2 * var))
+    def __call__(self, x, y):
+        N_real = len(y)
+        N_fake = len(x)
+        dist_mat_real_fake = np.zeros((N_real, N_fake))
+        dist_mat_real = np.zeros((N_real, N_real))
+        dist_mat_fake = np.zeros((N_fake, N_fake))
+        for i in tqdm(range(N_real), desc="MaxMD-RF-DistMat"):
+            if self.package == 'loss':
+                fake = torch.from_numpy(x).float().to(device)
+                real = torch.from_numpy(y[i]).unsqueeze(0).float().to(device)
+                real = real.expand(fake.shape)
+
+                real = torch.split(real, self.batch_size, dim = 0)
+                fake = torch.split(fake, self.batch_size, dim = 0)
+                
+                res_dist = []
+                for r, f in zip(real, fake):
+                    res_dist.append(self.dist_fn(r, f))
+                res_dist = torch.cat(res_dist, dim = 0).cpu().detach().numpy()
+                dist_mat_real_fake[i] = res_dist
+            else:
+                for j in range(N_fake):
+                    dist_mat_real_fake[i, j] = self.dist_fn(y[i], x[j])
+
+        for i in tqdm(range(N_real), desc="MaxMD-RR-DistMat"):
+            if self.package == 'loss':
+                real_all = torch.from_numpy(y).float().to(device)
+                real_curr = torch.from_numpy(y[i]).unsqueeze(0).float().to(device)
+                real_curr = real_curr.expand(real_all.shape)
+
+                real_all = torch.split(real_all, self.batch_size, dim = 0)
+                real_curr = torch.split(real_curr, self.batch_size, dim = 0)
+                
+                res_dist = []
+                for rc, ra in zip(real_curr, real_all):
+                    res_dist.append(self.dist_fn(rc, ra))
+                res_dist = torch.cat(res_dist, dim = 0).cpu().detach().numpy()
+                dist_mat_real[i] = res_dist
+            else:
+                for j in range(N_real):
+                    dist_mat_real[i, j] = self.dist_fn(y[i], y[j])
+
+        for i in tqdm(range(N_fake), desc="MaxMD-FF-DistMat"):
+            if self.package == 'loss':
+                fake_all = torch.from_numpy(x).float().to(device)
+                fake_curr = torch.from_numpy(x[i]).unsqueeze(0).float().to(device)
+                fake_curr = fake_curr.expand(fake_all.shape)
+
+                fake_all = torch.split(fake_all, self.batch_size, dim = 0)
+                fake_curr = torch.split(fake_curr, self.batch_size, dim = 0)
+                
+                res_dist = []
+                for fc, fa in zip(fake_curr, fake_all):
+                    res_dist.append(self.dist_fn(fc, fa))
+                res_dist = torch.cat(res_dist, dim = 0).cpu().detach().numpy()
+                dist_mat_fake[i] = res_dist
+            else:
+                for j in range(N_fake):
+                    dist_mat_fake[i, j] = self.dist_fn(x[i], x[j])
+
+        mmd = self.kernel(dist_mat_real).mean() + self.kernel(dist_mat_fake).mean() - 2 * self.kernel(dist_mat_real_fake).mean()
+        return np.abs(mmd)
+
 ## compute mean minimum distance
 class MMDAndCov:
     def __init__(self, distance = {'name':'CD'}, 
@@ -499,7 +584,7 @@ class MMDAndCov:
         N_real = len(y)
         N_fake = len(x)
         dist_mat = np.zeros((N_real, N_fake))
-        for i in tqdm(range(N_real), desc="DistMat"):
+        for i in tqdm(range(N_real), desc="MMD&Cov-DistMat"):
             if self.package == 'loss':
                 fake = torch.from_numpy(x).float().to(device)
                 real = torch.from_numpy(y[i]).unsqueeze(0).float().to(device)
@@ -521,6 +606,66 @@ class MMDAndCov:
         matched_real = np.argmin(dist_mat, axis=0)
         cov = len(np.unique(matched_real)) / N_real
         return np.array([mmd, cov])
+# 1-nearest neighbor accuracy
+class NNA:
+    def __init__(self, distance = {'name':'CD'}, 
+                 package = 'loss', 
+                 batch_size = 16,
+                 data_form = DataForm.IMG):
+        logger.info(f'using 1-nearest neighbor accuracy with {distance}')
+        assert package in ['loss', 'metrics'], 'package should be one of [loss, metrics].'
+        self.package = package
+        self.batch_size = batch_size
+        if self.package == 'loss':
+            distance['reduction'] = None
+            if distance['name'] in ['Chamfer', 'CD', 'EMD']:
+                distance['squared_distance'] = False
+            from flemme.loss import get_loss
+            self.dist_fn = get_loss(distance, data_form=data_form)
+        else:
+            self.dist_fn = get_metrics(distance, data_form=data_form)
+    def __call__(self, x, y):
+        # N_real = len(y)
+        # N_fake = len(x)
+        # dist_mat = np.zeros((N_real, N_fake))
+        pcs = np.concatenate([y, x], axis=0)
+        labels = np.concatenate([
+            np.zeros(len(y)),
+            np.ones(len(x))
+        ], axis=0)
+        total = len(pcs)
+        correct = 0
+        for i in tqdm(range(total), desc="NNA-DistMat"):
+            min_dist = float("inf")
+            nn_label = None
+            if self.package == 'loss':
+                total_t = torch.from_numpy(pcs).float().to(device)
+                curr_t = torch.from_numpy(pcs[i]).unsqueeze(0).float().to(device)
+                curr_t = curr_t.expand(total_t.shape)
+
+                curr_t = torch.split(curr_t, self.batch_size, dim = 0)
+                total_t = torch.split(total_t, self.batch_size, dim = 0)
+                
+                res_dist = []
+                for r, f in zip(curr_t, total_t):
+                    res_dist.append(self.dist_fn(r, f))
+                res_dist = torch.cat(res_dist, dim = 0).cpu().detach().numpy()
+                res_dist[i] = float('inf')
+                min_id = np.argmin(res_dist)
+                nn_label = labels[min_id]
+            else:
+                for j in range(total):
+                    if i == j:
+                        continue
+                    d = self.dist_fn(pcs[i], pcs[j])
+                    if d < min_dist:
+                        min_dist = d
+                        nn_label = labels[j]
+            if nn_label == labels[i]:
+                correct += 1
+        res = correct / total
+        return res if res > 0.5 else 1 - res
+
 
 def get_metrics(metric_config, data_form = None, classification = False):
     channel_dim = None
@@ -592,5 +737,9 @@ def get_metrics(metric_config, data_form = None, classification = False):
         return KID(**metric_config) 
     if name == 'MMD&Cov':
         return MMDAndCov(data_form = data_form, **metric_config)
+    if name == 'NNA':
+        return NNA(data_form = data_form, **metric_config)
+    if name == 'MaxMD':
+        return MaxMD(data_form = data_form, **metric_config)
     logger.error(f'Unsupported metric: {name}')
     return None
