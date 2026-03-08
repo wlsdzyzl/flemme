@@ -6,8 +6,6 @@ from flemme.utils import load_pcd, save_ply
 from flemme.dataset.label_dict import get_label_cls
 from flemme.logger import get_logger
 logger = get_logger('scripts.npy2ply_recon')
-### this script converts sub-folder of medsdf to a single hdf5 file, for point cloud diffusion model training
-### comparison experiment
 
 def f(input_file_dict, result_file, output_dir):
     input_id = 0
