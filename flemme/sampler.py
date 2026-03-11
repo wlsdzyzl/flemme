@@ -42,6 +42,7 @@ class NormalSampler:
                  batch_size = 16, 
                  ### for latent diffusion model
                  save_latents = False,
+                 return_processing = False,
                  **kwargs):
         if len(kwargs) > 0:
             logger.debug('Redundant parameters: {}'.format(kwargs))
@@ -63,6 +64,7 @@ class NormalSampler:
         self.num_sample_steps = num_sample_steps
         self.batch_size = batch_size
         self.save_latents = save_latents
+        self.return_processing = return_processing
         if isinstance(model, DDPM):
             if self.num_sample_steps <= 0:
                 self.num_sample_steps = model.num_steps
@@ -87,10 +89,12 @@ class NormalSampler:
         sample_kwargs = {}
         if isinstance(self.model, LDM):
             sample_kwargs['save_latents'] = self.save_latents
+            sample_kwargs['return_processing'] = self.return_processing
         if isinstance(self.model, DDPM) or \
                 hasattr(self.model, 'diff_model') and isinstance(self.model.diff_model, DDPM):
             sample_kwargs['clipped'] = self.clipped
             sample_kwargs['clip_range'] = self.clip_range
+            sample_kwargs['return_processing'] = self.return_processing
             if not isinstance(self.model, DDIM) and (
                 not hasattr(self.model, 'diff_model') or not isinstance(self.model.diff_model, DDIM)):
                 sample_kwargs['end_step'] = self.num_sample_steps - 1

@@ -278,12 +278,14 @@ def test(test_config,
             custom_save_results = test_config.get('custom_save_results', [])
             custom_res_names = []
             custom_res_dirs = []
+            
             for res in custom_save_results:
                 custom_res_names.append(res.get('name'))
                 custom_res_dirs.append(res.get('dir'))
             pickle_results = test_config.get('pickle_results', False)
             pickle_path = test_config.get('pickle_path', 'flemme-pickled')
             load_pickle_results = test_config.get('load_pickle_results', False)
+            start_time = time.perf_counter()
             if load_pickle_results:
                 logger.info('Loading tmp results from pickled files to skip predicting (You need to make sure the pickled files are what you want). ')
                 results = sorted(glob(os.path.join(pickle_path, "*.pkl")))
@@ -377,7 +379,7 @@ def test(test_config,
                          save_target=save_target,
                          save_input=save_input,
                          save_colorized=save_colorized)
-
+            logger.info('inference time per sample: {}s'.format((time.perf_counter() - start_time) / len(data_loader.dataset) ) )
         if model.is_generative and eval_gen_config is not None:
             ## evaluation metrics for generation are computed separately from other tasks
             sampler = None

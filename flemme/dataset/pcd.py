@@ -39,6 +39,7 @@ class PcdClsDataset(Dataset):
                 data_transform = None, 
                 class_label_transform = None,
                 mode = 'train', 
+                data_dir = '',
                 pre_shuffle = False,
                 data_suffix = '.ply',
                 cls_label = {},
@@ -55,7 +56,7 @@ class PcdClsDataset(Dataset):
         self.labels = []
         class_dirs = list(cls_label.keys())
         for cls_dir in class_dirs:
-            sub_path_list = sorted(glob.glob(os.path.join(data_path + '/' + cls_dir,  "*" + data_suffix)))
+            sub_path_list = sorted(glob.glob(os.path.join(data_path + '/'  + cls_dir + '/' + data_dir,  "*" + data_suffix)))
             self.pcd_path_list = self.pcd_path_list + sub_path_list
             assert cls_dir in cls_label, f'Unknowk class: {cls_dir}'
             self.labels = self.labels + [cls_label[cls_dir], ] * len(sub_path_list)

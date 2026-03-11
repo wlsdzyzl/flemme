@@ -42,7 +42,12 @@ def main(argv):
         if ifile.lower().endswith('.pcd'):
             pcd = o3d.io.read_point_cloud(ifile)
         elif ifile.lower().endswith('.npz'):
-            pcd = np.load(ifile)[key]
+            pcd = np.load(ifile)
+            if key not in list(pcd.keys()):
+                logger.error(f'{key} is not in the keys: {list(pcd.keys())}.')
+                exit(1)
+            else:
+                pcd = pcd[key]
         else:
             pcd = load_pcd(ifile)
         if pcd.ndim == 3:
