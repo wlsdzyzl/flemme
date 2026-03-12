@@ -1,0 +1,164 @@
+models:
+  ### PointNet
+  name: SeM
+  # encoder config
+  encoder:
+    name: PointNet
+    in_channel: 3
+    out_channel: 46
+    point_num: 4096
+    building_block: dense
+    # num_neighbors_k: 20
+    local_feature_channels: [64, 64, 128, 256, 512]
+    dense_channels: [1024]
+    decoder_dense_channels: [512, 512, 256, 256, 128]
+    activation: lrelu
+    normalization: group
+    vector_embedding: False
+  segmentation_losses:
+    - name: Dice
+      normalization: softmax
+    - name: CE
+
+  ### DGCNN
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: PointNet
+    in_channel: 3
+    out_channel: 46
+    point_num: 4096
+    building_block: dense
+    num_neighbors_k: 20
+    local_feature_channels: [64, 64, 128, 256, 512]
+    dense_channels: [1024]
+    decoder_dense_channels: [512, 512, 256, 256, 128]
+    activation: lrelu
+    normalization: group
+    vector_embedding: False
+  segmentation_losses:
+    - name: Dice
+      normalization: softmax
+    - name: CE
+  ### PointTrans
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: PointTrans
+    in_channel: 3
+    out_channel: 46
+    point_num: 4096
+    building_block: pct_oa_non_ffn
+    # num_neighbors_k: 20
+    local_feature_channels: [64, 64, 128, 256, 512]
+    dense_channels: [1024]
+    decoder_dense_channels: [512, 512, 256, 256, 128]
+    activation: lrelu
+    normalization: group
+    vector_embedding: False
+  segmentation_losses:
+    - name: Dice
+      normalization: softmax
+    - name: CE
+  ### PointMamba
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: PointMamba
+    in_channel: 3
+    out_channel: 46
+    point_num: 4096
+    building_block: pmamba
+    # num_neighbors_k: 20
+    local_feature_channels: [64, 64, 128, 256, 512]
+    dense_channels: [1024]
+    decoder_dense_channels: [512, 512, 256, 256, 128]
+    activation: lrelu
+    normalization: group
+    vector_embedding: False
+  segmentation_losses:
+    - name: Dice
+      normalization: softmax
+    - name: CE
+  ### PointNet2
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: PointNet2
+    in_channel: 3
+    out_channel: 46
+    point_num: 4096
+    building_block: dense
+    # num_neighbors_k: 20
+    num_neighbors_k: 32
+    num_fps_points: [2048, 1024, 512, 256, 128]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
+    fps_feature_channels: [64, 64, 128, 256, 512]
+    # voxel_resolutions: [32, 32, 16, 8, 4]
+    fp_channels: [512, 512, 256, 256, 128]
+    dense_channels: [1024]
+    activation: lrelu
+    normalization: group
+    vector_embedding: False
+  segmentation_losses:
+    - name: Dice
+      normalization: softmax
+    - name: CE
+  ### PointTrans2
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: PointTrans2
+    in_channel: 3
+    out_channel: 46
+    point_num: 4096
+    building_block: pct_oa_non_ffn
+    num_neighbors_k: 32
+    num_fps_points: [2048, 1024, 512, 256, 128]
+    fps_feature_channels: [64, 64, 128, 256, 512]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
+    fp_channels: [512, 512, 256, 256, 128]
+    dense_channels: [1024]
+    activation: lrelu
+    normalization: group
+    # long_range_modeling: True
+    # pos_embedding: True
+  segmentation_losses:
+    - name: Dice
+      normalization: softmax
+    - name: CE
+  ### PointMamba2
+  # can be AE, VAE, SeM and DDPM
+  name: SeM
+  # encoder config
+  encoder:
+    name: PointMamba2
+    in_channel: 3
+    out_channel: 46
+    point_num: 4096
+    building_block: pmamba_non_ffn
+    num_neighbors_k: 32
+    num_fps_points: [2048, 1024, 512, 256, 128]
+    fps_feature_channels: [64, 64, 128, 256, 512]
+    neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
+    fp_channels: [512, 512, 256, 256, 128]
+    dense_channels: [1024]
+    activation: lrelu
+    normalization: group
+    long_range_modeling: True
+    scan_strategies: [x_order, y_order, z_order, center_dist]
+    sorted_query: True
+    flip_scan: True
+    pos_embedding: True
+    knn_query: feature
+    # final_concat: True
+    # channel_attention: eca
+  segmentation_losses:
+    - name: Dice
+      normalization: softmax
+    - name: CE

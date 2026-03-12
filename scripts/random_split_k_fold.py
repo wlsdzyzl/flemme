@@ -38,7 +38,7 @@ def main(argv):
         elif opt in ("-o", '--output_dir'):
             output_dir = arg
         elif opt in ('-k', '--kfold'):
-            k = int(arg)
+            kfold = int(arg)
         elif opt in ('--method',):
             mn = arg
             if mn == 'move':
