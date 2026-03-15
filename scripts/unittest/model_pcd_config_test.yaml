@@ -1,0 +1,95 @@
+models:
+  ## PointNet
+  # - name: SeM
+  #   # encoder config
+  #   encoder:
+  #     name: PointNet
+  #     in_channel: 3
+  #     out_channel: 46
+  #     num_blocks: 1
+  #     point_num: 4096
+  #     building_block: dense
+  #     # num_neighbors_k: 20
+  #     local_feature_channels: [64, 64, 128, 256, 512]
+  #     dense_channels: [1024]
+  #     decoder_dense_channels: [512, 512, 256, 256, 128]
+  #     final_channels: [512]
+  #     activation: lrelu
+  #     normalization: group
+  #     vector_embedding: False
+  #   segmentation_losses:
+  #     - name: Dice
+  #       normalization: softmax
+  #     - name: CE
+
+  # - name: SeM
+  #   # encoder config
+  #   encoder:
+  #     name: PointNet
+  #     in_channel: 3
+  #     out_channel: 46
+  #     num_blocks: 10
+  #     point_num: 4096
+  #     building_block: dense
+  #     # num_neighbors_k: 20
+  #     local_feature_channels: [64, 64, 128, 256, 512]
+  #     dense_channels: [1024]
+  #     decoder_dense_channels: [512, 512, 256, 256, 128]
+  #     final_channels: [512]
+  #     activation: lrelu
+  #     normalization: group
+  #     vector_embedding: False
+  #   segmentation_losses:
+  #     - name: Dice
+  #       normalization: softmax
+  #     - name: CE
+
+  - name: SeM
+    # encoder config
+    encoder:
+      name: PointNet2
+      in_channel: 3
+      out_channel: 46
+      num_blocks: 1
+      point_num: 4096
+      building_block: dense
+      # num_neighbors_k: 20
+      num_neighbors_k: 32
+      num_fps_points: [2048, 1024, 512, 256, 128]
+      neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
+      fps_feature_channels: [64, 64, 128, 256, 512]
+      # voxel_resolutions: [32, 32, 16, 8, 4]
+      fp_channels: [512, 512, 256, 256, 128]
+      dense_channels: [1024]
+      activation: lrelu
+      normalization: group
+      vector_embedding: False
+    segmentation_losses:
+      - name: Dice
+        normalization: softmax
+      - name: CE
+
+  - name: SeM
+    # encoder config
+    encoder:
+      name: PointNet2
+      in_channel: 3
+      out_channel: 46
+      num_blocks: 1
+      point_num: 8192
+      building_block: dense
+      # num_neighbors_k: 20
+      num_neighbors_k: 32
+      num_fps_points: [2048, 1024, 512, 256, 128]
+      neighbor_radius: [0.1, 0.2, 0.4, 0.6, 0.8]
+      fps_feature_channels: [64, 64, 128, 256, 512]
+      # voxel_resolutions: [32, 32, 16, 8, 4]
+      fp_channels: [512, 512, 256, 256, 128]
+      dense_channels: [1024]
+      activation: lrelu
+      normalization: group
+      vector_embedding: False
+    segmentation_losses:
+      - name: Dice
+        normalization: softmax
+      - name: CE

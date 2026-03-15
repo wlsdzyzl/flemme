@@ -11,7 +11,8 @@ from tqdm import tqdm
 from functools import partial
 
 logger = get_logger('trainer.utils')
-
+def numel(model):
+    return sum(p.numel() for p in model.parameters())
 def colorize_by_label(labels):
     if torch.is_tensor(labels): 
         _color_table = torch.Tensor(color_table).to(labels.device)
@@ -600,7 +601,7 @@ def forward_pass(model, x, y, c, **kwargs):
 def construct_tsne_vis(embeddings, labels, vis_dim = 2, label_names = None, top_n = 10, 
     title = 't-SNE Visualization', size = 10, alpha = 0.3, 
     random_state = 42, perplexity = 30, remove_ticks = False, 
-    color_map = 'jet', legend = True, **kwargs):
+    color_map = 'jet', legend = True, color_reverse = False, **kwargs):
     if top_n > 0:
         unique_elements, counts = np.unique(labels, return_counts=True)
         # print(unique_elements, counts, labels)
@@ -624,9 +625,11 @@ def construct_tsne_vis(embeddings, labels, vis_dim = 2, label_names = None, top_
         compressed_vec = tsne.fit_transform(embeddings)
     else:
         compressed_vec = embeddings
-
+    
     label_count = labels.max() + 1
     ctable = get_color_table(color_map, label_count)
+    if color_reverse:
+        ctable = ctable[::-1]
     if vis_dim == 2:
         fig, ax = plt.subplots()
         for l in range(label_count):

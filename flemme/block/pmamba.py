@@ -171,6 +171,7 @@ class PointMambaNonFFNBlock(NormBlock):
         condition_channel = 0, 
         condition_injection = 'gate_bias',
         condition_first = False,
+        post_normalization = True,
         **kwargs):
         
         super().__init__(_channel_dim = -1)
@@ -195,7 +196,12 @@ class PointMambaNonFFNBlock(NormBlock):
                         dt_init_floor = dt_init_floor,
                         A_init_range = A_init_range)
 
-        self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
+        self.post_normalization = post_normalization 
+        if self.post_normalization:
+            self.norm, self.norm_type = get_norm(norm, out_channel, 1, num_norm_groups)
+        else:
+            self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
+
         self.act = get_act(activation)
         self.time_channel = time_channel
         self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
@@ -216,8 +222,12 @@ class PointMambaNonFFNBlock(NormBlock):
     def forward(self, x, t = None, c = None):
         res = self.mamba(x)
         res = self.dropout(res)
-        res = x + self.act(self.normalize(res))
+        if not self.post_normalization:
+            res = self.act(self.normalize(res))
+        res = x + res
         x = self.dense(res)
+        if self.post_normalization:
+            x = self.act(self.normalize(x))
         if self.cinj:
             x = self.cinj(x, t, c)
         return x
@@ -606,7 +616,8 @@ class PointScanMambaNonFFNBaseBlock(NormBlock):
         norm, num_norm_groups, 
         time_channel, condition_channel,
         time_injection, condition_injection,
-        condition_first,):
+        condition_first,
+        post_normalization,):
         super().__init__(_channel_dim = -1)
         self.in_channel = in_channel
         ### out channel should be equal to in channel
@@ -627,7 +638,11 @@ class PointScanMambaNonFFNBaseBlock(NormBlock):
         self.K = num_scan
         self.act = get_act(activation)
 
-        self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
+        self.post_normalization = post_normalization 
+        if self.post_normalization:
+            self.norm, self.norm_type = get_norm(norm, out_channel, 1, num_norm_groups)
+        else:
+            self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
 
         self.out_proj = nn.Linear(self.inner_channel, self.in_channel, bias=bias)
 
@@ -671,8 +686,12 @@ class PointScanMambaNonFFNBaseBlock(NormBlock):
           f'Mis-matched scan number and scan results: {len(sorted_index_list)} and {self.K}.'
         res = self.mamba(x, sorted_index_list)
         res = self.dropout(res)
-        res = x + self.act(self.normalize(res))
+        if not self.post_normalization:
+            res = self.act(self.normalize(res))
+        res = x + res
         x = self.dense(res)
+        if self.post_normalization:
+            x = self.act(self.normalize(x))
         if self.cinj:
             x = self.cinj(x, t, c)
         return x
@@ -689,6 +708,7 @@ class PointScanMambaNonFFNBlock(PointScanMambaNonFFNBaseBlock):
         condition_channel = 0, 
         condition_injection = 'gate_bias',
         condition_first = False,
+        post_normalization = True,
         **kwargs):
         super().__init__(in_channel = in_channel, 
             num_scan = num_scan,
@@ -702,7 +722,8 @@ class PointScanMambaNonFFNBlock(PointScanMambaNonFFNBaseBlock):
             time_injection = time_injection,
             condition_channel = condition_channel,
             condition_injection = condition_injection,
-            condition_first=condition_first)
+            condition_first=condition_first,
+            post_normalization = post_normalization)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.dt_rank = dt_rank or math.ceil(self.in_channel / 16)        
@@ -818,6 +839,7 @@ class PointScanMamba2NonFFNBlock(PointScanMambaNonFFNBaseBlock):
         condition_channel = 0, 
         condition_injection = 'gate_bias',
         condition_first = False,
+        post_normalization = True,
         **kwargs):
 
         super().__init__(in_channel = in_channel, 
@@ -832,7 +854,8 @@ class PointScanMamba2NonFFNBlock(PointScanMambaNonFFNBaseBlock):
             time_injection = time_injection,
             condition_channel = condition_channel,
             condition_injection = condition_injection,
-            condition_first=condition_first)
+            condition_first=condition_first,
+            post_normalization = post_normalization)
         if len(kwargs) > 0:
             logger.debug("redundant parameters:{}".format(kwargs))
         self.head_channel = head_channel

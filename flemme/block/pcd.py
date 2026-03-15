@@ -147,6 +147,7 @@ if module_config['transformer']:
             condition_channel = 0, 
             condition_injection = 'gate_bias',
             condition_first = False,
+            post_normalization = True,
             **kwargs):
             
             super().__init__(_channel_dim = -1)
@@ -160,11 +161,15 @@ if module_config['transformer']:
                 self.atten = OffSetAttentionBlock(in_channel=in_channel, num_heads=num_heads, d_k = d_k, 
                 qkv_bias = qkv_bias, qk_scale = qk_scale, atten_dropout = atten_dropout, 
                 dropout = dropout, skip_connection = False)
-            self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
+            self.post_normalization = post_normalization 
+            if self.post_normalization:
+                self.norm, self.norm_type = get_norm(norm, out_channel, 1, num_norm_groups)
+            else:
+                self.norm, self.norm_type = get_norm(norm, in_channel, 1, num_norm_groups)
+
             self.act = get_act(activation)
             self.time_channel = time_channel
             self.dense = nn.Linear(self.in_channel, self.out_channel) if self.in_channel != self.out_channel else nn.Identity()
-
             self.cinj = None
             if time_channel > 0 or condition_channel > 0:
                 self.cinj = ContextInjectionBlock(time_channel = time_channel,
@@ -177,8 +182,12 @@ if module_config['transformer']:
                 
         def forward(self, x, t = None, c = None):
             res = self.atten(x)
-            res = x + self.act(self.normalize(res))
+            if not self.post_normalization:
+                res = self.act(self.normalize(res))
+            res = x + res
             x = self.dense(res)
+            if self.post_normalization:
+                x = self.act(self.normalize(x))
             if self.cinj:
                 x = self.cinj(x, t, c)
             return x
@@ -533,7 +542,7 @@ class SampledFeatureCatLayer(nn.Module):
                             condition_channel = condition_channel,
                             condition_injection = condition_injection,
                             condition_first = condition_first,
-                            final_activation=False)
+                            final_activation=True)
     def forward(self, feature_list, sample_id_list, t = None, c = None):
         assert len(feature_list) - len(sample_id_list) == 1, \
             'Unmatched lengths of feature_list and sample_id_list.'

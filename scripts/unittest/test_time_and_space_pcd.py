@@ -13,17 +13,36 @@ for model_config in model_configs:
     building_block = model_config['encoder'].get('building_block', 'single')
     model = create_model(model_config)
     model.to(device)
-    num_layers = (len(model.encoder.down_path) + len(model.encoder.middle_path) + \
-                len(model.encoder.dense_path) - 3) * model.encoder.num_blocks + \
-                (len(model.decoder.dense_path) + len(model.decoder.up_path) +\
-                 len(model.decoder.final_path) - 3) * model.decoder.num_blocks
+    ### encoder
+    en_num_layers = ((len(model.encoder.lf_path)  if hasattr(model.encoder, 'lf_path') else ## pointnet
+                ## pointnet 2
+                len(model.encoder.msg_path) if hasattr(model.encoder, 'msg_path') else 
+                ## seqnet
+                len(model.encoder.seq_path))  - 1) * model.encoder.num_blocks + \
+                (len(model.encoder.dense_path) if hasattr(model.encoder, 'dense_path') else 1) - 1  ## pointnet and pointnet2        
+                 
+    ### decoder
+    de_num_layers = len(model.decoder.dense_path) - 1 + \
+                ((len(model.decoder.fp_path) if hasattr(model.decoder, 'fp_path') else ## pontnet2
+                ## pointnet with foldingn
+                (model.decoder.folding_times + 1) if hasattr(model.decoder, 'folding_times') else
+                ## seqnet
+                len(model.decoder.seq_path)) - 1) * model.decoder.num_blocks + \
+                (len(model.decoder.final_path) if hasattr(model.decoder, 'final_path') else 2) - 2 ## pointnet without folding
+    num_layers = en_num_layers + de_num_layers
     if 'res' in building_block or 'double' in building_block:
         num_layers *= 2
     x = torch.randn( (batch_size, ) + tuple(model.get_input_shape()) )
     y = torch.randn((batch_size, ) + tuple(model.get_output_shape()))
     logger.info("model info:\n{}".format(model))
     logger.info(f'Number of layers: {num_layers}')
-    logger.info("Total number of model parameters: {}".format(sum(p.numel() for p in model.parameters())))
+    logger.info("Total number of model parameters: {}".format(numel(model)))
+    logger.info("Number of encoder parameters: {}".format(numel(model.encoder)))
+    for name, layer in model.encoder.named_children():
+        logger.info(f'{name}: {numel(layer)}')
+    logger.info("Number of decoder parameters: {}".format(numel(model.decoder)))
+    for name, layer in model.decoder.named_children():
+        logger.info(f'{name}: {numel(layer)}')
     logger.info(f"Input shape: {x.shape}")
     allocated_memory = 0 
     try:

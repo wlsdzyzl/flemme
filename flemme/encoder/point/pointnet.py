@@ -248,11 +248,13 @@ class PointNetEncoder(PointEncoder):
             lf_sequence = [MultipleBuildingBlocks(in_channel=self.lf_path[i], 
                                             out_channel=self.lf_path[i+1], 
                                             BuildingBlock = self.BuildingBlock,
-                                            num_blocks = self.num_blocks,
-                                            channel_dim=-1) for i in range(len(self.lf_path) - 2) ]
-        
-        lf_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
-                                        out_channel=self.lf_path[-1]))
+                                            n = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
+        lf_sequence.append(MultipleBuildingBlocks(in_channel=sum(self.lf_path[1:-1]), 
+                                            out_channel=self.lf_path[-1], 
+                                            BuildingBlock = self.BuildingBlock,
+                                            n = self.num_blocks))
+        # lf_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
+        #                                 out_channel=self.lf_path[-1]))
         self.lf = nn.ModuleList(lf_sequence)
 class PointNetDecoder(nn.Module):
     def __init__(self, point_dim=3, point_num = 2048, 
@@ -278,7 +280,11 @@ class PointNetDecoder(nn.Module):
         self.point_dim = point_dim
         self.activation = activation
         self.vector_embedding = vector_embedding
+        if folding_times < 0: 
+            logger.warning('folding times cannot be negative.')
+            folding_times = 0
         self.folding_times = folding_times
+        self.num_blocks = num_blocks
         ## fully connected layer
         dense_channels = [latent_channel,] + dense_channels 
         dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
@@ -291,6 +297,7 @@ class PointNetDecoder(nn.Module):
                                         condition_first = condition_first) for i in range(len(dense_channels) - 1)]
         self.dense = SequentialT(*dense_sequence) 
         self.dense_path = dense_channels
+
         if self.folding_times > 0:
             assert self.vector_embedding, \
                 'point cloud decoder with folding operations should have vector embeddings.'
@@ -373,6 +380,9 @@ class PointNetDecoder(nn.Module):
         else:
             final_out_channel = point_dim * point_num if self.vector_embedding else self.point_dim
             # nn.Linear(dense_channels[-1], final_out_channel)
+            
+            self.final_path = [dense_channels[-1], ] + final_channels + [point_dim, ]
+            # print(dense_channels, self.final_path)
             self.final = MultiLayerPerceptionBlock(in_channel=dense_channels[-1], 
                                             out_channel=final_out_channel,
                                             n = num_blocks, 
@@ -386,17 +396,20 @@ class PointNetDecoder(nn.Module):
                                             condition_injection = condition_injection,
                                             condition_first = condition_first)
         
-
     def __str__(self):
         _str = ''
         _str = _str + 'Dense layers: '
-        for c in self.dense_path:
-            _str += '{}->'.format(c)  
-        _str += f'{self.point_dim}'
-        # if self.folding_times > 0:
-        #     _str+= f'\nFold for {self.folding_times} times to {self.point_dim}'
-        # else:
-        #     _str += f'-> {self.point_dim}'
+        for c in self.dense_path[:-1]:
+            _str += '{}->'.format(c)
+
+        _str += f'{self.dense_path[-1]}\n'
+        if self.folding_times > 0:
+            _str+= f'Fold for {self.folding_times} times to {self.point_dim}'
+        else:
+            _str += 'Final transformation layers: '
+            for c in self.final_path[:-1]:
+                _str += '{}->'.format(c)  
+            _str += str(self.final_path[-1])
         _str += '\n'
         return _str 
     def forward(self, x, t = None, c = None):

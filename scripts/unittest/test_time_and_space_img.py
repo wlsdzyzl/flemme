@@ -24,6 +24,8 @@ for model_config in model_configs:
     logger.info("model info:\n{}".format(model))
     logger.info(f'Number of layers: {num_layers}')
     logger.info("Total number of model parameters: {}".format(sum(p.numel() for p in model.parameters())))
+    logger.info("Number of encoder parameters: {}".format(sum(p.numel() for p in model.encoder.parameters())))
+    logger.info("Number of decoder parameters: {}".format(sum(p.numel() for p in model.decoder.parameters())))
     logger.info(f"Input shape: {x.shape}")
     allocated_memory = 0 
     try:

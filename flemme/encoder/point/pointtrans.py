@@ -81,9 +81,11 @@ class PointTransEncoder(PointEncoder):
             trans_sequence = [MultipleBuildingBlocks(in_channel=self.lf_path[i], 
                                             out_channel=self.lf_path[i+1], 
                                             BuildingBlock = self.BuildingBlock,
-                                            num_blocks = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
+                                            n = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
             
-        trans_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
-                                        out_channel=self.lf_path[-1]))
+        trans_sequence.append(MultipleBuildingBlocks(in_channel=sum(self.lf_path[1:-1]), 
+                                            out_channel=self.lf_path[-1], 
+                                            BuildingBlock = self.BuildingBlock,
+                                            n = self.num_blocks))
 
         self.lf = nn.ModuleList(trans_sequence)

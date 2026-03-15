@@ -1,0 +1,841 @@
+2026-03-14 17:17:17,017 [MainThread] INFO utils - Using 'cuda: 0' device
+2026-03-14 17:17:17,018 [MainThread] INFO unittest.test_time_and_space - training for 500 iters
+2026-03-14 17:17:17,018 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:17:17,018 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:17:17,295 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet - PointNet) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:17:17,295 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:17:17,295 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3002030
+2026-03-14 17:17:17,295 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 1890560
+2026-03-14 17:17:17,296 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:17:17,296 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:17:17,296 [MainThread] INFO unittest.test_time_and_space - lf: 314368
+2026-03-14 17:17:17,296 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:17:17,296 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:17:17,296 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:17:17,296 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:17:31,151 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.724359375GB
+2026-03-14 17:17:31,151 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 10.576439862139523s
+2026-03-14 17:17:31,151 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 3.278193013742566s
+2026-03-14 17:17:31,226 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:17:31,226 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:17:31,226 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:17:31,226 [MainThread] INFO encoder.point.pointnet - This encoder will construct local neighbor graph for dynamic feature extraction.
+2026-03-14 17:17:31,259 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet - PointNet) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:17:31,259 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:17:31,259 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3051182
+2026-03-14 17:17:31,259 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 1939712
+2026-03-14 17:17:31,259 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:17:31,259 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:17:31,260 [MainThread] INFO unittest.test_time_and_space - lf: 363520
+2026-03-14 17:17:31,260 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:17:31,260 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:17:31,260 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:17:31,260 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:18:48,812 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 1.830078125GB
+2026-03-14 17:18:48,812 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 43.91788276005536s
+2026-03-14 17:18:48,812 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 33.63415450416505s
+2026-03-14 17:18:49,187 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:18:49,187 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:18:49,187 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:18:49,231 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointTrans - PointTrans) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:18:49,231 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:18:49,231 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 4189294
+2026-03-14 17:18:49,231 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 3077824
+2026-03-14 17:18:49,231 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:18:49,231 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:18:49,231 [MainThread] INFO unittest.test_time_and_space - lf: 1501632
+2026-03-14 17:18:49,231 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:18:49,232 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:18:49,232 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:18:49,232 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:20:13,975 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 8.302734375GB
+2026-03-14 17:20:13,976 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 65.50599361024797s
+2026-03-14 17:20:13,976 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 19.237600598484278s
+2026-03-14 17:20:14,212 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:20:14,212 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:20:14,212 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:20:14,425 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointMamba - PointMamba) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:20:14,425 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:20:14,425 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 11950254
+2026-03-14 17:20:14,426 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 10838784
+2026-03-14 17:20:14,426 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:20:14,426 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:20:14,426 [MainThread] INFO unittest.test_time_and_space - lf: 9262592
+2026-03-14 17:20:14,426 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:20:14,426 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:20:14,426 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:20:14,426 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:20:53,446 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 1.416015625GB
+2026-03-14 17:20:53,446 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 28.98298852238804s
+2026-03-14 17:20:53,446 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 10.036768978461623s
+2026-03-14 17:20:53,591 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:20:53,591 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:20:53,591 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:20:53,592 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 17:20:53,634 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet2 - PointNet2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 17:20:53,634 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:20:53,634 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 4602798
+2026-03-14 17:20:53,634 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 1762560
+2026-03-14 17:20:53,634 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:20:53,634 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:20:53,634 [MainThread] INFO unittest.test_time_and_space - msg: 186368
+2026-03-14 17:20:53,635 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 2840238
+2026-03-14 17:20:53,635 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 17:20:53,635 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 17:20:53,635 [MainThread] INFO unittest.test_time_and_space - fp: 2834304
+2026-03-14 17:20:53,635 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:21:58,813 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.490640625GB
+2026-03-14 17:21:58,814 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 41.22980588302016s
+2026-03-14 17:21:58,814 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 23.9487043377012s
+2026-03-14 17:21:58,932 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:21:58,932 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:21:58,932 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:21:58,933 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 17:21:59,159 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointTrans2 - PointTrans2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1024->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 17:21:59,159 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:21:59,159 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 31558404
+2026-03-14 17:21:59,160 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 3975446
+2026-03-14 17:21:59,160 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:21:59,160 [MainThread] INFO unittest.test_time_and_space - dense: 1051648
+2026-03-14 17:21:59,160 [MainThread] INFO unittest.test_time_and_space - msg: 1155094
+2026-03-14 17:21:59,160 [MainThread] INFO unittest.test_time_and_space - lrm: 1768448
+2026-03-14 17:21:59,160 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 27582958
+2026-03-14 17:21:59,160 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 17:21:59,160 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 17:21:59,160 [MainThread] INFO unittest.test_time_and_space - fp: 27577024
+2026-03-14 17:21:59,160 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:24:03,334 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 5.96287890625GB
+2026-03-14 17:24:03,334 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 86.53283689916134s
+2026-03-14 17:24:03,334 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 37.640357280150056s
+2026-03-14 17:24:03,435 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:24:03,436 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:24:03,436 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:24:03,436 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 17:24:04,069 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointMamba2 - PointMamba2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1024->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 17:24:04,069 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:24:04,070 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 41629382
+2026-03-14 17:24:04,070 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 6030488
+2026-03-14 17:24:04,071 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:24:04,071 [MainThread] INFO unittest.test_time_and_space - dense: 1051648
+2026-03-14 17:24:04,071 [MainThread] INFO unittest.test_time_and_space - msg: 1882008
+2026-03-14 17:24:04,071 [MainThread] INFO unittest.test_time_and_space - lrm: 3096576
+2026-03-14 17:24:04,071 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 35598894
+2026-03-14 17:24:04,071 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 17:24:04,071 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 17:24:04,071 [MainThread] INFO unittest.test_time_and_space - fp: 35592960
+2026-03-14 17:24:04,071 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:28:24,673 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 3.5624609375GB
+2026-03-14 17:28:24,673 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 195.47241419460624s
+2026-03-14 17:28:24,673 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 65.12906120438129s
+2026-03-14 17:28:24,820 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:28:24,820 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:28:24,820 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet - PointNet) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3002030
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 1890560
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - lf: 314368
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:28:24,858 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 17:28:46,665 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 1.591296875GB
+2026-03-14 17:28:46,665 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 15.214476542547345s
+2026-03-14 17:28:46,665 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 6.592291038483381s
+2026-03-14 17:28:46,847 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:28:46,847 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:28:46,847 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:28:46,847 [MainThread] INFO encoder.point.pointnet - This encoder will construct local neighbor graph for dynamic feature extraction.
+2026-03-14 17:28:46,879 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet - PointNet) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:28:46,879 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:28:46,879 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3051182
+2026-03-14 17:28:46,879 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 1939712
+2026-03-14 17:28:46,879 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:28:46,879 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:28:46,879 [MainThread] INFO unittest.test_time_and_space - lf: 363520
+2026-03-14 17:28:46,880 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:28:46,880 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:28:46,880 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:28:46,880 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 17:31:21,644 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 3.7265625GB
+2026-03-14 17:31:21,646 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 87.67709977738559s
+2026-03-14 17:31:21,646 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 67.08735880348831s
+2026-03-14 17:31:22,327 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:31:22,327 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:31:22,327 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:31:22,381 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointTrans - PointTrans) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:31:22,381 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:31:22,382 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 4189294
+2026-03-14 17:31:22,382 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 3077824
+2026-03-14 17:31:22,382 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:31:22,382 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:31:22,382 [MainThread] INFO unittest.test_time_and_space - lf: 1501632
+2026-03-14 17:31:22,382 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:31:22,382 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:31:22,382 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:31:22,382 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 17:36:16,969 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 32.248046875GB
+2026-03-14 17:36:16,971 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 229.74667392484844s
+2026-03-14 17:36:16,971 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 64.84031046181917s
+2026-03-14 17:36:17,759 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:36:17,759 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:36:17,760 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:36:17,935 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointMamba - PointMamba) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:36:17,935 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:36:17,936 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 11950254
+2026-03-14 17:36:17,936 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 10838784
+2026-03-14 17:36:17,936 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:36:17,936 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:36:17,936 [MainThread] INFO unittest.test_time_and_space - lf: 9262592
+2026-03-14 17:36:17,936 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:36:17,936 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:36:17,936 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:36:17,937 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 17:37:34,294 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 2.50390625GB
+2026-03-14 17:37:34,294 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 56.56890519615263s
+2026-03-14 17:37:34,294 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 19.788594025187194s
+2026-03-14 17:37:34,499 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:37:34,499 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:37:34,500 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:37:34,500 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 17:37:34,558 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet2 - PointNet2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 4602798
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 1762560
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - msg: 186368
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 2840238
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - fp: 2834304
+2026-03-14 17:37:34,559 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 17:38:55,812 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.62109375GB
+2026-03-14 17:38:55,813 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 50.20834646746516s
+2026-03-14 17:38:55,813 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 31.044168444350362s
+2026-03-14 17:38:55,952 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:38:55,952 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:38:55,952 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:38:55,952 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 17:38:56,168 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointTrans2 - PointTrans2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1024->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 17:38:56,168 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:38:56,168 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 31558404
+2026-03-14 17:38:56,169 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 3975446
+2026-03-14 17:38:56,169 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:38:56,169 [MainThread] INFO unittest.test_time_and_space - dense: 1051648
+2026-03-14 17:38:56,169 [MainThread] INFO unittest.test_time_and_space - msg: 1155094
+2026-03-14 17:38:56,169 [MainThread] INFO unittest.test_time_and_space - lrm: 1768448
+2026-03-14 17:38:56,169 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 27582958
+2026-03-14 17:38:56,169 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 17:38:56,169 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 17:38:56,169 [MainThread] INFO unittest.test_time_and_space - fp: 27577024
+2026-03-14 17:38:56,170 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 17:42:01,327 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 16.54491015625GB
+2026-03-14 17:42:01,327 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 130.69429059978575s
+2026-03-14 17:42:01,327 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 54.46310951560736s
+2026-03-14 17:42:01,494 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:42:01,494 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:42:01,494 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:42:01,495 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 17:42:02,043 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointMamba2 - PointMamba2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1024->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 17:42:02,043 [MainThread] INFO unittest.test_time_and_space - Number of layers: 12
+2026-03-14 17:42:02,043 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 41629382
+2026-03-14 17:42:02,044 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 6030488
+2026-03-14 17:42:02,044 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:42:02,044 [MainThread] INFO unittest.test_time_and_space - dense: 1051648
+2026-03-14 17:42:02,044 [MainThread] INFO unittest.test_time_and_space - msg: 1882008
+2026-03-14 17:42:02,044 [MainThread] INFO unittest.test_time_and_space - lrm: 3096576
+2026-03-14 17:42:02,045 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 35598894
+2026-03-14 17:42:02,045 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 17:42:02,045 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 17:42:02,045 [MainThread] INFO unittest.test_time_and_space - fp: 35592960
+2026-03-14 17:42:02,045 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 17:46:43,318 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 3.97609375GB
+2026-03-14 17:46:43,318 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 208.17522256076336s
+2026-03-14 17:46:43,318 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 73.09753847401589s
+2026-03-14 17:46:43,487 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:46:43,487 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:46:43,488 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:46:43,534 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet - PointNet) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:46:43,534 [MainThread] INFO unittest.test_time_and_space - Number of layers: 17
+2026-03-14 17:46:43,534 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3295342
+2026-03-14 17:46:43,534 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 2183872
+2026-03-14 17:46:43,534 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:46:43,535 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:46:43,535 [MainThread] INFO unittest.test_time_and_space - lf: 607680
+2026-03-14 17:46:43,535 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:46:43,535 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:46:43,535 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:46:43,535 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:47:00,945 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.955078125GB
+2026-03-14 17:47:00,946 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 13.595200944691896s
+2026-03-14 17:47:00,946 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 3.8152947118505836s
+2026-03-14 17:47:01,026 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:47:01,026 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:47:01,026 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:47:01,026 [MainThread] INFO encoder.point.pointnet - This encoder will construct local neighbor graph for dynamic feature extraction.
+2026-03-14 17:47:01,061 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet - PointNet) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:47:01,061 [MainThread] INFO unittest.test_time_and_space - Number of layers: 17
+2026-03-14 17:47:01,061 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3406510
+2026-03-14 17:47:01,062 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 2295040
+2026-03-14 17:47:01,062 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:47:01,062 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:47:01,062 [MainThread] INFO unittest.test_time_and_space - lf: 718848
+2026-03-14 17:47:01,062 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:47:01,062 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:47:01,062 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:47:01,062 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:48:35,820 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 2.869140625GB
+2026-03-14 17:48:35,821 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 55.03404634259641s
+2026-03-14 17:48:35,821 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 39.72345784492791s
+2026-03-14 17:48:36,163 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:48:36,163 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:48:36,163 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:48:36,237 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointTrans - PointTrans) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:48:36,237 [MainThread] INFO unittest.test_time_and_space - Number of layers: 17
+2026-03-14 17:48:36,238 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 5649198
+2026-03-14 17:48:36,239 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 4537728
+2026-03-14 17:48:36,239 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:48:36,239 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:48:36,239 [MainThread] INFO unittest.test_time_and_space - lf: 2961536
+2026-03-14 17:48:36,239 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:48:36,239 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:48:36,239 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:48:36,239 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:51:18,067 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 14.162109375GB
+2026-03-14 17:51:18,069 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 126.02923258859664s
+2026-03-14 17:51:18,069 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 35.798789269290864s
+2026-03-14 17:51:18,331 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:51:18,331 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:51:18,331 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:51:18,627 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointMamba - PointMamba) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 17:51:18,628 [MainThread] INFO unittest.test_time_and_space - Number of layers: 17
+2026-03-14 17:51:18,628 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 21089390
+2026-03-14 17:51:18,629 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 19977920
+2026-03-14 17:51:18,629 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:51:18,629 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:51:18,629 [MainThread] INFO unittest.test_time_and_space - lf: 18401728
+2026-03-14 17:51:18,629 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 17:51:18,630 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 17:51:18,630 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 17:51:18,630 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:52:27,055 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 2.205078125GB
+2026-03-14 17:52:27,055 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 51.25720298476517s
+2026-03-14 17:52:27,055 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 17.16829032637179s
+2026-03-14 17:52:27,162 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:52:27,162 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:52:27,162 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:52:27,162 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 17:52:27,215 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet2 - PointNet2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 17:52:27,216 [MainThread] INFO unittest.test_time_and_space - Number of layers: 23
+2026-03-14 17:52:27,216 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 6787822
+2026-03-14 17:52:27,216 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 1948288
+2026-03-14 17:52:27,216 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:52:27,216 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 17:52:27,216 [MainThread] INFO unittest.test_time_and_space - msg: 372096
+2026-03-14 17:52:27,217 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 4839534
+2026-03-14 17:52:27,217 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 17:52:27,217 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 17:52:27,217 [MainThread] INFO unittest.test_time_and_space - fp: 4833600
+2026-03-14 17:52:27,217 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:53:38,153 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 0.92578125GB
+2026-03-14 17:53:38,154 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 44.995568132959306s
+2026-03-14 17:53:38,154 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 25.9404005529359s
+2026-03-14 17:53:38,250 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:53:38,250 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:53:38,250 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:53:38,251 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 17:53:38,564 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointTrans2 - PointTrans2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1024->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 17:53:38,564 [MainThread] INFO unittest.test_time_and_space - Number of layers: 23
+2026-03-14 17:53:38,565 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 44358980
+2026-03-14 17:53:38,566 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 6668374
+2026-03-14 17:53:38,566 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:53:38,566 [MainThread] INFO unittest.test_time_and_space - dense: 1051648
+2026-03-14 17:53:38,567 [MainThread] INFO unittest.test_time_and_space - msg: 2079574
+2026-03-14 17:53:38,567 [MainThread] INFO unittest.test_time_and_space - lrm: 3536896
+2026-03-14 17:53:38,567 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 37690606
+2026-03-14 17:53:38,567 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 17:53:38,567 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 17:53:38,567 [MainThread] INFO unittest.test_time_and_space - fp: 37684672
+2026-03-14 17:53:38,567 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 17:56:40,530 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 9.49115625GB
+2026-03-14 17:56:40,530 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 131.0776544092223s
+2026-03-14 17:56:40,530 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 50.884720095433295s
+2026-03-14 17:56:40,607 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 17:56:40,607 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 17:56:40,607 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 17:56:40,607 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 17:56:41,443 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointMamba2 - PointMamba2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1024->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 17:56:41,443 [MainThread] INFO unittest.test_time_and_space - Number of layers: 23
+2026-03-14 17:56:41,445 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 59912070
+2026-03-14 17:56:41,445 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 10705688
+2026-03-14 17:56:41,446 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 17:56:41,446 [MainThread] INFO unittest.test_time_and_space - dense: 1051648
+2026-03-14 17:56:41,446 [MainThread] INFO unittest.test_time_and_space - msg: 3460632
+2026-03-14 17:56:41,446 [MainThread] INFO unittest.test_time_and_space - lrm: 6193152
+2026-03-14 17:56:41,447 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 49206382
+2026-03-14 17:56:41,447 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 17:56:41,447 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 17:56:41,447 [MainThread] INFO unittest.test_time_and_space - fp: 49200448
+2026-03-14 17:56:41,447 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 4096, 3])
+2026-03-14 18:03:42,070 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 6.103515625GB
+2026-03-14 18:03:42,070 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 320.9717454155907s
+2026-03-14 18:03:42,070 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 99.65097845345736s
+2026-03-14 18:03:42,162 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 18:03:42,162 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 18:03:42,162 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 18:03:42,210 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet - PointNet) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 18:03:42,210 [MainThread] INFO unittest.test_time_and_space - Number of layers: 17
+2026-03-14 18:03:42,210 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3295342
+2026-03-14 18:03:42,210 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 2183872
+2026-03-14 18:03:42,210 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 18:03:42,210 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 18:03:42,210 [MainThread] INFO unittest.test_time_and_space - lf: 607680
+2026-03-14 18:03:42,210 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 18:03:42,210 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 18:03:42,210 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 18:03:42,211 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 18:04:07,157 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 1.67578125GB
+2026-03-14 18:04:07,157 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 17.340417238883674s
+2026-03-14 18:04:07,157 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 7.606160025112331s
+2026-03-14 18:04:07,287 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 18:04:07,287 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 18:04:07,287 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 18:04:07,287 [MainThread] INFO encoder.point.pointnet - This encoder will construct local neighbor graph for dynamic feature extraction.
+2026-03-14 18:04:07,327 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet - PointNet) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 18:04:07,327 [MainThread] INFO unittest.test_time_and_space - Number of layers: 17
+2026-03-14 18:04:07,327 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 3406510
+2026-03-14 18:04:07,328 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 2295040
+2026-03-14 18:04:07,328 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 18:04:07,328 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 18:04:07,328 [MainThread] INFO unittest.test_time_and_space - lf: 718848
+2026-03-14 18:04:07,328 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 18:04:07,328 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 18:04:07,328 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 18:04:07,328 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 18:07:19,574 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 5.58203125GB
+2026-03-14 18:07:19,575 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 111.52980628143996s
+2026-03-14 18:07:19,575 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 80.71567710489035s
+2026-03-14 18:07:20,270 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 18:07:20,270 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 18:07:20,270 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 18:07:20,342 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointTrans - PointTrans) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 18:07:20,342 [MainThread] INFO unittest.test_time_and_space - Number of layers: 17
+2026-03-14 18:07:20,342 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 5649198
+2026-03-14 18:07:20,342 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 4537728
+2026-03-14 18:07:20,342 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 18:07:20,342 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 18:07:20,343 [MainThread] INFO unittest.test_time_and_space - lf: 2961536
+2026-03-14 18:07:20,343 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 18:07:20,343 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 18:07:20,343 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 18:07:20,343 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 18:16:43,580 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 56.3203125GB
+2026-03-14 18:16:43,581 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 441.64199843257666s
+2026-03-14 18:16:43,582 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 121.5946371620521s
+2026-03-14 18:16:44,468 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 18:16:44,468 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 18:16:44,468 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 18:16:44,722 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointMamba - PointMamba) *********************
+------- Encoder -------
+Projection layer: 3->64
+Local feature extraction layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Dense layers: 1024->512->512->256->256->128
+Final transformation layers: 128->512->46
+
+2026-03-14 18:16:44,722 [MainThread] INFO unittest.test_time_and_space - Number of layers: 17
+2026-03-14 18:16:44,723 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 21089390
+2026-03-14 18:16:44,723 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 19977920
+2026-03-14 18:16:44,723 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 18:16:44,724 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 18:16:44,724 [MainThread] INFO unittest.test_time_and_space - lf: 18401728
+2026-03-14 18:16:44,724 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 1111470
+2026-03-14 18:16:44,724 [MainThread] INFO unittest.test_time_and_space - dense: 1020800
+2026-03-14 18:16:44,724 [MainThread] INFO unittest.test_time_and_space - final: 90670
+2026-03-14 18:16:44,724 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 18:18:57,836 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 4.037109375GB
+2026-03-14 18:18:57,836 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 99.38348061032593s
+2026-03-14 18:18:57,836 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 33.72843432798982s
+2026-03-14 18:18:58,059 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 18:18:58,059 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 18:18:58,059 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 18:18:58,060 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 18:18:58,144 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointNet2 - PointNet2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1536->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 18:18:58,144 [MainThread] INFO unittest.test_time_and_space - Number of layers: 23
+2026-03-14 18:18:58,144 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 6787822
+2026-03-14 18:18:58,144 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 1948288
+2026-03-14 18:18:58,144 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 18:18:58,144 [MainThread] INFO unittest.test_time_and_space - dense: 1575936
+2026-03-14 18:18:58,145 [MainThread] INFO unittest.test_time_and_space - msg: 372096
+2026-03-14 18:18:58,145 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 4839534
+2026-03-14 18:18:58,145 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 18:18:58,145 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 18:18:58,145 [MainThread] INFO unittest.test_time_and_space - fp: 4833600
+2026-03-14 18:18:58,145 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 18:20:25,408 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 1.025390625GB
+2026-03-14 18:20:25,409 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 54.149723153561354s
+2026-03-14 18:20:25,409 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 33.11334465071559s
+2026-03-14 18:20:25,528 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 18:20:25,529 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 18:20:25,529 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 18:20:25,529 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 18:20:25,850 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointTrans2 - PointTrans2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1024->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 18:20:25,850 [MainThread] INFO unittest.test_time_and_space - Number of layers: 23
+2026-03-14 18:20:25,852 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 44358980
+2026-03-14 18:20:25,852 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 6668374
+2026-03-14 18:20:25,852 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 18:20:25,852 [MainThread] INFO unittest.test_time_and_space - dense: 1051648
+2026-03-14 18:20:25,853 [MainThread] INFO unittest.test_time_and_space - msg: 2079574
+2026-03-14 18:20:25,853 [MainThread] INFO unittest.test_time_and_space - lrm: 3536896
+2026-03-14 18:20:25,853 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 37690606
+2026-03-14 18:20:25,853 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 18:20:25,853 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 18:20:25,853 [MainThread] INFO unittest.test_time_and_space - fp: 37684672
+2026-03-14 18:20:25,853 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 18:25:08,825 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 24.55847265625GB
+2026-03-14 18:25:08,826 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 205.7271186336875s
+2026-03-14 18:25:08,826 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 77.24466492049396s
+2026-03-14 18:25:08,947 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+2026-03-14 18:25:08,948 [MainThread] INFO model.create_model - creating underlying model from specific configuration ...
+2026-03-14 18:25:08,948 [MainThread] INFO encoder.create_encoder - Model is constructed for point cloud.
+2026-03-14 18:25:08,948 [MainThread] INFO encoder.point.pointnet2 - Perform ball query on xyz space.
+2026-03-14 18:25:09,846 [MainThread] INFO unittest.test_time_and_space - model info:
+********************* SeM (PointMamba2 - PointMamba2) *********************
+------- Encoder -------
+Projection layer: 3->64
+Furthest Point Sampling and Grouping layers: 64->64->64->128->256->512
+Dense layers: 1024->1024
+------- Decoder -------
+Feature Propagating layers: 1024->1024->512->512->256->256->128
+Final Transformation layers: 128->46
+2026-03-14 18:25:09,846 [MainThread] INFO unittest.test_time_and_space - Number of layers: 23
+2026-03-14 18:25:09,847 [MainThread] INFO unittest.test_time_and_space - Total number of model parameters: 59912070
+2026-03-14 18:25:09,848 [MainThread] INFO unittest.test_time_and_space - Number of encoder parameters: 10705688
+2026-03-14 18:25:09,848 [MainThread] INFO unittest.test_time_and_space - point_proj: 256
+2026-03-14 18:25:09,848 [MainThread] INFO unittest.test_time_and_space - dense: 1051648
+2026-03-14 18:25:09,849 [MainThread] INFO unittest.test_time_and_space - msg: 3460632
+2026-03-14 18:25:09,849 [MainThread] INFO unittest.test_time_and_space - lrm: 6193152
+2026-03-14 18:25:09,849 [MainThread] INFO unittest.test_time_and_space - Number of decoder parameters: 49206382
+2026-03-14 18:25:09,849 [MainThread] INFO unittest.test_time_and_space - dense: 0
+2026-03-14 18:25:09,849 [MainThread] INFO unittest.test_time_and_space - final: 5934
+2026-03-14 18:25:09,850 [MainThread] INFO unittest.test_time_and_space - fp: 49200448
+2026-03-14 18:25:09,850 [MainThread] INFO unittest.test_time_and_space - Input shape: torch.Size([2, 8192, 3])
+2026-03-14 18:32:32,340 [MainThread] INFO unittest.test_time_and_space - Average allocated memory for each iteration: 6.537109375GB
+2026-03-14 18:32:32,340 [MainThread] INFO unittest.test_time_and_space - Time of training for 500 iterations: 334.47572503983974s
+2026-03-14 18:32:32,340 [MainThread] INFO unittest.test_time_and_space - Time of inference for 500 iterations: 108.014235958457s
+2026-03-14 18:32:32,493 [MainThread] INFO unittest.test_time_and_space - ------------------------Finish------------------------
+
+
+
+/tmp/tmpmbgwzrwx/_remote_module_non_scriptable.py
+/tmp/tmpmbgwzrwx/__pycache__
+/tmp/tmpmbgwzrwx/__pycache__/_remote_module_non_scriptable.cpython-310.pyc

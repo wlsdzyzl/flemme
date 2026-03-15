@@ -396,7 +396,7 @@ class Point2Decoder(nn.Module):
             _str += '{}->'.format(c)  
         _str += str(self.fp_path[-1])
         _str += '\n'
-        _str = _str + 'Dense layers: '
+        _str = _str + 'Final Transformation layers: '
         for c in self.dense_path:
             _str += '{}->'.format(c)  
         _str += f'{self.point_dim}'

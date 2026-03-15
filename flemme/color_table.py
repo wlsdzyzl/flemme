@@ -64,11 +64,11 @@ def get_mpl_cmap(name, label_count):
     return np.array(colors)
 def get_color_table(table_name, label_count = 20):
     if table_name == 'Scannet':
-        return scannet_color_table
+        return scannet_color_table[:label_count]
     elif table_name == 'Custom':
-        return custom_color_table
+        return custom_color_table[:label_count]
     else:
-        return get_mpl_cmap(table_name, label_count)
+        return get_mpl_cmap(table_name, label_count)[:label_count]
 def rainbow_rgb(x: float):
     """
     Map x in [0, 1] to RGB in rainbow order
