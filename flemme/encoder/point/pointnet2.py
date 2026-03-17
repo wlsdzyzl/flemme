@@ -6,7 +6,7 @@ from torch import nn
 from flemme.block import DenseBlock, SequentialT, get_building_block, get_ca,\
     SamplingAndGroupingLayer as MSGLayer, FeaturePropogatingLayer as FPLayer, \
     SampledFeatureCatLayer as SFCLayer, gather_features, VoxelLayer, \
-    PositionEmbeddingBlock
+    PositionEmbeddingBlock, MultiLayerPerceptionBlock
 from flemme.logger import get_logger
 import copy
 logger = get_logger("encoder.point.pointnet2")
@@ -219,11 +219,12 @@ class Point2Encoder(nn.Module):
         xyz = xyz[...,0:3]
         xyz_list, feature_list = [xyz], [features]
         sample_id_list = []
+        use_scanner = hasattr(self, 'scanners') and len(self.scanners) > 0
         for lid, msg in enumerate(self.msg):
             vfeatures = features
             xyz, xyz_embed, features, sample_ids = msg(xyz, xyz_embed, features = features, t = t, c = c)
             if hasattr(self, 'lrm'):
-                if hasattr(self, 'scanners') and len(self.scanners) > 0: 
+                if use_scanner: 
                     sorted_index_list = self.scan(xyz)
                     features = self.lrm[lid](features, sorted_index_list, t, c)
                 else:
@@ -320,19 +321,32 @@ class Point2Decoder(nn.Module):
             voxel_attens = [None, ] + voxel_attens
         self.voxel_resolutions = voxel_resolutions
         self.voxel_attens = voxel_attens
-        ## fully connected layer
-        dense_channels = [fp_channels[-1],] + dense_channels 
-        dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+        ## final fully connected layer
+        # dense_channels = [fp_channels[-1],] + dense_channels 
+        # dense_sequence = [ DenseBlock(dense_channels[i], dense_channels[i+1], 
+        #                                 time_channel = time_channel,
+        #                                 norm = normalization, num_norm_groups=num_norm_groups, 
+        #                                 activation = activation, dropout=dropout,
+        #                                 time_injection=time_injection,
+        #                                 condition_channel = condition_channel,
+        #                                 condition_injection = condition_injection,
+        #                                 condition_first = condition_first) for i in range(len(dense_channels) - 1)]
+        # self.dense = SequentialT(*dense_sequence) 
+        # self.dense_path = dense_channels
+        # self.final = nn.Linear(dense_channels[-1], point_dim)
+        self.final_path = [fp_channels[-1], ] + dense_channels + [point_dim, ]
+        # print(dense_channels, self.final_path)
+        self.final = MultiLayerPerceptionBlock(in_channel=fp_channels[-1], 
+                                        out_channel=point_dim,
+                                        hidden_channels = dense_channels,
                                         time_channel = time_channel,
                                         norm = normalization, num_norm_groups=num_norm_groups, 
                                         activation = activation, dropout=dropout,
+                                        final_activation = False,
                                         time_injection=time_injection,
                                         condition_channel = condition_channel,
                                         condition_injection = condition_injection,
-                                        condition_first = condition_first) for i in range(len(dense_channels) - 1)]
-        self.dense = SequentialT(*dense_sequence) 
-        self.dense_path = dense_channels
-        self.final = nn.Linear(dense_channels[-1], point_dim)
+                                        condition_first = condition_first)
         self.fp = None
         assert len(latent_channels) == len(fp_channels) + 1, 'The number of feature propagation layers is ambiguous .'
         assert len(self.voxel_resolutions) == 0 or len(self.voxel_resolutions) == self.fp_depth,\
@@ -387,8 +401,8 @@ class Point2Decoder(nn.Module):
             feature_list[i] = self.fp[i-1]( xyz_list[i], xyz_list[i-1], feature_list[i], feature_list[i-1], t = t)
             if hasattr(self, 'vf'):
                 feature_list[i] = feature_list[i] + self.vf[i-1](vfeatures, xyz_list[i], t, c)
-        feature = self.dense(feature_list[-1], t, c)
-        return self.final(feature)
+        # feature = self.dense(feature_list[-1], t, c)
+        return self.final(feature_list[-1], t, c)
     def __str__(self):
         _str = ''
         _str += 'Feature Propagating layers: '
@@ -396,10 +410,10 @@ class Point2Decoder(nn.Module):
             _str += '{}->'.format(c)  
         _str += str(self.fp_path[-1])
         _str += '\n'
-        _str = _str + 'Final Transformation layers: '
-        for c in self.dense_path:
+        _str = _str + 'Final Dense layers: '
+        for c in self.final_path[:-1]:
             _str += '{}->'.format(c)  
-        _str += f'{self.point_dim}'
+        _str += f'{self.final_path[-1]}'
         return _str 
 
 class PointNet2Encoder(Point2Encoder):

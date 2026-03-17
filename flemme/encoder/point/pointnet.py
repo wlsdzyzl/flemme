@@ -127,11 +127,17 @@ class PointEncoder(nn.Module):
         ## N * Np * d
         res = []
         pos = x[...,:3]
+        use_scanner = hasattr(self, 'scanners') and len(self.scanners) > 0
+        if use_scanner:
+            sorted_index_list = self.scan(pos)
         x = self.point_proj(x)
         for lid, lf in enumerate(self.lf[:-1]):
             ## fuse voxel features and point features
             vx = x
-            x = lf(x, t, c)
+            if not use_scanner or self.num_neighbors_k > 0:
+                x = lf(x, t, c)
+            else:
+                x = lf(x, sorted_index_list, t, c)
             if hasattr(self, 'vlf'):
                 x = x + self.vlf[lid](vx, pos, t, c)
             if hasattr(self, 'ca'):
@@ -139,7 +145,12 @@ class PointEncoder(nn.Module):
             res.append(x)
         
         x = torch.concat(res, dim=-1)
-        pf = self.lf[-1](x, t, c)
+        
+        if not use_scanner:
+            pf = self.lf[-1](x, t, c)
+        else:
+            pf = self.lf[-1](x, sorted_index_list, t, c)
+
         if hasattr(self, 'vlf'):
             pf = pf + self.vlf[-1](x, pos, t, c)
         if hasattr(self, 'ca'):
@@ -385,7 +396,6 @@ class PointNetDecoder(nn.Module):
             # print(dense_channels, self.final_path)
             self.final = MultiLayerPerceptionBlock(in_channel=dense_channels[-1], 
                                             out_channel=final_out_channel,
-                                            n = num_blocks, 
                                             hidden_channels = final_channels,
                                             time_channel = time_channel,
                                             norm = normalization, num_norm_groups=num_norm_groups, 

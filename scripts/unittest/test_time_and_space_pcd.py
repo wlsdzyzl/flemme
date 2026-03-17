@@ -22,13 +22,12 @@ for model_config in model_configs:
                 (len(model.encoder.dense_path) if hasattr(model.encoder, 'dense_path') else 1) - 1  ## pointnet and pointnet2        
                  
     ### decoder
-    de_num_layers = len(model.decoder.dense_path) - 1 + \
-                ((len(model.decoder.fp_path) if hasattr(model.decoder, 'fp_path') else ## pontnet2
-                ## pointnet with foldingn
-                (model.decoder.folding_times + 1) if hasattr(model.decoder, 'folding_times') else
+    de_num_layers = ((len(model.decoder.dense_path) - 1) if hasattr(model.decoder, 'dense_path') else 0) + \
+                (((model.decoder.folding_times + 1) if hasattr(model.decoder, 'folding_times') else ## pointnet with foldingnet
+                len(model.decoder.fp_path) if hasattr(model.decoder, 'fp_path') else ## pontnet2
                 ## seqnet
                 len(model.decoder.seq_path)) - 1) * model.decoder.num_blocks + \
-                (len(model.decoder.final_path) if hasattr(model.decoder, 'final_path') else 2) - 2 ## pointnet without folding
+                ((len(model.decoder.final_path) - 2) if hasattr(model.decoder, 'final_path') else 0)  ## pointnet (without folding) and pointnet2
     num_layers = en_num_layers + de_num_layers
     if 'res' in building_block or 'double' in building_block:
         num_layers *= 2

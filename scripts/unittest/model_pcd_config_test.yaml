@@ -1,26 +1,26 @@
 models:
-  ## PointNet
-  # - name: SeM
-  #   # encoder config
-  #   encoder:
-  #     name: PointNet
-  #     in_channel: 3
-  #     out_channel: 46
-  #     num_blocks: 1
-  #     point_num: 4096
-  #     building_block: dense
-  #     # num_neighbors_k: 20
-  #     local_feature_channels: [64, 64, 128, 256, 512]
-  #     dense_channels: [1024]
-  #     decoder_dense_channels: [512, 512, 256, 256, 128]
-  #     final_channels: [512]
-  #     activation: lrelu
-  #     normalization: group
-  #     vector_embedding: False
-  #   segmentation_losses:
-  #     - name: Dice
-  #       normalization: softmax
-  #     - name: CE
+  # PointNet
+  - name: SeM
+    # encoder config
+    encoder:
+      name: PointNet
+      in_channel: 3
+      out_channel: 46
+      num_blocks: 1
+      point_num: 4096
+      building_block: dense
+      # num_neighbors_k: 20
+      local_feature_channels: [64, 64, 128, 256, 512]
+      dense_channels: [1024]
+      decoder_dense_channels: [512, 512, 256, 256, 128]
+      final_channels: [512]
+      activation: lrelu
+      normalization: group
+      vector_embedding: False
+    segmentation_losses:
+      - name: Dice
+        normalization: softmax
+      - name: CE
 
   # - name: SeM
   #   # encoder config
@@ -43,6 +43,53 @@ models:
   #     - name: Dice
   #       normalization: softmax
   #     - name: CE
+
+  ### PointMamba
+  - name: SeM
+    # encoder config
+    encoder:
+      name: PointMamba
+      in_channel: 3
+      out_channel: 46
+      num_blocks: 1
+      point_num: 4096
+      building_block: pmamba
+      # num_neighbors_k: 20
+      local_feature_channels: [64, 64, 128, 256, 512]
+      dense_channels: [1024]
+      decoder_dense_channels: [512, 512, 256, 256, 128]
+      final_channels: [512]
+      activation: lrelu
+      normalization: group
+      vector_embedding: False
+    segmentation_losses:
+      - name: Dice
+        normalization: softmax
+      - name: CE
+
+  ### PointMamba
+  - name: SeM
+    # encoder config
+    encoder:
+      name: PointMamba
+      in_channel: 3
+      out_channel: 46
+      num_blocks: 1
+      point_num: 4096
+      building_block: pmamba
+      # num_neighbors_k: 20
+      local_feature_channels: [64, 64, 128, 256, 512]
+      dense_channels: [1024]
+      decoder_dense_channels: [512, 512, 256, 256, 128]
+      final_channels: [512]
+      activation: lrelu
+      normalization: group
+      vector_embedding: False
+      scan_strategies: [x_order, center_dist]
+    segmentation_losses:
+      - name: Dice
+        normalization: softmax
+      - name: CE
 
   - name: SeM
     # encoder config

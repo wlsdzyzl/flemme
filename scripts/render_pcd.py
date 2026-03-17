@@ -42,11 +42,11 @@ xml_head = \
         </film>
     </sensor>
     
-    <bsdf type="roughplastic" id="surfaceMaterial">
+    <bsdf type="roughplastic" id="groundMaterial">
         <string name="distribution" value="ggx"/>
         <float name="alpha" value="0.05"/>
         <float name="intIOR" value="1.46"/>
-        <rgb name="diffuseReflectance" value="1,1,1"/> <!-- default 0.5 -->
+        <rgb name="diffuseReflectance" value="{},{},{}"/> <!-- default 0.5 -->
     </bsdf>
     
 """
@@ -67,7 +67,7 @@ xml_ball_segment = \
 xml_tail = \
 """
     <shape type="rectangle">
-        <ref name="bsdf" id="surfaceMaterial"/>
+        <ref name="bsdf" id="groundMaterial"/>
         <transform name="toWorld">
             <scale x="10" y="10" z="1"/>
             <translate x="0" y="0" z="-0.5"/>
@@ -80,7 +80,7 @@ xml_tail = \
             <lookat origin="4, -1, 20" target="0,0,0" up="0,0,1"/>
         </transform>
         <emitter type="area">
-            <rgb name="radiance" value="6,6,6"/>
+            <rgb name="radiance" value="{},{},{}"/>
         </emitter>
     </shape>
 </scene>
@@ -92,7 +92,8 @@ def main(argv):
     size=[160, 120]
     opts, args = getopt.getopt(argv, "hi:o:", ['help', 'input_pcd=', 'output_path=', 
                             'xyz_angles=', 'size=', 'mirror_flip=', 'float_height=',
-                            'point_size=', 'sphere_radius=', 'color_id=',
+                            'point_size=', 'sphere_radius=', 'color_id=','color=',
+                            'ground_color=', 'light_intensity=',
                             'center=', 'scaling=', 'non_standardized'])
     float_height = 0.1
     point_size = 2048
@@ -102,41 +103,54 @@ def main(argv):
     center = np.zeros(3)
     scaling = 1.0
     standardize = True
+    color = None
+    ground_color = np.array([1.0, 1.0, 1.0])
+    light_intensity = 6
     if len(opts) == 0:
-        logger.error('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --point_size <point_size=2048> --sphere_radius <sphere_radius=0.004> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
+        logger.error('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --point_size <point_size=2048> --sphere_radius <sphere_radius=0.004> --color_id <color_id=0> --color <color=None> --ground_color <ground_color=1,1,1> --light_intensity <light_intensity=6> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            logger.info('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --point_size <point_size=2048> --sphere_radius <sphere_radius=0.004> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
+            logger.info('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --point_size <point_size=2048> --sphere_radius <sphere_radius=0.004> --color_id <color_id=0> --color <color=None> --ground_color <ground_color=1,1,1> --light_intensity <light_intensity=6> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
             sys.exit()
         elif opt in ("-i", '--input_pcd'):
             pcd_file = arg
         elif opt in ("-o", '--output_path'):
             output_path = arg
-        elif opt in ('--xyz_angles'):
+        elif opt in ('--xyz_angles',):
             xyz_angles = [a.split('/') for a in arg.split(',')]
-        elif opt in ('--size'):
+        elif opt in ('--size',):
             size = [int(s) for s in arg.split(',')]
-        elif opt in ('--mirror_flip'):
-            mirror_flip = arg.split(',')
-        elif opt in ('--float_height'):
+        elif opt in ('--mirror_flip',):
+            mirror_flip = arg.split(',',)
+        elif opt in ('--float_height',):
             float_height = float(arg)
-        elif opt in ('--point_size'):
+        elif opt in ('--point_size',):
             point_size = int(arg)
-        elif opt in ('--sphere_radius'):
+        elif opt in ('--sphere_radius',):
             sphere_radius = float(arg)
-        elif opt in ('--color_id'):
+        elif opt in ('--color_id',):
             color_id = int(arg)
-        elif opt in ('--non_standardized'):
+        elif opt in ('--non_standardized',):
             standardize = False
-        elif opt in ('--center'):
+        elif opt in ('--center',):
             center = np.array([float(c) for c in arg.split(',')])
-        elif opt in ('--scaling'):
+        elif opt in ('--scaling',):
             scaling = float(arg)
+        elif opt in ('--ground_color',):
+            ground_color = np.array([float(c) for c in arg.split(',')])
+            if ground_color.max() > 1:
+                ground_color = ground_color / 255
+        elif opt in ('--color',):
+            color = np.array([float(c) for c in arg.split(',')])
+            if color.max() > 1:
+                color = color / 255
+        elif opt in('--light_intensity',):
+            light_intensity = float(arg)
         else:
-            logger.error('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --point_size <point_size=2048> --sphere_radius <sphere_radius=0.004> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
+            logger.error('unknow options, usage: render_pcd.py -i <input_pcd> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --point_size <point_size=2048> --sphere_radius <sphere_radius=0.004> --color_id <color_id=0> --color <color=None> --ground_color <ground_color=1,1,1> --light_intensity <light_intensity=6> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
             sys.exit()
-    xml_segments = [xml_head.format(*size)]
+    xml_segments = [xml_head.format(*(size + ground_color.tolist()))]
 
     pcl = load_ply(pcd_file)
     
@@ -186,11 +200,13 @@ def main(argv):
             xml_segments.append(xml_ball_segment.format(sphere_radius, pcl[i,0],pcl[i,1],pcl[i,2], 
                 pcl_color[i,0],pcl_color[i,1],pcl_color[i,2]))
     else:
+        if color is None:
+            color = color_table[color_id]
+        color_values = color.tolist()
         for i in range(pcl.shape[0]):
-            color = color_table[color_id].tolist()
-            xml_segments.append(xml_ball_segment.format(sphere_radius, pcl[i,0],pcl[i,1],pcl[i,2], *color))
+            xml_segments.append(xml_ball_segment.format(sphere_radius, pcl[i,0],pcl[i,1],pcl[i,2], *color_values))
 
-    xml_segments.append(xml_tail)
+    xml_segments.append(xml_tail.format(*((ground_color * light_intensity).tolist()) ))
     xml_content = str.join('', xml_segments)
 
     with open('mitsuba_scene.xml', 'w') as f:

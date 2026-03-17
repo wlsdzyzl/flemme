@@ -86,6 +86,7 @@ models:
       activation: lrelu
       normalization: group
       vector_embedding: False
+      scan_strategies: [x_order, center_dist]
     segmentation_losses:
       - name: Dice
         normalization: softmax
@@ -261,6 +262,7 @@ models:
       activation: lrelu
       normalization: group
       vector_embedding: False
+      scan_strategies: [x_order, center_dist]
     segmentation_losses:
       - name: Dice
         normalization: softmax
@@ -435,6 +437,7 @@ models:
       activation: lrelu
       normalization: group
       vector_embedding: False
+      scan_strategies: [x_order, center_dist]
     segmentation_losses:
       - name: Dice
         normalization: softmax
@@ -610,6 +613,7 @@ models:
       activation: lrelu
       normalization: group
       vector_embedding: False
+      scan_strategies: [x_order, center_dist]
     segmentation_losses:
       - name: Dice
         normalization: softmax

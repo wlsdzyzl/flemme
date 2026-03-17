@@ -118,7 +118,7 @@ def main(argv):
             sys.exit()
         elif opt in ("-i", '--input_dir'):
             input_dir = arg
-        elif opt in ('--input_suffix'):
+        elif opt in ('--input_suffix',):
             suffix = arg
         elif opt in ("-o", '--output_dir'):
             output_dir = arg

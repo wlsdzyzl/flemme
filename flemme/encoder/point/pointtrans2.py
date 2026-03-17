@@ -20,7 +20,7 @@ class PointTrans2Encoder(Point2Encoder):
                  sorted_query = False,
                  knn_query = False,
                  dense_channels = [1024],
-                 building_block = 'dense', 
+                 building_block = 'pct_sa', 
                  normalization = 'group', num_norm_groups = 8, 
                  activation = 'lrelu', dropout = 0., 
                  num_heads = 4, d_k = None, 

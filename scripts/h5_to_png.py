@@ -49,7 +49,7 @@ def main(argv):
             dataset_path = arg
         elif opt in ('--suffix',):
             suffix = arg.split(',')
-        elif opt in ('--sub_dirs'):
+        elif opt in ('--sub_dirs',):
             sub_dirs = arg.split(',')
         elif opt in ("-o", '--output_dir'):
             output_dir = arg

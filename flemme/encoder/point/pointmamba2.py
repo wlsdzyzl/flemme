@@ -21,7 +21,7 @@ class PointMamba2Encoder(Point2Encoder):
             sorted_query = False,
             knn_query = False,
             dense_channels = [1024],
-            building_block = 'dense', 
+            building_block = 'pmamba', 
             scan_strategies = None,
             flip_scan = False,
             normalization = 'group', num_norm_groups = 8, 
@@ -158,17 +158,14 @@ class PointMamba2Encoder(Point2Encoder):
                     BuildingBlock = self.BuildingBlock) for fid in range(self.fps_depth)]
             self.lrm = nn.ModuleList(lrm_sequence)
     def scan(self, xyz):
-        if hasattr(self, 'scanners') and len(self.scanners) > 0:
-            sorted_index_list = []
-            for s in self.scanners:
-                idx = s(xyz)
-                sorted_index_list.append(idx)
-            if self.flip_scan:
-                sorted_index_list = sorted_index_list + [ torch.flip(idx, dims=[-1]) for idx in sorted_index_list]
-            return sorted_index_list
-        else:
-            logger.error('No scanners.')
-            exit(1)
+        sorted_index_list = []
+        for s in self.scanners:
+            idx = s(xyz)
+            sorted_index_list.append(idx)
+        if self.flip_scan:
+            sorted_index_list = sorted_index_list + [ torch.flip(idx, dims=[-1]) for idx in sorted_index_list]
+        return sorted_index_list
+
 class PointMamba2Decoder(Point2Decoder):
     def __init__(self, point_dim=3, point_num = 2048, 
                 ### provide by encoder

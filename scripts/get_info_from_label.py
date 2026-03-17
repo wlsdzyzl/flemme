@@ -23,7 +23,7 @@ def main(argv):
             sys.exit()
         if opt in ('-d', '--label_dir'):
             label_dir = arg
-        if opt in ('--suffix'):
+        if opt in ('--suffix',):
             suffix = arg
     if label_dir is None:
         logger.info('label_dir is required.')

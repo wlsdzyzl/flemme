@@ -44,11 +44,11 @@ xml_head = \
         </film>
     </sensor>
     
-    <bsdf type="roughplastic" id="surfaceMaterial">
+    <bsdf type="roughplastic" id="groundMaterial">
         <string name="distribution" value="ggx"/>
         <float name="alpha" value="0.05"/>
         <float name="intIOR" value="1.46"/>
-        <rgb name="diffuseReflectance" value="1,1,1"/> <!-- default 0.5 -->
+        <rgb name="diffuseReflectance" value="{},{},{}"/> <!-- default 0.5 -->
     </bsdf>
     
 """
@@ -71,7 +71,7 @@ xml_ply = \
 xml_tail = \
 """
     <shape type="rectangle">
-        <ref name="bsdf" id="surfaceMaterial"/>
+        <ref name="bsdf" id="groundMaterial"/>
         <transform name="toWorld">
             <scale x="10" y="10" z="1"/>
             <translate x="0" y="0" z="-0.5"/>
@@ -84,7 +84,7 @@ xml_tail = \
             <lookat origin="4, -2, 10" target="0,0,0" up="0,0,1"/>
         </transform>
         <emitter type="area">
-            <rgb name="radiance" value="7"/>
+            <rgb name="radiance" value="{},{},{}"/>
         </emitter>
     </shape>
 </scene>
@@ -97,44 +97,58 @@ def main(argv):
     size=[160, 120]
     opts, args = getopt.getopt(argv, "hi:o:", ['help', 'input_mesh=', 'output_path=', 
                             'xyz_angles=', 'size=', 'mirror_flip=', 'float_height=',
-                            'color_id=', 'center=', 'scaling=', 'non_standardized'])
+                            'color_id=', 'color=', 'ground_color=', 'light_intensity=',
+                            'center=', 'scaling=', 'non_standardized'])
     float_height = 0.1
     mirror_flip = []
     color_id = 0
     center = np.zeros(3)
     scaling = 1.0
     standardize = True
+    color = None
+    ground_color = np.array([1.0, 1.0, 1.0])
+    light_intensity = 6
     if len(opts) == 0:
-        logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
+        logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --color_id <color_id=0> --color <color=None> --ground_color <ground_color=1,1,1> --light_intensity <light_intensity=7> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
         sys.exit()
     for opt, arg in opts:
         if opt in ('-h', '--help'):
-            logger.info('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
+            logger.info('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --color_id <color_id=0> --color <color=None> --ground_color <ground_color=1,1,1> --light_intensity <light_intensity=7> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
             sys.exit()
         elif opt in ("-i", '--input_mesh'):
             mesh_file = arg
         elif opt in ("-o", '--output_path'):
             output_path = arg
-        elif opt in ('--xyz_angles'):
+        elif opt in ('--xyz_angles',):
             xyz_angles = [a.split('/') for a in arg.split(',')]
-        elif opt in ('--size'):
+        elif opt in ('--size',):
             size = [int(s) for s in arg.split(',')]
-        elif opt in ('--mirror_flip'):
+        elif opt in ('--mirror_flip',):
             mirror_flip = arg.split(',')
-        elif opt in ('--float_height'):
+        elif opt in ('--float_height',):
             float_height = float(arg)
-        elif opt in ('--color_id'):
+        elif opt in ('--color_id',):
             color_id = int(arg)
-        elif opt in ('--non_standardized'):
+        elif opt in ('--non_standardized',):
             standardize = False
-        elif opt in ('--center'):
+        elif opt in ('--center',):
             center = np.array([float(c) for c in arg.split(',')])
-        elif opt in ('--scaling'):
+        elif opt in ('--scaling',):
             scaling = float(arg)
+        elif opt in ('--ground_color',):
+            ground_color = np.array([float(c) for c in arg.split(',')])
+            if ground_color.max() > 1:
+                ground_color = ground_color / 255
+        elif opt in ('--color',):
+            color = np.array([float(c) for c in arg.split(',')])
+            if color.max() > 1:
+                color = color / 255
+        elif opt in('--light_intensity',):
+            light_intensity = float(arg)
         else:
-            logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --color_id <color_id=0> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
+            logger.error('unknow options, usage: render_mesh.py -i <input_mesh> -o <output_path=mitsuba_scene.png> --xyz_angles <xyz_angles=''> --size <size=160,120> --mirror_flip <mirror_flip=None> --float_height <float_height=0.1> --color_id <color_id=0> --color <color=None> --ground_color <ground_color=1,1,1> --light_intensity <light_intensity=7> --non_standardized --center <center=0,0,0> --scaling <scaling=1.0>')
             sys.exit()
-    xml_segments = [xml_head.format(*size)]
+    xml_segments = [xml_head.format(*(size + ground_color.tolist()))]
     pcl, faces = load_ply(mesh_file, with_faces= True)
     if  sum([len(_) == 1 for _ in xyz_angles]) == len(xyz_angles) and len(xyz_angles) % 3 == 0:
         xyz_angles = [float(a[0]) for a in xyz_angles]
@@ -174,10 +188,12 @@ def main(argv):
     pcl[:, 2] += float_height
 
     save_ply('mitsuba_mesh.ply', pcl, faces = faces)
-    color = color_table[color_id].tolist()
-    xml_segments.append(xml_ply.format(*color))
+    if color is None:
+        color = color_table[color_id]
+    color_values = color.tolist()
+    xml_segments.append(xml_ply.format(*color_values))
 
-    xml_segments.append(xml_tail)
+    xml_segments.append(xml_tail.format(*((ground_color * light_intensity).tolist()) ))
 
     xml_content = str.join('', xml_segments)
 

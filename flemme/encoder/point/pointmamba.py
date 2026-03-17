@@ -1,7 +1,8 @@
 import torch
 from torch import nn
 from flemme.block import get_building_block, \
-    LocalGraphLayer, MultipleBuildingBlocks
+    LocalGraphLayer, MultipleBuildingBlocks, get_scanners,\
+    get_psmamba_block
 from .pointnet import PointEncoder
 from flemme.logger import get_logger
 logger = get_logger("encoder.point.pointmamba")
@@ -17,6 +18,8 @@ class PointMambaEncoder(PointEncoder):
                 num_blocks = 2,
                 dense_channels = [256, 256],
                 building_block = 'pmamba', 
+                scan_strategies = None,
+                flip_scan = False,
                 normalization = 'group', num_norm_groups = 8, 
                 activation = 'lrelu', dropout = 0.,
                 state_channel = 64, 
@@ -61,26 +64,59 @@ class PointMambaEncoder(PointEncoder):
                 condition_first = condition_first)
         if len(kwargs) > 0:
             logger.debug("redundant parameters: {}".format(kwargs))
-
-        self.BuildingBlock = get_building_block(building_block, time_channel = time_channel, 
-                                        activation=activation, 
-                                        norm = normalization, num_norm_groups = num_norm_groups, 
-                                        dropout = dropout,
-                                        state_channel = state_channel, 
-                                        conv_kernel_size = conv_kernel_size, 
-                                        inner_factor = inner_factor,  
-                                        head_channel = head_channel,
-                                        conv_bias=conv_bias, bias=bias,
-                                        learnable_init_states = learnable_init_states, 
-                                        chunk_size=chunk_size,
-                                        dt_min=dt_min, A_init_range=A_init_range,
-                                        dt_max=dt_max, dt_init_floor=dt_init_floor, 
-                                        dt_rank = dt_rank, dt_scale = dt_scale,
-                                        mlp_hidden_ratios = mlp_hidden_ratios,
-                                        time_injection = time_injection,
-                                        condition_channel = condition_channel,
-                                        condition_injection = condition_injection,
-                                        condition_first = condition_first)
+        
+        LocalBuildingBlock = get_building_block(building_block, time_channel = time_channel, 
+                                            activation=activation, 
+                                            norm = normalization, num_norm_groups = num_norm_groups, 
+                                            dropout = dropout,
+                                            state_channel = state_channel, 
+                                            conv_kernel_size = conv_kernel_size, 
+                                            inner_factor = inner_factor,  
+                                            head_channel = head_channel,
+                                            conv_bias=conv_bias, bias=bias,
+                                            learnable_init_states = learnable_init_states, 
+                                            chunk_size=chunk_size,
+                                            dt_min=dt_min, A_init_range=A_init_range,
+                                            dt_max=dt_max, dt_init_floor=dt_init_floor, 
+                                            dt_rank = dt_rank, dt_scale = dt_scale,
+                                            mlp_hidden_ratios = mlp_hidden_ratios,
+                                            time_injection = time_injection,
+                                            condition_channel = condition_channel,
+                                            condition_injection = condition_injection,
+                                            condition_first = condition_first)
+        self.BuildingBlock = LocalBuildingBlock
+        self.scanners = get_scanners(scan_strategies)
+        if len(self.scanners) > 0:
+            self.flip_scan = flip_scan
+            num_scan = len(self.scanners)
+            if self.flip_scan: num_scan *= 2
+            self.BuildingBlock = get_psmamba_block(building_block, 
+                                time_channel = time_channel, 
+                                num_scan = num_scan,
+                                activation=activation, 
+                                norm = normalization, 
+                                num_norm_groups = num_norm_groups, 
+                                dropout = dropout,
+                                state_channel = state_channel, 
+                                conv_kernel_size = conv_kernel_size, 
+                                inner_factor = inner_factor,  
+                                head_channel = head_channel,
+                                conv_bias=conv_bias, bias=bias,
+                                chunk_size=chunk_size,
+                                learnable_init_states = learnable_init_states,
+                                dt_min=dt_min, A_init_range=A_init_range,
+                                dt_max=dt_max, dt_init_floor=dt_init_floor, 
+                                dt_rank = dt_rank, dt_scale = dt_scale,
+                                mlp_hidden_ratios = mlp_hidden_ratios, 
+                                time_injection = time_injection,
+                                condition_channel = condition_channel,
+                                condition_injection = condition_injection,
+                                condition_first = condition_first)
+            # lrm_sequence = [MultipleBuildingBlocks(in_channel = fps_feature_channels[fid], 
+            #     out_channels = fps_feature_channels[fid],
+            #     n = num_blocks,
+            #     BuildingBlock = PSMambaBlock) for fid in range(self.fps_depth)]
+            
 
         ### convolution with kernel size = 1
         # compute point features
@@ -89,7 +125,7 @@ class PointMambaEncoder(PointEncoder):
             mamba_sequence = [LocalGraphLayer(k = self.num_neighbors_k, 
                                             in_channel = self.lf_path[i],
                                             out_channel = self.lf_path[i+1], 
-                                            BuildingBlock = self.BuildingBlock,
+                                            BuildingBlock = LocalBuildingBlock,
                                             num_blocks = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
         else:    
             mamba_sequence = [MultipleBuildingBlocks(in_channel=self.lf_path[i], 
@@ -103,3 +139,11 @@ class PointMambaEncoder(PointEncoder):
                                             n = self.num_blocks))
 
         self.lf = nn.ModuleList(mamba_sequence)
+    def scan(self, xyz):
+        sorted_index_list = []
+        for s in self.scanners:
+            idx = s(xyz)
+            sorted_index_list.append(idx)
+        if self.flip_scan:
+            sorted_index_list = sorted_index_list + [ torch.flip(idx, dims=[-1]) for idx in sorted_index_list]
+        return sorted_index_list
