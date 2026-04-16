@@ -25,7 +25,7 @@ model:
 loader:
   dataset: 
     name: PcdDataset
-    data_dir: 02691156/points
+    data_dir: Airplane/points
     data_suffix: .pts
   data_path_list: 
     - /media/wlsdzyzl/DATA/datasets/shapenetcore_v0  

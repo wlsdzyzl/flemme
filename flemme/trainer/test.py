@@ -134,7 +134,7 @@ def save_results(results,
                         output_path = os.path.join(output_dir, filename)
                     else:
                         output_path = os.path.join(res_dir, filename)
-                    save_data_fn(res_data, data_form=data_form, output_path=output_path)
+                    save_data_fn(res_data, data_form=data_form, output_path=output_path, output_name = res_name)
                     sample_idx += 1
                 if save_target and len(results['target']) > 0:
                     target = results['target'][idx]

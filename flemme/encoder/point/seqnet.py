@@ -1,7 +1,7 @@
 # point cloud encoder for 3D point cloud
 import torch
 from torch import nn
-from flemme.block import get_building_block, SequentialT, MultipleBuildingBlocks, get_ca, VoxelLayer
+from flemme.block import get_building_block, SequentialT, MultipleBuildingBlocks, get_ca, VoxelLayer, LocalGraphLayer
 from flemme.logger import get_logger
 import copy
 logger = get_logger("model.encoder.seqnet")
@@ -102,7 +102,9 @@ class SeqNetEncoder(SeqEncoder):
                 projection_channel = 64,
                 time_injection = 'gate_bias',
                 num_blocks = 2,
-                building_block = 'dense', seq_feature_channels = [256], 
+                building_block = 'dense', 
+                num_neighbors_k = 0,
+                seq_feature_channels = [256], 
                 voxel_resolutions = [],
                 voxel_attens = [],
                 voxel_conv_kernel_size = 3,
@@ -144,12 +146,28 @@ class SeqNetEncoder(SeqEncoder):
                                         condition_channel = condition_channel,
                                         condition_injection = condition_injection,
                                         condition_first = condition_first)
+        
+        # compute point-wise features
+        ## local graph feature
+        self.num_neighbors_k = num_neighbors_k
+        if self.num_neighbors_k > 0:
+            sequence = [LocalGraphLayer(k = self.num_neighbors_k, 
+                                            in_channel = self.seq_path[i],
+                                            out_channel = self.seq_path[i+1], 
+                                            BuildingBlock = self.BuildingBlock,
+                                            num_blocks = self.num_blocks,
+                                            ) for i in range(len(self.seq_path) - 1) ]
+        else:    
+            sequence = [MultipleBuildingBlocks(in_channel=self.seq_path[i], 
+                                            out_channel=self.seq_path[i+1], 
+                                            BuildingBlock = self.BuildingBlock,
+                                            n = self.num_blocks) for i in range(len(self.seq_path) - 1) ]
 
-        sequence = [MultipleBuildingBlocks(n = self.num_blocks, 
-                                           BuildingBlock=self.BuildingBlock,
-                                           in_channel=self.seq_path[i], 
-                                           out_channel=self.seq_path[i+1]) 
-                                        for i in range(len(self.seq_path) - 1) ]
+        # sequence = [MultipleBuildingBlocks(n = self.num_blocks, 
+        #                                    BuildingBlock=self.BuildingBlock,
+        #                                    in_channel=self.seq_path[i], 
+        #                                    out_channel=self.seq_path[i+1]) 
+        #                                 for i in range(len(self.seq_path) - 1) ]
         self.seq = nn.ModuleList(sequence)
         
 

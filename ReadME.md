@@ -40,9 +40,11 @@ python install mamba-ssmxxxxx.whl -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 #### For point cloud:
 ```
-POT plyfile KNN-CUDA fpsample geomloss trimesh
+POT plyfile KNN-CUDA fpsample geomloss trimesh binvox_rw
 ```
-KNN-CUDA is from https://github.com/unlimblue/KNN_CUDA.
+`KNN-CUDA` is from https://github.com/unlimblue/KNN_CUDA.
+`binvox_rw` is from https://github.com/wangqiang9/binvox_rw.
+
 #### For graph:
 ```
 torch_geometric torch-cluster

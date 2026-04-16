@@ -18,6 +18,7 @@ def get_file_paths(root):
         for f in files:
             paths.append(os.path.abspath(os.path.join(r, f)))
     return paths
+
 def get_basename_and_folder(path, folder_base_name):
     splited_paths = path.strip().split('/')
     fold = None

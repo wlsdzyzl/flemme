@@ -1,4 +1,4 @@
-from flemme.utils import mhd2nii
+from flemme.utils import mhd2nii, get_file_wo_extension
 import sys, getopt
 import os
 import glob
@@ -28,9 +28,8 @@ def main(argv):
             os.makedirs(output_file)
         input_files = sorted(glob.glob(os.path.join(input_file, '*.mhd')))
         for ifile in input_files:
-            _, filename = os.path.split(ifile)
-            filename, _ = os.path.splitext(filename)
-            # filename, _ = os.path.splitext(filename)
+            filename = get_file_wo_extension(ifile)
+
             filename = filename.split('_')[0]
             ofile = output_file+'/'+ filename + '_g6.nii.gz'
             logger.info(f'Converting from {ifile} to {ofile} ...')

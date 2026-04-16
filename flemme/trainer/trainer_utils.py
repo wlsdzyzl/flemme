@@ -700,7 +700,7 @@ def combine_figures(figs, row_length, size = (32, 32)):
     return figure
 
 ## we save 2D image to png, 3D image to nii.gz, point cloud to ply.
-def save_data(output, data_form, output_path, segmentation = False):    
+def save_data(output, data_form, output_path, segmentation = False, output_name = None):    
     ## segmentation label will be saved without channel dim
     ## because label_to_onehot function will expand the cahnnel dim
     if data_form == DataForm.IMG:

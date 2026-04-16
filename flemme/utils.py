@@ -64,6 +64,17 @@ def move_to_front(l, elmnt = None, func = None):
 def rreplace(s, old, new, count = -1):
     return new.join(s.rsplit(old, count))
 
+def get_file_extension(path, last = True):
+    file = os.path.basename(path)
+    if last:
+        return file.split('.')[-1]
+    else:
+        return file.split('.', 1)[-1]
+
+def get_file_wo_extension(path):
+    file = os.path.basename(path)
+    return file.split('.', 1)[0]
+
 def get_random_state():
     return np.random.get_state(), torch.get_rng_state()
 def get_class(class_name, module):
@@ -78,6 +89,19 @@ def onehot_to_label(label, channel_dim = 0, keepdim = False):
         return label.argmax(dim=channel_dim, keepdim=keepdim)
     else:
         return label.argmax(axis=channel_dim, keepdims=keepdim)
+
+def index_points(points, idx):
+    """
+    points: (B, M, ...1)
+    idx: (B, ...2)
+    return: (B, ...2, ...1)
+    """
+    B = points.shape[0]
+    if torch.is_tensor(points):
+        batch_idx = torch.arange(B, device=idx.device).view((B, ) + (1, ) * (idx.ndim - 1))
+    else:
+        batch_idx = np.arange(B).reshape((B, ) + (1, ) * (idx.ndim - 1))
+    return points[batch_idx, idx]
 
 def label_to_onehot(m, num_classes, channel_dim = 0):
     max_m = m if isinstance(m, int) else m.max()
@@ -262,19 +286,19 @@ def load_config(config_path = None):
     return config
 
 ### load itk, support nii, mhd, nrrd
-def load_itk(filename, return_origin_and_spacing = False):
+def load_itk(file_path, return_origin_and_spacing = False):
     # loads the image using SimpleITK
     try:
-        itkimage = sitk.ReadImage(filename)
+        itkimage = sitk.ReadImage(file_path)
     except:
         logger.debug('Orthonormal direction error occurs, try to fix it')
-        img = nb.load(filename)
+        img = nb.load(file_path)
         qform = img.get_qform()
         sform = img.get_sform()
         img.set_qform(qform)
         img.set_sform(sform)
-        nb.save(img, filename)
-        itkimage = sitk.ReadImage(filename)
+        nb.save(img, file_path)
+        itkimage = sitk.ReadImage(file_path)
     img_array = sitk.GetArrayFromImage(itkimage)
     if return_origin_and_spacing:
         origin = itkimage.GetOrigin()
@@ -283,13 +307,13 @@ def load_itk(filename, return_origin_and_spacing = False):
     return img_array
 
 ### save itk, support nii, mhd, nrrd
-def save_itk(filename, img_array, origin = None, spacing = None):
+def save_itk(file_path, img_array, origin = None, spacing = None):
     itkimage = sitk.GetImageFromArray(img_array)
     if origin is not None:
         itkimage.SetOrigin(origin)
     if spacing is not None:
         itkimage.SetSpacing(spacing)
-    sitk.WriteImage(itkimage, filename, useCompression = True)
+    sitk.WriteImage(itkimage, file_path, useCompression = True)
 
 # from mhd to nii.gz
 def mhd2nii(mhd_file, nii_file):
@@ -483,12 +507,13 @@ def zoom(input_array, scaling = 0.5, target_shape = None, order = None):
 if module_config['point-cloud'] or module_config['graph']:
     from plyfile import PlyData, PlyElement
     import trimesh
+    import binvox_rw
     ##### load ply file for training
     ## here we only focus on the coordinate information.
     ## later we can add more informations
     ## without edge features
-    def load_ply(input_file, vertex_features = ['red', 'green', 'blue'], with_edges = False, with_faces = False):
-        plydata = PlyData.read(input_file, known_list_len={'face': {'vertex_indices': 3}})
+    def load_ply(file_path, vertex_features = ['red', 'green', 'blue'], with_edges = False, with_faces = False):
+        plydata = PlyData.read(file_path, known_list_len={'face': {'vertex_indices': 3}})
         vertex_features = [v for v in vertex_features if v in plydata['vertex']]
         vertex_feature_len = 0 if vertex_features is None else len(vertex_features)
         pcd = np.zeros((plydata['vertex'].count, 3 + vertex_feature_len ))
@@ -516,7 +541,7 @@ if module_config['point-cloud'] or module_config['graph']:
     ### save ply file, with points and colors
     ## here, the face information will be ignored
     ## We can use other packages or cpp program for mesh extraction from point cloud
-    def save_ply(filename, points, edges = None, faces = None):
+    def save_ply(file_path, points, edges = None, faces = None):
         pcolors = None
         if type(points) == tuple:
             points, pcolors = points
@@ -555,38 +580,37 @@ if module_config['point-cloud'] or module_config['graph']:
             el_face = PlyElement.describe(faces, 'face', comments = ['faces'])
             res.append(el_face)
         
-        PlyData(res).write(filename)
+        PlyData(res).write(file_path)
 
-    def save_xyz(filename, x):
-        np.savetxt(filename, x)
-    def load_xyz(filename):
-        return np.loadtxt(filename)
+    def save_xyz(file_path, x):
+        np.savetxt(file_path, x)
+    def load_xyz(file_path):
+        return np.loadtxt(file_path)
 
-    def load_pcd(filename, key = None):
-        basename = os.path.basename(filename)
-        suffix = (basename.split('.')[-1]).lower()
+    def load_pcd(file_path, key = None):
+        
+        suffix = (get_file_extension(file_path)).lower()
         if suffix == 'ply':
-            return load_ply(filename)
+            return load_ply(file_path)
         elif suffix == 'xyz' or suffix == 'pts':
-            return load_xyz(filename)
+            return load_xyz(file_path)
         elif suffix == 'npy':
-            return load_npy(filename)
+            return load_npy(file_path)
         elif suffix in ['obj', 'stl', 'off', 'glb']:
-            mesh = trimesh.load_mesh(filename)
+            mesh = trimesh.load_mesh(file_path)
             return np.array(mesh.vertices)
         else:
             logger.error(f'unsupported file format {suffix}.')
             raise NotImplementedError
-    def save_pcd(filename, x):
-        basename = os.path.basename(filename)
-        suffix = (basename.split('.')[-1]).lower()
+    def save_pcd(file_path, x):
+        suffix = get_file_extension(file_path).lower()
         if suffix == 'ply':
-            save_ply(filename, x)
+            save_ply(file_path, x)
         elif suffix == 'xyz' or suffix == 'pts':
-            save_xyz(filename, x)
+            save_xyz(file_path, x)
         else:
             logger.warning('unknow file format, save as ply file.')
-            save_ply(filename+'.ply', x)
+            save_ply(file_path+'.ply', x)
     def remove_small_components(mesh, threshold_faces = 10):
         components = mesh.split(only_watertight=False)
         filtered = [m for m in components if len(m.faces) > threshold_faces]
@@ -674,17 +698,34 @@ if module_config['point-cloud'] or module_config['graph']:
         trimesh.repair.fix_inversion(mesh)
         trimesh.repair.fix_winding(mesh)
         return mesh
-    def load_mesh(filename, clean = False, repair = False):
-        basename = os.path.basename(filename)
-        suffix = (basename.split('.')[-1]).lower()
+    def load_mesh(file_path, clean = False, repair = False, volume_size = None):
+        suffix = get_file_extension(file_path).lower()
         if suffix in ['obj', 'stl', 'off', 'glb', 'ply']:
-            mesh = trimesh.load_mesh(filename)
-            if clean:
-                mesh = clean_mesh(mesh)
-            if repair:
-                mesh = repair_mesh(mesh)
-            return mesh
+            mesh = trimesh.load_mesh(file_path)
 
+        elif suffix in ['binvox']:
+            with open(file_path, 'rb') as f:
+                model = binvox_rw.read_as_3d_array(f)
+            voxels = model.data
+            if volume_size:
+                voxels = sk_resize(voxels.astype(float), volume_size,
+                order=3,
+                preserve_range=True,
+                anti_aliasing=False
+                )
+
+                voxels = voxels > 0.5
+            
+            vg = trimesh.voxel.VoxelGrid(voxels)
+            mesh = vg.marching_cubes
+        else:
+            logger.error(f'Unsupported mesh form: {suffix}.')
+            exit(1)
+        if clean:
+            mesh = clean_mesh(mesh)
+        if repair:
+            mesh = repair_mesh(mesh)
+        return mesh
     ##### generate batch random rotation
     def _copysign(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
         """
@@ -873,22 +914,20 @@ if module_config['point-cloud'] or module_config['graph']:
         return rotations
 if module_config['graph']:
     from torch_geometric.data import Data as Graph
-    def load_graph(filename, vertex_features = None):
-        basename = os.path.basename(filename)
-        suffix = (basename.split('.')[-1]).lower()
+    def load_graph(file_path, vertex_features = None):
+        suffix = get_file_extension(file_path).lower()
         if suffix == 'ply':
-            return load_ply(filename, vertex_features = vertex_features, with_edges = True)
+            return load_ply(file_path, vertex_features = vertex_features, with_edges = True)
         ## graph saved by torch
         elif suffix == 'pt':
-            return torch.load(filename)
+            return torch.load(file_path)
         elif suffix == 'xyz' or suffix == 'pts':
-            return load_xyz(filename), None
+            return load_xyz(file_path), None
         else:
             logger.warning('unsupported file format.')
             raise NotImplementedError
-    def save_graph(filename, graph_data, vertex_features = None):
-        basename = os.path.basename(filename)
-        suffix = (basename.split('.')[-1]).lower()
+    def save_graph(file_path, graph_data, vertex_features = None):
+        suffix = get_file_extension(file_path).lower()
         assert suffix in ['ply', 'pt'], 'Graph data can only be stored as ply or pt files.'
         if type(graph_data) == tuple:
             pos, feature, edge = graph_data

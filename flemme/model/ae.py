@@ -14,6 +14,9 @@ class AutoEncoder(BaseModel):
         self.recon_losses = []
         self.recon_loss_names = []
         self.recon_loss_weights = []
+        self.learn_displacement = model_config.get('learn_displacement', False)
+        if self.learn_displacement:
+            logger.info("The model learns displacement field instead of the target.")
         recon_loss_configs = model_config.get('reconstruction_losses', [{'name':'MSE'}])
         if not type(recon_loss_configs) == list:
             recon_loss_configs = [recon_loss_configs, ]
@@ -40,6 +43,8 @@ class AutoEncoder(BaseModel):
         ### unet
         if type(z) == tuple:
             z = z[0]
+        if self.learn_displacement:
+            res = res + x
         return {'recon': res, 'latent': z}
     def compute_loss(self, x, c = None, res = None, y = None):
         if res is None:
