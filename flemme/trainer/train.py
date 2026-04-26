@@ -241,7 +241,7 @@ def train(train_config,
                 "ignore_mismatched_keys should be a dict when pretrained is a dict."
             load_part = False
             for key in pretrained.keys():
-                hasattr(model, key), \
+                assert hasattr(model, key), \
                     "Unknown submodel {} for model {}".format(key, model_name)
                 if os.path.isfile(pretrained[key]):
                     load_checkpoint(pretrained[key], getattr(model, key), 
@@ -310,12 +310,19 @@ def train(train_config,
             loss = sum(losses)
             optimizer.zero_grad()
             loss.backward()
+            ### check nan / inf 
             if detect_anomaly:
                 check_nan_grad(model)
+            ### skip nan / inf
+            if not torch.isfinite(loss):
+                logger.warning(f'skip iteration with nan / infinite loss: {loss}')
+                continue
+
             if clip_grad:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad)
             if epoch <= warmup_epochs:
                 warmup_scheduler.step(iter_id + 1)
+
             optimizer.step()
             iter_id += 1
             if iter_id % write_after_iters == 0:

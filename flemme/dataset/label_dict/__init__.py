@@ -1,5 +1,6 @@
 from .medpoints import *
-from .shapenet import *
+from .shapenet13 import *
+from .shapenet16 import *
 from .imagecas import *
 from .medsdf import *
 from flemme.logger import get_logger
@@ -9,8 +10,10 @@ def get_cls_label(name):
         return medpoints_cls_label
     elif name.lower() == 'medsdf':
         return medsdf_cls_label
-    elif name.lower() == 'shapenet':
-        return shapenet_cls_label
+    elif name.lower() == 'shapenet13':
+        return shapenet13_cls_label
+    elif name.lower() == 'shapenet16':
+        return shapenet16_cls_label
     elif name.lower() == 'imagecas':
         return imagecas_cls_label
     else:
@@ -21,8 +24,10 @@ def get_label_cls(name):
         return coarse_label_to_organ
     elif name.lower() == 'medsdf':
         return medsdf_label_cls
-    elif name.lower() == 'shapenet':
-        return shapenet_label_cls
+    elif name.lower() == 'shapenet13':
+        return shapenet13_label_cls
+    elif name.lower() == 'shapenet16':
+        return shapenet16_label_cls
     elif name.lower() == 'imagecas':
         return imagecas_label_cls
     else:

@@ -1,16 +1,17 @@
-shapenet_cls_label = {'airplane': 1,
-    'bench': 2,
-    'cabinet': 3,
+shapenet16_cls_label = {'airplane': 1,
+    'bag': 2,
+    'cap': 3,
     'car': 4,
     'chair': 5,
-    'monitor': 6,
-    'lamp': 7,
-    'speaker': 8,
-    'rifle': 9,
-    'sofa': 10,
-    'table': 11,
-    'telephone': 12,
-    'boat': 13}
-shapenet_label_cls = dict((v,k) for k,v in shapenet_cls_label.items())
-
-# 'Airplane','Bag','Cap','Car','Chair','Earphone','Guitar','Knife','Lamp','Laptop','Motorbike','Mug','Pistol','Rocket','Skateboard','Table'
+    'earphone': 6,
+    'guitar': 7,
+    'knife': 8,
+    'lamp': 9,
+    'laptop': 10,
+    'motorbike': 11,
+    'mug': 12,
+    'pistol': 13,
+    'rocket': 14,
+    'skateboard': 15,
+    'table': 16}
+shapenet16_label_cls = dict((v,k) for k,v in shapenet16_cls_label.items())

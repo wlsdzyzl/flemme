@@ -229,7 +229,7 @@ def test(test_config,
                     "ignore_mismatched_keys should be a dict when model_path is a dict."
                 
                 for key in model_path.keys():
-                    hasattr(model, key), \
+                    assert hasattr(model, key), \
                         "Unknown submodel {} for model {}".format(key, model_name)
                     if os.path.isfile(model_path[key]):
                         load_checkpoint(model_path[key], getattr(model, key), 

@@ -256,14 +256,29 @@ class PointNetEncoder(PointEncoder):
                                             ) for i in range(len(self.lf_path) - 2) ]
         ## local feature, similar to pointnet
         else:    
+        ### to read old checkpoint, please comment the following block and uncomments the next block
+        # #######################################
+        #     lf_sequence = [MultipleBuildingBlocks(in_channel=self.lf_path[i], 
+        #                                     out_channel=self.lf_path[i+1], 
+        #                                     BuildingBlock = self.BuildingBlock,
+        #                                     n = self.num_blocks
+        #                                     ) for i in range(len(self.lf_path) - 2) ]
+        # lf_sequence.append(MultipleBuildingBlocks(in_channel=sum(self.lf_path[1:-1]), 
+        #                                     out_channel=self.lf_path[-1], 
+        #                                     BuildingBlock = self.BuildingBlock,
+        #                                     n = self.num_blocks
+        #                                     ))
+        # ########################################
+        
+        ##########################################
             lf_sequence = [MultipleBuildingBlocks(in_channel=self.lf_path[i], 
                                             out_channel=self.lf_path[i+1], 
                                             BuildingBlock = self.BuildingBlock,
-                                            n = self.num_blocks) for i in range(len(self.lf_path) - 2) ]
-        lf_sequence.append(MultipleBuildingBlocks(in_channel=sum(self.lf_path[1:-1]), 
-                                            out_channel=self.lf_path[-1], 
-                                            BuildingBlock = self.BuildingBlock,
-                                            n = self.num_blocks))
+                                            ) for i in range(len(self.lf_path) - 2) ]
+        lf_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
+                                        out_channel=self.lf_path[-1]))
+        ########################################
+        self.lf = nn.ModuleList(lf_sequence)
         # lf_sequence.append(self.BuildingBlock(in_channel=sum(self.lf_path[1:-1]), 
         #                                 out_channel=self.lf_path[-1]))
         self.lf = nn.ModuleList(lf_sequence)

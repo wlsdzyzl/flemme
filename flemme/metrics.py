@@ -616,6 +616,7 @@ class NNA:
         assert package in ['loss', 'metrics'], 'package should be one of [loss, metrics].'
         self.package = package
         self.batch_size = batch_size
+        self.distance_name = distance['name']
         if self.package == 'loss':
             distance['reduction'] = None
             if distance['name'] in ['Chamfer', 'CD', 'EMD']:
@@ -624,6 +625,7 @@ class NNA:
             self.dist_fn = get_loss(distance, data_form=data_form)
         else:
             self.dist_fn = get_metrics(distance, data_form=data_form)
+        
     def __call__(self, x, y):
         # N_real = len(y)
         # N_fake = len(x)
@@ -635,7 +637,7 @@ class NNA:
         ], axis=0)
         total = len(pcs)
         correct = 0
-        for i in tqdm(range(total), desc="NNA-DistMat"):
+        for i in tqdm(range(total), desc=f"NNA-DistMat-{self.distance_name}"):
             min_dist = float("inf")
             nn_label = None
             if self.package == 'loss':
