@@ -504,7 +504,8 @@ def create_batch_evaluators(eval_metrics, data_form):
     return evaluators
 
 ## results is a batch of inputs, each batch can be read through pickle from external storage.
-def evaluate_results(results, evaluators, verbose = False):
+### kwargs is used to store some parameters for visualization during evaluations.
+def evaluate_results(results, evaluators, verbose = False, **kwargs):
     eval_res = {}
     sample_num = 0
     if verbose:
@@ -530,7 +531,9 @@ def evaluate_results(results, evaluators, verbose = False):
                         else:
                             eval_res[eval_type][eval_metric] += eval_func(res_dict['cls'], res_dict['target']) * batch_size
                     elif eval_type == 'gen':
-                        eval_res[eval_type][eval_metric] += eval_func(res_dict['gen'], res_dict['input']) * batch_size
+                        if not hasattr(eval_func, 'draw_histograms') or not eval_func.draw_histograms:
+                            kwargs = {}
+                        eval_res[eval_type][eval_metric] += eval_func(res_dict['gen'], res_dict['input'], **kwargs) * batch_size
                     else:
                         tmp_res = []
                         if eval_type == 'recon':

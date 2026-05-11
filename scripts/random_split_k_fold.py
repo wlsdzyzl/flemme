@@ -61,13 +61,14 @@ def main(argv):
         suffix = suffix * len(sub_dirs)
     # logger.info(suffix, sub_dirs)
     assert len(suffix) == len(sub_dirs), 'sub_dirs and suffix should have the same length.'
-    assert sum([s == '' for s in sub_dirs]) == 0, 'sub_dirs includes empty folder name.'
+    if len(sub_dirs) > 1:
+        assert sum([s == '' or s == '.' for s in sub_dirs]) == 0, 'sub_dirs contains empty folder name.'
     for ssd in subsub_dirs:
         if not separately:
             contained_files = []
             for sd, sf in zip(sub_dirs, suffix):
                 if len(contained_files) == 0:
-                    files = sorted(glob(os.path.join(dataset_path + '/' +sd +'/' + ssd, "*" + sf)))
+                    files = sorted(glob(os.path.join(dataset_path, sd, ssd, "*" + sf)))
                     contained_files.append(files)
                 else:
                     contained_files.append([ file.replace(sub_dirs[0], sd).replace(suffix[0], sf) for file in contained_files[0]])
@@ -80,7 +81,7 @@ def main(argv):
             for k, ff_id in enumerate(fold_file_id):
                 logger.info(f'creating {k+1}-th fold ...') 
                 for sub_id, sub_dir in enumerate(sub_dirs):
-                    fold_dir = os.path.join(output_dir, f"fold{k+1}/{sub_dir}/{ssd}")
+                    fold_dir = os.path.join(output_dir, f"fold{k+1}", sub_dir, ssd)
                     rkdirs(fold_dir)
 
                     for f_id in ff_id:
@@ -90,7 +91,7 @@ def main(argv):
             contained_files = []
             logger.info('Spliting files in different folders separately ...')
             for sd, sf in zip(sub_dirs, suffix):
-                files = sorted(glob(os.path.join(dataset_path + '/' +sd +'/' + ssd, "*" + sf)))
+                files = sorted(glob(os.path.join(dataset_path, sd, ssd, "*" + sf)))
                 contained_files.append(files)
             for sub_id, sub_dir in enumerate(sub_dirs):
                 logger.info(f'Processing subdir {sub_dir}, which has {len(contained_files[sub_id])} files.')
@@ -101,7 +102,7 @@ def main(argv):
                 fold_size = math.ceil(len(file_id) / kfold)
                 fold_file_id = [file_id[i:i+fold_size] for i in range(0, len(file_id), fold_size)]
                 for k, ff_id in enumerate(fold_file_id):
-                    fold_dir = os.path.join(output_dir, f"fold{k+1}/{sub_dir}/{ssd}")
+                    fold_dir = os.path.join(output_dir, f"fold{k+1}", sub_dir, ssd)
                     rkdirs(fold_dir)
                     for f_id in ff_id:
                         logger.info(f'{mn} {contained_files[sub_id][f_id]} to {fold_dir}'  ) 

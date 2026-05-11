@@ -99,7 +99,7 @@ def evaluate(eval_config,
         logger.info('Data sample (test) count: {}'.format(len(data_loader.dataset)))
         ### load targets and predictions
         iter_id = 0
-        for t in tqdm(data_loader, desc="Loading predictions and targets ..."):
+        for t in tqdm(data_loader, desc="Loading predictions and targets"):
             res = run_fn(t)
             pred = []
             for p in res['path']:
@@ -135,7 +135,7 @@ def evaluate(eval_config,
     else:
         ### directly evaluate files in the target path and prediction path
         logger.info("There is no dataloader, we will directly evaluate files in the target path and prediction path.")
-        sub_dirs = eval_config.get('sub_dirs', ['.'])
+        sub_dirs = eval_config.get('sub_dirs', [''])
         eval_res_list = []
         sample_num_list = []
         target_info = eval_config.get('target', None)
@@ -155,17 +155,17 @@ def evaluate(eval_config,
             load_input_data = get_load_function(input_suffix)[0]
         for sd in sub_dirs:
             results = []
-            target_files = sorted(glob.glob(os.path.join(target_path, sd + "/*" + target_suffix)))
+            target_files = sorted(glob.glob(os.path.join(target_path, sd, "*" + target_suffix)))
             sample_num_list.append(len(target_files))
             if eval_type == 'gen':
                 ### for generation, the target is actually the input.
-                pred_files = sorted(glob.glob(os.path.join(pred_path, sd + "/*" + pred_suffix)))
+                pred_files = sorted(glob.glob(os.path.join(pred_path, sd, "*" + pred_suffix)))
                 pred_data = []
-                for p in pred_files:
+                for p in tqdm(pred_files, desc="loading prediction data"):
                     pred_data.append(pred_transforms(load_data(p)))
                 
                 target_data = []
-                for t in target_files:
+                for t in tqdm(target_files, desc="loading target data"):
                     target_data.append(target_transforms(load_target_data(t)))
                 if not is_mesh:
                     pred_data = np.stack(pred_data)
@@ -174,7 +174,7 @@ def evaluate(eval_config,
             else:
                 batch_size = eval_config.get('batch_size', 16)
                 ## for reconstruction and segmentation, target and prediction should be one-to-one correspondended
-                for i in range(0, len(target_files), batch_size):
+                for i in tqdm(range(0, len(target_files), batch_size), desc=f"Loading predictions and targets for sub dir ({sd})"):
                     batch_target_files = target_files[i:i+batch_size]
                     batch_target_data = [ target_transforms(load_target_data(t)) for t in batch_target_files]
                     batch_pred_files = [ os.path.join(pred_path, sd, os.path.basename(t).replace(target_suffix, pred_suffix)) 
@@ -218,7 +218,7 @@ def evaluate(eval_config,
                             save_target=save_target,
                             save_input=save_input,
                             save_colorized=save_colorized)
-            eval_res = evaluate_results(results, evaluators, verbose = True)
+            eval_res = evaluate_results(results, evaluators, verbose = True, figure_prefix = sd)
             eval_res_list.append(eval_res)
             if len(eval_res) > 0:
                 logger.info(f'{eval_type} evaluation' + (f' for sub dir ({sd})' if sd != '.' else '') + f': {eval_res[eval_type]}')

@@ -15,8 +15,8 @@ import torch
 import math
 from functools import partial
 from flemme.logger import get_logger
-from flemme.utils import label_to_onehot, DataForm, topk
-
+from flemme.utils import label_to_onehot, DataForm, topk, contains_one_of, draw_hists, normalize
+from matplotlib import pyplot as plt
 
 from tqdm import tqdm
 logger = get_logger('metrics')
@@ -236,7 +236,10 @@ class CACC:
 
 if module_config['point-cloud']:
     import ot
-    from flemme.utils import remove_small_components, remove_small_holes
+    from flemme.utils import remove_small_components, remove_small_holes, load_mesh
+    from scipy.sparse import coo_matrix
+    from scipy.stats import wasserstein_distance
+    import trimesh
     #### point cloud similarity
     ## Earth mover's distance
     class EMD:
@@ -369,6 +372,114 @@ if module_config['point-cloud']:
             self.metric = metric
         def __call__(self, x, y):
             return compute_f_score_and_hd(x, y, self.dist_threshold, self.metric)
+    ### distribution distance between generated and real meshes
+    def compute_basic_stats(mesh):
+        volume = mesh.volume
+        area = mesh.area
+        # compactness (sphericity-like)
+        compactness = (36 * np.pi * (volume ** 2)) / (area ** 3 + 1e-8)
+        
+        return {
+            "volume": volume,
+            "area": area,
+            "compactness": compactness
+        }
+    def compute_curvature_stats(mesh):
+        V = mesh.vertices
+        F = mesh.faces
+
+        vi = V[F[:, 0]]
+        vj = V[F[:, 1]]
+        vk = V[F[:, 2]]
+
+        # edges
+        e_ij = vj - vi
+        e_ik = vk - vi
+        e_jk = vk - vj
+
+        # cross products
+        cross_ijk = np.cross(e_ij, e_ik)
+        cross_norm = np.linalg.norm(cross_ijk, axis=1) + 1e-8
+
+        # cotangents
+        cot_alpha = np.sum(e_ij * e_ik, axis=1) / cross_norm
+        cot_beta  = np.sum(-e_ij * e_jk, axis=1) / cross_norm
+        cot_gamma = np.sum(-e_ik * -e_jk, axis=1) / cross_norm
+
+        I = np.concatenate([
+            F[:,0], F[:,1], F[:,1], F[:,2], F[:,0], F[:,2]
+        ])
+        J = np.concatenate([
+            F[:,1], F[:,0], F[:,2], F[:,1], F[:,2], F[:,0]
+        ])
+        W = np.concatenate([
+            cot_gamma, cot_gamma,
+            cot_alpha, cot_alpha,
+            cot_beta,  cot_beta
+        ])
+
+        n = len(V)
+        L = coo_matrix((W, (I, J)), shape=(n, n)).tocsr()
+
+        diag = np.array(L.sum(axis=1)).flatten()
+        L = L - coo_matrix((diag, (np.arange(n), np.arange(n))), shape=(n, n))
+
+        Hn = L @ V
+        H = np.linalg.norm(Hn, axis=1)
+        return {
+            "curvature_mean": np.mean(H),
+            "curvature_std": np.std(H),
+            "curvature_max": np.max(H),
+            "curvature_min": np.min(H)
+        }
+    def compute_stats(stats, meshes, normalized = False):
+        basic_stats = ['volume', 'area', 'compactness']
+        curvature_stats = ['curvature_mean', 'curvature_std', 'curvature_max', 'curvature_min']
+        bs = []
+        cs = []
+        for s in stats:
+            if s in basic_stats:
+                bs.append(s)
+            elif s in curvature_stats:
+                cs.append(s)
+            else:
+                logger.error(f'Unsupported stat: {s}, should be one of {basic_stats + curvature_stats}')
+                exit(1)
+        res = {k: [] for k in stats}
+        for m in tqdm(meshes, desc = 'Computing mesh statistics'):
+            if isinstance(m, str):
+                m = load_mesh(m)
+                if normalized:
+                    m.vertices = normalize(m.vertices, channel_dim = -1)
+            if len(bs) > 0:
+                for k, v in compute_basic_stats(m).items():
+                    if k in res:
+                        res[k].append(v)
+            if len(cs):
+                for k, v in compute_curvature_stats(m).items():
+                    if k in res:
+                        res[k].append(v)
+
+        return res
+
+    class WassersteinDistanceMesh:
+        def __init__(self, stats = ['volume', 'area', 'compactness', 'curvature_mean'], 
+            draw_histograms = False):
+            self.stats = stats
+            self.draw_histograms = draw_histograms
+        def __call__(self, x, y, figure_prefix = None):
+            if self.draw_histograms:
+                figure_prefix = '' if not figure_prefix else (figure_prefix + '_' )
+            x_stats = compute_stats(self.stats, x)
+            y_stats = compute_stats(self.stats, y)
+            res = []
+            for k in self.stats:
+                res.append(wasserstein_distance(x_stats[k], y_stats[k])) 
+                if self.draw_histograms:
+                    draw_hists(figure_prefix + k +'.png',
+                        {'Generated': x_stats[k], 'Real': y_stats[k]},
+                        xlabel = k)
+            return np.array(res)
 if module_config['graph']: 
     from flemme.loss import GraphNodeLoss
     ## graph node distance
@@ -743,5 +854,8 @@ def get_metrics(metric_config, data_form = None, classification = False):
         return NNA(data_form = data_form, **metric_config)
     if name == 'MaxMD':
         return MaxMD(data_form = data_form, **metric_config)
+    #### mesh
+    if name == 'WDMesh':
+        return WassersteinDistanceMesh(**metric_config)
     logger.error(f'Unsupported metric: {name}')
     return None

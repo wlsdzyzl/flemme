@@ -6,9 +6,9 @@ from PIL import Image
 import SimpleITK as sitk
 from enum import Enum, auto
 import nibabel as nb
-from matplotlib import figure as mpl_figure
+from matplotlib import figure as mpl_figure, pyplot as plt
 from flemme.logger import get_logger
-from flemme.color_table import rainbow_rgb
+from flemme.color_table import rainbow_rgb, get_color_table
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -496,6 +496,127 @@ def freeze(model):
 def unfreeze(model):
     for param in model.parameters():
         param.requires_grad = True
+def hist_non_overlapped(data_list,
+                 bins=30,
+                 labels=None,
+                 density=False,
+                 colors=None,
+                 alpha=0.8,
+                 ax=None):
+    """
+    Grouped histogram as a replacement for plt.hist (no overlap, per-bin separation).
+
+    Parameters
+    ----------
+    data_list : list of array-like
+        List of data arrays, e.g., [real, pvd, ours].
+
+    bins : int or array-like
+        Number of bins or bin edges (same as plt.hist).
+
+    labels : list of str, optional
+        Labels for each dataset.
+
+    density : bool, default=False
+        If True, normalize the histogram to form a probability density.
+
+    colors : list, optional
+        Colors for each dataset. If None, use matplotlib default colormap.
+
+    alpha : float, default=0.8
+        Transparency of bars.
+
+    ax : matplotlib.axes.Axes, optional
+        Axis to draw on. If None, use current axis.
+
+    Returns
+    -------
+    ax : matplotlib.axes.Axes
+        The axis with the plotted histogram.
+    """
+
+    if ax is None:
+        ax = plt.gca()
+
+    n_methods = len(data_list)
+
+    # Auto-generate labels if not provided
+    if labels is None:
+        labels = [f"data_{i}" for i in range(n_methods)]
+
+    # Use default tab10 colormap if colors not provided
+    if colors is None:
+        colors = plt.cm.tab10(np.linspace(0, 1, n_methods))
+
+    # Concatenate all data to compute shared bin edges
+    all_data = np.concatenate(data_list)
+
+    if isinstance(bins, int):
+        bin_edges = np.linspace(all_data.min(), all_data.max(), bins + 1)
+    else:
+        bin_edges = np.asarray(bins)
+
+    # Compute bin centers and width
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    bin_width = bin_edges[1] - bin_edges[0]
+
+    # Width of each bar within a bin
+    width = bin_width / n_methods
+
+    for i, (data, label, color) in enumerate(zip(data_list, labels, colors)):
+
+        # Compute histogram
+        hist, _ = np.histogram(data, bins=bin_edges, density=density)
+
+        # Compute horizontal offset for grouping
+        offset = (i - n_methods / 2) * width + width / 2
+
+        # Plot bars
+        ax.bar(
+            bin_centers + offset,
+            hist,
+            width=width * 0.9,
+            label=label,
+            color=color,
+            alpha=alpha,
+            align='center'
+        )
+
+    return ax
+def draw_hists(save_path, key_values, xlabel, ylabel = None,
+    figsize = (6, 4), bins = 50, title = None,
+    alpha = 0.5, density = True, legend = True, 
+    color_map = 'tab10', color_reverse = False,
+    overlapped = True):
+
+    ctable = get_color_table(color_map, len(key_values))
+    if color_reverse:
+        ctable = ctable[::-1]
+    ylabel = ylabel or ('Density' if density else 'Count')
+    plt.figure(figsize=figsize)
+    
+    
+    if overlapped:
+        for i, (k, v) in enumerate(key_values.items()):
+            plt.hist(v, bins=bins, density=density, 
+                alpha=alpha, label=k, color = ctable[i % len(ctable)])
+    else:
+        values = [v for k, v in key_values.items()]
+        labels = [k for k, v in key_values.items()]
+        colors = [ctable[i % len(ctable)] for i in range(len(key_values))]
+        hist_non_overlapped(values, bins=bins, labels=labels, density=density, 
+            colors=colors, alpha=alpha)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    if title:
+        plt.title(title)
+    if legend: 
+        plt.legend()
+    plt.tight_layout()
+    logger.info(f"Saving histogram to {save_path}")
+    plt.savefig(save_path, dpi=300)
+
+    
 def zoom(input_array, scaling = 0.5, target_shape = None, order = None):
     if not type(scaling) == list and not type(scaling) == tuple:
         scaling = (scaling, ) * input_array.ndim
